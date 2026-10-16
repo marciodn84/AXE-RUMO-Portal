@@ -1,4 +1,4 @@
-import {initCadastros} from './cadastros.js?v=20261016-3';
+import {initCadastros} from './cadastros.js?v=20261016-4';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const SUPABASE_URL='https://ursezzcnbwlodmbzabmd.supabase.co', KEY='sb_publishable_SLeQ2rBGoGFB3jqMoqCcvw_lv7dAORr';

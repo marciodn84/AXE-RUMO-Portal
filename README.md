@@ -13,3 +13,5 @@ Site: https://marciodn84.github.io/AXE-RUMO-Portal/
 Após login: Clientes, Produtos, Pedidos e itens, Histórico de preços e Regras fiscais. Busca e paginação são executadas no servidor. O histórico abre na versão mais recente por pedido/item, com opção para incluir versões anteriores dos PDFs.
 
 Clientes e produtos podem ser cadastrados e complementados. Endereços geram novas versões; equivalências de códigos e ativação/inativação de regras exigem confirmação. Pedidos e valores documentais são consultados; as alterações de pedido continuam no fluxo controlado de conciliação. Operações de manutenção registram usuário e antes/depois, verificam versões e usam identificação de operação para evitar repetição em timeout. Campos de impostos vazios não viram zero.
+
+Clientes são separados pelo CNPJ completo de faturamento, com razão social e agrupamento comercial. O formulário exige CNPJ único e impede trocar a identidade de clientes existentes. Pedidos e regras exibem o CNPJ; os códigos do cliente são identificados pelo CNPJ, sem compartilhar equivalência automaticamente entre empresas do grupo.
