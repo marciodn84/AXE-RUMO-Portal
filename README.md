@@ -1,9 +1,9 @@
 # Portal AXE-RUMO
 
-Interface de conciliação e aprovações. Acesso aos dados exige usuário autorizado no Supabase.
+Interface de conciliação, notas fiscais e entregas. Acesso aos dados exige login e usuário autorizado no Supabase.
 
-Este repositório público contém somente a tela de acesso. Não contém pedidos, PDFs, senhas, tokens ou scripts do coletor. A chave publishable presente na interface identifica o projeto e não concede acesso sem login/autorização.
+Este repositório público contém somente a interface. Não contém pedidos, PDFs, XMLs, fotos, senhas ou tokens. A chave publishable identifica o projeto e não substitui a autenticação e a autorização no backend.
 
-Aprovar registra uma decisão. Publicar no cadastro oficial exige confirmação separada.
+O painel diferencia quantidade total, saldo, comprovação de entrega, conferência fiscal e alertas da RUMO. Aprovação e publicação no cadastro oficial são ações separadas.
 
 Site: https://marciodn84.github.io/AXE-RUMO-Portal/
