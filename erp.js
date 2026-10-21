@@ -1,11 +1,12 @@
 const groups = [
  ['Visão geral',[['inicio','Visão geral','home']]],
  ['Comercial',[['oportunidades','Oportunidades','planned'],['propostas','Propostas comerciais','planned'],['pedidos','Pedidos de venda','live'],['precos','Histórico de preços','live']]],
- ['Operação',[['operacao','Conciliação RUMO','live'],['resolver','Central de pendências','live'],['compras','Compras e importações','planned'],['estoque','Estoque e movimentações','planned'],['producao','Produção','planned'],['logistica','Expedição e entregas','planned']]],
+ ['Operação',[['compras','Compras e importações','planned'],['estoque','Estoque e movimentações','planned'],['producao','Produção','planned'],['logistica','Expedição e entregas','planned']]],
  ['Financeiro',[['receber','Contas a receber','planned'],['pagar','Contas a pagar','planned'],['caixa','Fluxo de caixa','planned'],['conciliacao','Conciliação bancária','planned']]],
- ['Cadastros',[['clientes','Clientes e endereços','live'],['produtos','Produtos e identificadores','live'],['fornecedores','Fornecedores','planned'],['equivalencias','Produtos por empresa','planned'],['regras','Regras fiscais','live']]],
+ ['Cadastros',[['clientes','Clientes e endereços','live'],['produtos','Produtos e identificadores','live'],['resolver','Pendências de produtos','live'],['fornecedores','Fornecedores','planned'],['equivalencias','Produtos por empresa','planned'],['regras','Regras fiscais','live']]],
  ['Gestão',[['indicadores','Indicadores e metas','planned'],['aprovacoes','Alçadas de aprovação','planned'],['relatorios','Relatórios gerenciais','planned'],['auditoria','Histórico de alterações','planned']]],
- ['Administração',[['usuarios','Usuários e permissões','planned'],['integracoes','Integrações','planned']]]
+ ['Integrações',[['integracoes','Portais de clientes','hub'],['operacao','Pedidos e conciliação','live','RUMO Logística'],['novo-portal','Outros portais de clientes','planned']]],
+ ['Administração',[['usuarios','Usuários e permissões','planned']]]
 ];
 const plans = {
  oportunidades:['Funil de oportunidades','Responsável, etapa e próxima ação','Previsão de fechamento'],
@@ -25,7 +26,7 @@ const plans = {
  relatorios:['Vendas, compras e margens','Posição financeira','Exportação e filtros por período'],
  auditoria:['Responsável e data da alteração','Valores anteriores e atuais','Consulta por registro'],
  usuarios:['Perfis por função','Permissões por módulo','Controle de acesso'],
- integracoes:['Acompanhamento das integrações','Histórico de execução e falhas','Configuração por serviço']
+ 'novo-portal':['Conector específico para cada portal de cliente','Vínculo com os CNPJs de faturamento e suas permissões','Mapeamento de pedidos, documentos e situações','Histórico de sincronização e tratamento de falhas']
 };
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 export function initERP(cadastros,api){
@@ -39,10 +40,13 @@ export function initERP(cadastros,api){
  const routes=new Map(),buttons=new Map();
  for(const [group,items] of groups){
   const section=make('details',undefined,'menu-group');section.open=true;section.append(make('summary',group));
-  for(const [key,title,type] of items){
-   routes.set(key,{group,title,type});const b=make('button');b.type='button';b.dataset.route=key;
+  const subgroups=new Map();
+  for(const [key,title,type,subgroup] of items){
+   let target=section;
+   if(subgroup){if(!subgroups.has(subgroup)){const nested=make('details',undefined,'connector-submenu');nested.open=true;nested.append(make('summary',subgroup));section.append(nested);subgroups.set(subgroup,nested);}target=subgroups.get(subgroup);}
+   routes.set(key,{group,title,type,subgroup});const b=make('button');b.type='button';b.dataset.route=key;
    b.append(make('span',title));if(type==='planned')b.append(make('span','Em breve','menu-status'));
-   b.onclick=()=>navigate(key);buttons.set(key,b);section.append(b);
+   b.onclick=()=>navigate(key);buttons.set(key,b);target.append(b);
   }nav.append(section);
  }sidebar.append(nav,make('div','AXE Engenharia · ERP','sidebar-footer'));
  const workspace=make('div',undefined,'erp-workspace'),top=make('div',undefined,'erp-topbar');
@@ -65,7 +69,8 @@ export function initERP(cadastros,api){
  const moduleGrid=make('div',undefined,'module-grid');
  for(const [name,desc,target,items] of [
  ['Comercial','Do relacionamento com o cliente ao pedido de venda.','pedidos',['Clientes e pedidos','Preços e condições','Propostas e oportunidades · em breve']],
- ['Operação','Produtos, compras, produção e entrega conectados.','operacao',['Conciliação RUMO','Pendências de cadastro','Estoque, compras e produção · em breve']],
+ ['Operação','Compras, estoque, produção e entrega conectados.','compras',['Compras e importações · em breve','Estoque e produção · em breve','Expedição e entregas · em breve']],
+ ['Integrações','Conectores para os portais de cada cliente.','integracoes',['RUMO Logística · pedidos e conciliação','Empresas identificadas por CNPJ','Estrutura para novos portais de clientes']],
  ['Financeiro','Compromissos, recebimentos e previsibilidade de caixa.','receber',['Contas a pagar e receber · em breve','Fluxo de caixa · em breve','Conciliação bancária · em breve']],
  ['Gestão','Decisões apoiadas em indicadores e rastreabilidade.','indicadores',['Indicadores e metas · em breve','Alçadas e relatórios · em breve','Consulta de auditoria · em breve']]
  ]){
@@ -74,7 +79,7 @@ export function initERP(cadastros,api){
  const roadmap=make('div',undefined,'roadmap-note');roadmap.append(make('strong','Evolução por etapas'),make('p','Os controles atuais continuam disponíveis. Menus com “Em breve” apresentam o escopo previsto e ainda não executam operações.'));home.append(roadmap);
  const operation=document.getElementById('operacao'),root=document.getElementById('cadastrosRoot');
  content.append(home,future,operation,root);workspace.append(top,heading,content);panel.replaceChildren(sidebar,workspace);
- filter.oninput=()=>{const q=filter.value.trim().toLocaleLowerCase('pt-BR');for(const section of nav.children){const groupMatch=section.querySelector('summary').textContent.toLocaleLowerCase('pt-BR').includes(q);let visible=0;for(const b of section.querySelectorAll('button')){b.hidden=!groupMatch&&!b.textContent.toLocaleLowerCase('pt-BR').includes(q);if(!b.hidden)visible++;}section.hidden=visible===0;if(q&&visible)section.open=true;}};
+ filter.oninput=()=>{const q=filter.value.trim().toLocaleLowerCase('pt-BR');for(const section of nav.children){const groupMatch=section.querySelector('summary').textContent.toLocaleLowerCase('pt-BR').includes(q);let visible=0;for(const b of section.querySelectorAll('button')){const route=routes.get(b.dataset.route);b.hidden=!groupMatch&&!(b.textContent+' '+(route.subgroup||'')).toLocaleLowerCase('pt-BR').includes(q);if(!b.hidden)visible++;}for(const nested of section.querySelectorAll('.connector-submenu')){nested.hidden=![...nested.querySelectorAll('button')].some(b=>!b.hidden);if(q&&!nested.hidden)nested.open=true;}section.hidden=visible===0;if(q&&visible)section.open=true;}};
  let current='inicio',epoch=0;
  async function refreshStats(){
   const run=++epoch;refresh.disabled=true;status.textContent='Atualizando indicadores…';
@@ -87,11 +92,18 @@ export function initERP(cadastros,api){
  function navigate(key){
   const route=routes.get(key);if(!route)return;current=key;
   cadastros.show(null);home.hidden=true;future.hidden=true;
-  for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key)b.closest('details').open=true;}
-  breadcrumb.textContent=route.group+' / '+route.title;eyebrow.textContent=route.group.toLocaleUpperCase('pt-BR');title.textContent=route.title;
+  for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key){let parent=b.parentElement;while(parent&&parent!==nav){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}}}
+  breadcrumb.textContent=[route.group,route.subgroup,route.title].filter(Boolean).join(' / ');eyebrow.textContent=(route.subgroup||route.group).toLocaleUpperCase('pt-BR');title.textContent=route.title;
   subtitle.textContent=route.type==='planned'?'Estrutura prevista para a evolução do ERP.':'Controles da AXE Engenharia';
   if(key==='inicio')home.hidden=false;
   else if(route.type==='live')cadastros.show(key);
+  else if(route.type==='hub'){
+   future.hidden=false;future.replaceChildren();const card=make('div',undefined,'planned-card');
+   card.append(make('span','Conector disponível','badge'),make('h2','RUMO Logística'),make('p','Acesse os pedidos, a conciliação e as conferências do portal RUMO. Cada CNPJ de faturamento continua identificado separadamente nos cadastros e pedidos.'));
+   const open=make('button','Abrir RUMO Logística','primary');open.onclick=()=>navigate('operacao');card.append(open);future.append(card);
+   const next=make('div',undefined,'planned-card');next.append(make('h2','Outros portais de clientes'),make('p','Cada novo portal terá seu próprio conector e vínculo com as empresas atendidas. A configuração e os controles de sincronização serão implementados conforme cada integração.'));
+   const scope=make('button','Ver estrutura prevista','secondary');scope.onclick=()=>navigate('novo-portal');next.append(scope);future.append(next);
+  }
   else{
    future.hidden=false;future.replaceChildren();const card=make('div',undefined,'planned-card');
    card.append(make('span','Em breve','planned-badge'),make('h2',route.title),make('p','Este módulo está planejado. As operações estarão disponíveis após a implementação e validação.'));

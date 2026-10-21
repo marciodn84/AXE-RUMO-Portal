@@ -3,3 +3,7 @@
 .erp-sidebar .menu-group>summary:hover{background:#203b50;color:white}
 .erp-sidebar .menu-group>summary:focus-visible{outline:2px solid #13aa9c;outline-offset:2px}
 .erp-sidebar .menu-group>button{padding-left:24px}
+.erp-sidebar .connector-submenu{margin:6px 0 6px 12px;border-left:1px solid #3b5568;padding-left:4px}
+.erp-sidebar .connector-submenu>summary{color:#b8d5df;font-size:12px;padding:9px 8px;cursor:pointer}
+.erp-sidebar .connector-submenu>button{padding-left:18px}
+.erp-future>.planned-card+.planned-card{margin-top:18px}
