@@ -1,6 +1,6 @@
-import {initERP} from './erp.js?v=20261021-fiscal2';
-import {initFiscal} from './fiscal.js?v=20261021-fiscal2';
-import {initCadastros} from './cadastros.js?v=20261021-fiscal2';
+import {initERP} from './erp.js?v=20261021-fiscal3';
+import {initFiscal} from './fiscal.js?v=20261021-fiscal3';
+import {initCadastros} from './cadastros.js?v=20261021-fiscal3';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const SUPABASE_URL='https://ursezzcnbwlodmbzabmd.supabase.co', KEY='sb_publishable_SLeQ2rBGoGFB3jqMoqCcvw_lv7dAORr';
