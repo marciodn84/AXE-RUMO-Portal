@@ -3,7 +3,7 @@ const groups = [
  ['Comercial',[['oportunidades','Oportunidades','planned'],['propostas','Propostas comerciais','planned'],['pedidos','Pedidos de venda','live'],['precos','Histórico de preços','live']]],
  ['Operação',[['compras','Compras e importações','planned'],['estoque','Estoque e movimentações','planned'],['producao','Produção','planned'],['logistica','Expedição e entregas','planned']]],
  ['Financeiro',[['receber','Contas a receber','planned'],['pagar','Contas a pagar','planned'],['caixa','Fluxo de caixa','planned'],['conciliacao','Conciliação bancária','planned']]],
- ['Cadastros',[['clientes','Clientes e endereços','live'],['produtos','Produtos e identificadores','live'],['resolver','Pendências de produtos','live'],['fornecedores','Fornecedores','planned'],['equivalencias','Produtos por empresa','planned'],['regras','Regras fiscais','live']]],
+ ['Cadastros',[['clientes','Clientes e endereços','live'],['produtos','Produtos e identificadores','live'],['resolver','Pendências de produtos','live'],['fornecedores','Fornecedores','planned'],['equivalencias','Produtos por empresa','planned'],['fiscal','Regras tributárias','fiscal','Fiscal'],['naturezas','Naturezas de operação','fiscal','Fiscal'],['perfis','Perfis fiscais','fiscal','Fiscal'],['tributacao-produtos','Tributação por produto','fiscal','Fiscal'],['regras','Conferência fiscal RUMO','live','Fiscal']]],
  ['Gestão',[['indicadores','Indicadores e metas','planned'],['aprovacoes','Alçadas de aprovação','planned'],['relatorios','Relatórios gerenciais','planned'],['auditoria','Histórico de alterações','planned']]],
  ['Integrações',[['integracoes','Portais de clientes','hub'],['operacao','Pedidos e conciliação','live','RUMO Logística'],['novo-portal','Outros portais de clientes','planned']]],
  ['Administração',[['usuarios','Usuários e permissões','planned']]]
@@ -29,7 +29,7 @@ const plans = {
  'novo-portal':['Conector específico para cada portal de cliente','Vínculo com os CNPJs de faturamento e suas permissões','Mapeamento de pedidos, documentos e situações','Histórico de sincronização e tratamento de falhas']
 };
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
-export function initERP(cadastros,api){
+export function initERP(cadastros,api,fiscal){
  const panel=document.getElementById('panel'), oldNav=panel.querySelector('.portal-nav'),originalExit=document.getElementById('logout');
  oldNav.remove();panel.querySelector('.portal-toolbar').remove();
  const sidebar=make('aside',undefined,'erp-sidebar');
@@ -89,14 +89,15 @@ export function initERP(cadastros,api){
   status.textContent=errors?'Alguns indicadores não puderam ser consultados. Tente atualizar.':'Atualizado em '+new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
   refresh.disabled=false;
  }
- function navigate(key){
+ function navigate(key,produtoId){
   const route=routes.get(key);if(!route)return;current=key;
-  cadastros.show(null);home.hidden=true;future.hidden=true;
+  cadastros.show(null);if(fiscal)fiscal.show(null);home.hidden=true;future.hidden=true;
   for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key){let parent=b.parentElement;while(parent&&parent!==nav){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}}}
   breadcrumb.textContent=[route.group,route.subgroup,route.title].filter(Boolean).join(' / ');eyebrow.textContent=(route.subgroup||route.group).toLocaleUpperCase('pt-BR');title.textContent=route.title;
   subtitle.textContent=route.type==='planned'?'Estrutura prevista para a evolução do ERP.':'Controles da AXE Engenharia';
   if(key==='inicio')home.hidden=false;
   else if(route.type==='live')cadastros.show(key);
+  else if(route.type==='fiscal'){if(produtoId)fiscal.openProduct(produtoId);else fiscal.show(key==='tributacao-produtos'?'produtos':key);}
   else if(route.type==='hub'){
    future.hidden=false;future.replaceChildren();const card=make('div',undefined,'planned-card');
    card.append(make('span','Conector disponível','badge'),make('h2','RUMO Logística'),make('p','Acesse os pedidos, a conciliação e as conferências do portal RUMO. Cada CNPJ de faturamento continua identificado separadamente nos cadastros e pedidos.'));

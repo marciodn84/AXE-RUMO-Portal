@@ -1,5 +1,6 @@
-import {initERP} from './erp.js?v=20261021-erp4';
-import {initCadastros} from './cadastros.js?v=20261021-erp4';
+import {initERP} from './erp.js?v=20261021-fiscal2';
+import {initFiscal} from './fiscal.js?v=20261021-fiscal2';
+import {initCadastros} from './cadastros.js?v=20261021-fiscal2';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const SUPABASE_URL='https://ursezzcnbwlodmbzabmd.supabase.co', KEY='sb_publishable_SLeQ2rBGoGFB3jqMoqCcvw_lv7dAORr';
@@ -34,4 +35,7 @@ async function loadAccomp(){
 
 const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'));
 
-const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'));
+const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'));
+const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal);
+document.addEventListener('axe-tributacao-produto',event=>erp.navigate('tributacao-produtos',event.detail));
+new MutationObserver(()=>{if($('panel').hidden)fiscal.reset();}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
