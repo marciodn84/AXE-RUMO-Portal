@@ -1,9 +1,9 @@
 const groups = [
  ['Visão geral',[['inicio','Visão geral','home']]],
- ['Comercial',[['clientes','Clientes','live'],['oportunidades','Oportunidades','planned'],['propostas','Propostas comerciais','planned'],['pedidos','Pedidos de venda','live'],['precos','Histórico de preços','live']]],
+ ['Comercial',[['oportunidades','Oportunidades','planned'],['propostas','Propostas comerciais','planned'],['pedidos','Pedidos de venda','live'],['precos','Histórico de preços','live']]],
  ['Operação',[['operacao','Conciliação RUMO','live'],['resolver','Central de pendências','live'],['compras','Compras e importações','planned'],['estoque','Estoque e movimentações','planned'],['producao','Produção','planned'],['logistica','Expedição e entregas','planned']]],
  ['Financeiro',[['receber','Contas a receber','planned'],['pagar','Contas a pagar','planned'],['caixa','Fluxo de caixa','planned'],['conciliacao','Conciliação bancária','planned']]],
- ['Cadastros',[['produtos','Produtos','live'],['fornecedores','Fornecedores','planned'],['equivalencias','Produtos por empresa','planned'],['regras','Regras fiscais','live']]],
+ ['Cadastros',[['clientes','Clientes e endereços','live'],['produtos','Produtos e identificadores','live'],['fornecedores','Fornecedores','planned'],['equivalencias','Produtos por empresa','planned'],['regras','Regras fiscais','live']]],
  ['Gestão',[['indicadores','Indicadores e metas','planned'],['aprovacoes','Alçadas de aprovação','planned'],['relatorios','Relatórios gerenciais','planned'],['auditoria','Histórico de alterações','planned']]],
  ['Administração',[['usuarios','Usuários e permissões','planned'],['integracoes','Integrações','planned']]]
 ];
@@ -38,7 +38,7 @@ export function initERP(cadastros,api){
  const nav=make('nav');nav.setAttribute('aria-label','Menu principal');
  const routes=new Map(),buttons=new Map();
  for(const [group,items] of groups){
-  const section=make('section',undefined,'menu-group');section.append(make('h2',group));
+  const section=make('details',undefined,'menu-group');section.open=true;section.append(make('summary',group));
   for(const [key,title,type] of items){
    routes.set(key,{group,title,type});const b=make('button');b.type='button';b.dataset.route=key;
    b.append(make('span',title));if(type==='planned')b.append(make('span','Em breve','menu-status'));
@@ -74,7 +74,7 @@ export function initERP(cadastros,api){
  const roadmap=make('div',undefined,'roadmap-note');roadmap.append(make('strong','Evolução por etapas'),make('p','Os controles atuais continuam disponíveis. Menus com “Em breve” apresentam o escopo previsto e ainda não executam operações.'));home.append(roadmap);
  const operation=document.getElementById('operacao'),root=document.getElementById('cadastrosRoot');
  content.append(home,future,operation,root);workspace.append(top,heading,content);panel.replaceChildren(sidebar,workspace);
- filter.oninput=()=>{const q=filter.value.trim().toLocaleLowerCase('pt-BR');for(const section of nav.children){let visible=0;for(const b of section.querySelectorAll('button')){b.hidden=!b.textContent.toLocaleLowerCase('pt-BR').includes(q);if(!b.hidden)visible++;}section.hidden=visible===0;}};
+ filter.oninput=()=>{const q=filter.value.trim().toLocaleLowerCase('pt-BR');for(const section of nav.children){const groupMatch=section.querySelector('summary').textContent.toLocaleLowerCase('pt-BR').includes(q);let visible=0;for(const b of section.querySelectorAll('button')){b.hidden=!groupMatch&&!b.textContent.toLocaleLowerCase('pt-BR').includes(q);if(!b.hidden)visible++;}section.hidden=visible===0;if(q&&visible)section.open=true;}};
  let current='inicio',epoch=0;
  async function refreshStats(){
   const run=++epoch;refresh.disabled=true;status.textContent='Atualizando indicadores…';
@@ -87,7 +87,7 @@ export function initERP(cadastros,api){
  function navigate(key){
   const route=routes.get(key);if(!route)return;current=key;
   cadastros.show(null);home.hidden=true;future.hidden=true;
-  for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');}
+  for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key)b.closest('details').open=true;}
   breadcrumb.textContent=route.group+' / '+route.title;eyebrow.textContent=route.group.toLocaleUpperCase('pt-BR');title.textContent=route.title;
   subtitle.textContent=route.type==='planned'?'Estrutura prevista para a evolução do ERP.':'Controles da AXE Engenharia';
   if(key==='inicio')home.hidden=false;
