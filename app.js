@@ -1,8 +1,9 @@
-import {initERP} from './erp.js?v=20261021-importacao1';
-import {initFiscal} from './fiscal.js?v=20261021-importacao1';
-import {initCadastros} from './cadastros.js?v=20261021-importacao1';
-import {initCatalogo} from './catalogo.js?v=20261021-importacao1';
-import {initImportacao} from './importacao.js?v=20261021-importacao1';
+import {initERP} from './erp.js?v=20261021-comercial1';
+import {initFiscal} from './fiscal.js?v=20261021-comercial1';
+import {initCadastros} from './cadastros.js?v=20261021-comercial1';
+import {initCatalogo} from './catalogo.js?v=20261021-comercial1';
+import {initComercial} from './comercial.js?v=20261021-comercial1';
+import {initImportacao} from './importacao.js?v=20261021-comercial1';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const SUPABASE_URL='https://ursezzcnbwlodmbzabmd.supabase.co', KEY='sb_publishable_SLeQ2rBGoGFB3jqMoqCcvw_lv7dAORr';
@@ -40,7 +41,10 @@ const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'));
 const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'));
 const catalogo=initCatalogo(payload=>call(payload,'axe-catalogo'));
 const importacao=initImportacao(payload=>call(payload,'axe-importacao'));
-const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao);
+const comercial=initComercial(payload=>call(payload,'axe-comercial'));
+const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial);
 document.addEventListener('axe-tributacao-produto',event=>erp.navigate('tributacao-produtos',event.detail));
-new MutationObserver(()=>{if($('panel').hidden){fiscal.reset();catalogo.reset();importacao.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
+new MutationObserver(()=>{if($('panel').hidden){fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
 document.addEventListener('axe-produtos-empresa',event=>erp.navigate('equivalencias',event.detail));
+
+document.addEventListener('axe-simular-proposta',event=>erp.navigate('simulador',event.detail));

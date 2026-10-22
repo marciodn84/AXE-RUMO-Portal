@@ -1,4 +1,4 @@
-import {lerArquivo} from './importar-arquivo.js?v=20261021-importacao1';
+import {lerArquivo} from './importar-arquivo.js?v=20261021-comercial1';
 const n=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const common=[['id_externo','ID no ERP','id','identificador'],['cnpj','CNPJ'],['nome_fantasia','Nome fantasia'],['inscricao_estadual','Inscrição estadual'],['contato','Contato'],['email','E-mail'],['telefone','Telefone']];

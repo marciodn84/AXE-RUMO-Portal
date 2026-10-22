@@ -1,4 +1,4 @@
-import {mountSimulator} from './simulador.js?v=20261021-importacao1';
+import {mountSimulator} from './simulador.js?v=20261021-comercial1';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const btn=(text,fn)=>{const b=e('button',text);b.type='button';b.onclick=fn;return b;};
 const taxes=['II','IPI','ICMS','ICMS_ST','FCP','PIS','COFINS','IBS_UF','IBS_MUN','CBS','IS'];
@@ -7,6 +7,7 @@ const ufs='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR 
 const numKeys=['natureza_id','perfil_id','produto_id','cliente_id','fornecedor_id','perfil_destinatario_id'];
 export function initFiscal(api){
  const root=e('section',undefined,'cadastro-screen fiscal-screen');root.hidden=true;document.getElementById('cadastrosRoot').append(root);
+ let simulationSeed=null;
  let section='regras',page=0,search='',product=null,options=null,epoch=0,modal=null,filter='';
  const title=e('h2','Cadastro fiscal'),intro=e('p','Regras por operação e vigência. A validação registra a aprovação fiscal; não ativa emissão nem cálculo automático de documentos.','intro');
  const tabs=e('nav',undefined,'fiscal-tabs');tabs.setAttribute('aria-label','Cadastros fiscais');
@@ -41,7 +42,7 @@ export function initFiscal(api){
   prev.disabled=next.disabled=true;say('Carregando...');body.replaceChildren();
   try{
    await getOptions();if(gen!==epoch)return;
-   if(section==='simulador'){mountSimulator(body,api,options,()=>gen===epoch);say('');return;}
+   if(section==='simulador'){mountSimulator(body,api,options,()=>gen===epoch,simulationSeed);simulationSeed=null;say('');return;}
    if(section==='estabelecimento'){renderCompany();count.textContent='';say('Estabelecimento fiscal da AXE.');return;}
    if(product&&section==='produtos')return await loadProduct(product.id,gen);
    const d=await api({acao:'listar',secao:section,pagina:page,busca:search,situacao:section==='regras'?filter:undefined});if(gen!==epoch)return;
@@ -160,5 +161,5 @@ export function initFiscal(api){
    result.append(e('p','A simulação seleciona parâmetros fiscais; não calcula valores, emite notas nem gera movimentos de estoque ou financeiro.'));
   }catch(err){error.textContent=err.message;}finally{go.disabled=false;}};
  }
- return {show(key){root.hidden=!key;if(key){section=key==='fiscal'?'regras':key;product=null;page=0;load();}},openProduct(id){section='produtos';product={id};page=0;root.hidden=false;load();},reset(){epoch++;options=null;product=null;body.replaceChildren();root.hidden=true;if(modal)modal.remove();}};
+ return {show(key){epoch++;root.hidden=!key;if(key){section=key==='fiscal'?'regras':key;product=null;page=0;load();}},openSimulation(seed){simulationSeed=seed;section='simulador';product=null;page=0;root.hidden=false;load();},openProduct(id){section='produtos';product={id};page=0;root.hidden=false;load();},reset(){epoch++;options=null;product=null;body.replaceChildren();root.hidden=true;if(modal)modal.remove();}};
 }
