@@ -1,4 +1,4 @@
-import {mountSimulator} from './simulador.js?v=20261021-comercial1';
+import {mountSimulator} from './simulador.js?v=20261023-gestao1';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const btn=(text,fn)=>{const b=e('button',text);b.type='button';b.onclick=fn;return b;};
 const taxes=['II','IPI','ICMS','ICMS_ST','FCP','PIS','COFINS','IBS_UF','IBS_MUN','CBS','IS'];
