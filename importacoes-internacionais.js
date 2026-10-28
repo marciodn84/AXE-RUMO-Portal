@@ -1,3 +1,4 @@
+import {initEstruturaImportacao} from './importacoes-estrutura.js?v=20261028-estrutura1';
 export const etapas=['Planejamento','Pedido emitido','Aguardando embarque','Em trânsito','Em desembaraço','Recebida parcialmente','Recebida','Encerrada','Cancelada'];
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -8,7 +9,7 @@ export function calcularTotais(d){
  for(const x of d.despesas||[]){const v=Number(x.valor||0);despesas[x.moeda]=(despesas[x.moeda]||0)+v;if(x.moeda==='BRL')reais+=v;else if(Number(x.cambio)>0)reais+=v*Number(x.cambio);else semCambio++;}
  return {mercadorias,despesas,reais,semCambio};
 }
-export function initImportacoesInternacionais(api){
+function initRegistrosAnteriores(api){
  const root=el('section',undefined,'cadastro-screen imp-internacional');root.hidden=true;document.getElementById('cadastrosRoot').append(root);
  let epoch=0,request=0,page=0,options={fornecedores:[],editar:false},current=null,dirty=false,pending=null;
  const message=el('p','','status');message.setAttribute('role','status');
@@ -59,3 +60,5 @@ export function initImportacoesInternacionais(api){
  }
  window.addEventListener('beforeunload',e=>{if(dirty&&!root.hidden){e.preventDefault();e.returnValue='';}}); return {canLeave(){return root.hidden||guard();},async show(show){if(!show){epoch++;root.hidden=true;return;}root.hidden=false;list.hidden=false;detail.hidden=true;dirty=false;current=null;pending=null;const gen=++epoch;try{options=await api({acao:'opcoes'});if(gen!==epoch||root.hidden)return;await load();}catch(e){if(gen===epoch)message.textContent=e.message;}},reset(){epoch++;root.hidden=true;detail.replaceChildren();rows.replaceChildren();cards.replaceChildren();options={fornecedores:[],editar:false};current=null;dirty=false;pending=null;page=0;search.value='';status.value='';}};
 }
+
+export function initImportacoesInternacionais(api){return initEstruturaImportacao(api,initRegistrosAnteriores(api));}
