@@ -1,5 +1,6 @@
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261028-imports1';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261023-gestao1';
+import {initERP} from './erp.js?v=20261028-imports1';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';
 import {initCadastros} from './cadastros.js?v=20261023-gestao1';
 import {initCatalogo} from './catalogo.js?v=20261023-gestao1';
@@ -44,9 +45,11 @@ const catalogo=initCatalogo(payload=>call(payload,'axe-catalogo'));
 const importacao=initImportacao(payload=>call(payload,'axe-importacao'));
 const comercial=initComercial(payload=>call(payload,'axe-comercial'));
 const gestao=initGestao(payload=>call(payload,'axe-gestao'));
-const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial,gestao);
+const importacoesInternacionais=initImportacoesInternacionais(payload=>call(payload,'axe-importacoes-internacionais'));
+const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais);
 document.addEventListener('axe-tributacao-produto',event=>erp.navigate('tributacao-produtos',event.detail));
-new MutationObserver(()=>{if($('panel').hidden){fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();gestao.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
+new MutationObserver(()=>{if($('panel').hidden){fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();gestao.reset();importacoesInternacionais.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
 document.addEventListener('axe-produtos-empresa',event=>erp.navigate('equivalencias',event.detail));
 
 document.addEventListener('axe-simular-proposta',event=>erp.navigate('simulador',event.detail));
+
