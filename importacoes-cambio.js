@@ -99,12 +99,30 @@ export function initConciliacaoCambio(api,parent){
    if(item.dados.saldo_banco!==''&&item.dados.saldo_banco!=null){const diff=Number(item.dados.saldo_banco)-Number(item.a_comprovar);where.append(el('p','Posição do banco em '+date(item.dados.data_posicao_banco)+': '+money(item.dados.saldo_banco,item.moeda)+' · Diferença para o saldo atual do ERP: '+money(diff,item.moeda)+'. A posição é histórica; confira movimentações posteriores.'));}
   }
  }
+ async function anexosContrato(item,where){
+  const g=epoch,box=el('fieldset'),out=el('div'),status=el('p');box.append(el('legend','Arquivos do contrato e SWIFT'),out,status);where.append(box);
+  async function load(){const r=await api({acao:'fxdoc_listar',contrato_id:item.id});if(!valid(g)||current?.id!==item.id||!box.isConnected)return;out.replaceChildren();
+   for(const f of r.linhas){const row=el('p');row.append(el('span',(f.categoria==='SWIFT'?'SWIFT':'Contrato de câmbio')+' · '+f.nome+' · '+Math.ceil(f.tamanho/1024)+' KB '),btn('Baixar '+f.nome,async()=>{const r=await api({acao:'fxdoc_baixar',id:f.id});const url=new URL(r.url);if(url.protocol!=='https:')throw Error('Endereço de arquivo inválido');const a=el('a');a.href=url.href;a.rel='noopener noreferrer';a.target='_blank';a.click();}));out.append(row);}
+   if(!r.linhas.length)out.append(el('p','Nenhum arquivo anexado.'));
+  }
+  if(opts.editar&&item.status==='Ativo'){
+   const controls=el('div',undefined,'import-mapping'),category=field(controls,'categoria_anexo','Tipo do arquivo','CONTRATO','text',[['CONTRATO','Contrato de câmbio'],['SWIFT','Comprovante SWIFT']]),file=field(controls,'arquivo_cambio','Arquivo PDF','','file');file.accept='.pdf,application/pdf';file.required=true;const check=el('input');check.type='checkbox';check.required=true;const label=el('label','Confirmo que o arquivo pertence ao contrato '+item.referencia);label.prepend(check);let retry=null;
+   file.onchange=()=>{retry=null;check.checked=false;};category.onchange=()=>{retry=null;check.checked=false;};
+   box.append(el('p','PDF de até 8 MB. O anexo preserva o original e não preenche valores nem confirma baixa bancária.'),controls,label,btn('Anexar arquivo',async()=>{
+    if(!validarCampos(box))return;const f=file.files?.[0];if(!f)throw Error('Selecione o arquivo PDF.');if(!check.checked)throw Error('Confirme o vínculo do arquivo com este contrato.');if(f.size>8388608||!f.size)throw Error('Selecione PDF de até 8 MB.');
+    if(!retry){const bytes=new Uint8Array(await f.arrayBuffer());if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Selecione um arquivo PDF válido.');let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));retry={acao:'fxdoc_upload',contrato_id:item.id,categoria:category.value,nome:f.name,conteudo:btoa(binary),confirmado:true,requisicao_id:crypto.randomUUID()};}
+    busy=true;try{await api(retry);retry=null;file.value='';check.checked=false;await load();status.textContent='Arquivo anexado. Valores e saldos preservados.';}finally{busy=false;}
+   }));
+  }
+  try{await load();}catch(e){status.textContent=e.message;}
+ }
  function edit(item,editing=true,isNew=false){
   const g=epoch,t=tipo;current=item;body.replaceChildren();msg.textContent='';
   const toolbar=el('div',undefined,'cadastro-toolbar');toolbar.append(btn('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
   if(!editing&&opts.editar&&item?.status!=='Cancelado')toolbar.append(btn('Editar registro',()=>edit(item,true)));
   body.append(toolbar,el('h3',tipo==='vinculos'?'Vínculo contrato × DI/DUIMP':tipo==='contratos'?'Contrato de câmbio':'Declaração de importação'));
   if(item?.id&&tipo!=='vinculos')balances(item,body);
+  if(tipo==='contratos'){if(item?.id&&!editing)void anexosContrato(item,body);else body.append(el('p','Salve o contrato para anexar o PDF do contrato e o comprovante SWIFT.'));}
   const form=el('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
   let collect;
   if(tipo==='vinculos'){
