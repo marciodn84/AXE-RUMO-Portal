@@ -1,3 +1,4 @@
+import {initFechamentoDespachante} from './importacoes-fechamento.js?v=20261028-fech1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const money=v=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
 export function csvCustos(r){
@@ -11,7 +12,8 @@ export function initCustosImportacao(api,parent){
  const msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');root.append(el('h2','Custo real da importação'),el('p','Mercadoria pelo câmbio efetivamente pago, tributos aduaneiros por item e despesas rateadas. A comprovação cambial não interfere neste cálculo.','intro'),msg,body);
  let epoch=0,seq=0,page=0,search='',dirty=false,busy=false,pending=null,opts={editar:false},current=null,calc=null,previewValid=false;
  const dialogs=new Set(),valid=g=>g===epoch&&!root.hidden;
- const guard=()=>root.hidden||!busy&&(!dirty||confirm('Há custos não salvos. Deseja descartá-los?'));
+ const fechamento=initFechamentoDespachante(api,v=>busy=v);
+ const guard=()=>root.hidden||fechamento.canLeave()&&!busy&&(!dirty||confirm('Há custos não salvos. Deseja descartá-los?'));
  const change=()=>{dirty=true;pending=null;previewValid=false;};
  function btn(text,fn){const b=el('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
  function field(p,k,label,v='',type='text',choices){
@@ -62,6 +64,7 @@ export function initCustosImportacao(api,parent){
   if(opts.editar&&saved?.estado==='Final')toolbar.append(btn('Reabrir custo com justificativa',async()=>{
    const motivo=prompt('Qual o motivo da revisão deste custo final?');if(!motivo?.trim())return;await api({acao:'custo_reabrir',embarque_id:e.id,versao:saved.versao,motivo,requisicao_id:crypto.randomUUID()});await open(e.id);
   }));
+  toolbar.append(btn('Fechamentos do despachante',async()=>{if(dirty)throw Error('Salve a apuração provisória antes de anexar ou importar um fechamento.');await fechamento.open(e,saved,!!opts.editar&&saved?.estado!=='Final',async()=>{dirty=false;pending=null;await open(e.id);msg.textContent='Fechamento importado no custo provisório. Revise a memória e o tratamento dos créditos antes de finalizar.';});}));
   body.append(toolbar,el('h3',e.referencia+' · '+e.fornecedor),el('p','Moeda FOB: '+e.moeda+' · Embarque: '+e.status+' · Apuração: '+(saved?.estado||'Nova')));
   if(saved&&saved.resultado.embarque_fonte?.versao!==e.versao)body.append(el('p','O embarque foi alterado após esta apuração. Recalcule a prévia antes de finalizar.','status error'));
   const form=el('form');form.onsubmit=ev=>ev.preventDefault();form.addEventListener('input',change);form.addEventListener('change',change);body.append(form);
@@ -71,7 +74,7 @@ export function initCustosImportacao(api,parent){
   function collection(key,title,defs,defaults,extra){
    const box=el('fieldset');box.append(el('legend',title));const cards=el('div');box.append(cards);groups[key]=[];
    function add(x={}){
-    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null};
+    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,origem_fechamento:x.origem_fechamento||null};
     if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
     if(editing)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
    }(d[key]||[]).forEach(add);
@@ -97,7 +100,7 @@ export function initCustosImportacao(api,parent){
   form.append(el('p','Este módulo não movimenta estoque nem atualiza o Nomus. Os tributos e créditos são informados conforme os documentos e a régua da contabilidade; não há cálculo automático de incidência tributária.'));
   const out=el('section',undefined,'imp-custo-resultado');body.append(out);
   if(calc)result(calc,out,saved?.estado);
-  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id}:{} )}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
+  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
   async function preview(){
    if(!form.reportValidity())return null;
    const payload=collect(),s=++seq;busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);let r;try{r=await api({acao:'custo_prever',embarque_id:e.id,dados:payload});}finally{busy=false;if(valid(g))controls.forEach((x,i)=>x.disabled=states[i]);}
@@ -123,5 +126,5 @@ export function initCustosImportacao(api,parent){
   }
  }
  window.addEventListener('beforeunload',e=>{if(!root.hidden&&(dirty||busy)){e.preventDefault();e.returnValue='';}});
- return {canLeave:guard,async show(v,id){epoch++;seq++;closeDialogs();root.hidden=!v;dirty=false;pending=null;current=null;calc=null;if(!v)return;const g=epoch;try{opts=await api({acao:'custo_opcoes'});if(valid(g)){if(id)await open(id);else await list();}}catch(e){if(valid(g))msg.textContent=e.message;}},reset(){epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;calc=null;opts={editar:false};body.replaceChildren();}};
+ return {canLeave:guard,async show(v,id){epoch++;seq++;closeDialogs();root.hidden=!v;dirty=false;pending=null;current=null;calc=null;if(!v)return;const g=epoch;try{opts=await api({acao:'custo_opcoes'});if(valid(g)){if(id)await open(id);else await list();}}catch(e){if(valid(g))msg.textContent=e.message;}},reset(){fechamento.reset();epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;calc=null;opts={editar:false};body.replaceChildren();}};
 }

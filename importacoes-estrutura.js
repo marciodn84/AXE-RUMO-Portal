@@ -1,5 +1,5 @@
-import {initNotasImportacao} from './importacoes-notas.js?v=20261028-di1';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261028-custos1';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261028-fech1';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261028-fech1';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261028-cambio1';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
