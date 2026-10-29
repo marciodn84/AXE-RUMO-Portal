@@ -1,5 +1,5 @@
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
-import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-aceite2';
+import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-entrada3';
 import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
