@@ -1,7 +1,7 @@
-import './validacao-campos.js?v=20261029-documentos8';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-documentos8';
+import './validacao-campos.js?v=20261029-conferencia9';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-conferencia9';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261029-documentos8';
+import {initERP} from './erp.js?v=20261029-conferencia9';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';
 import {initCadastros} from './cadastros.js?v=20261023-gestao1';
 import {initCatalogo} from './catalogo.js?v=20261023-gestao1';

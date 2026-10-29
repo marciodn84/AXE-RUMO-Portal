@@ -1,13 +1,13 @@
-import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-documentos8';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-documentos8';
-import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-documentos8';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-conferencia9';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-conferencia9';
+import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-conferencia9';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
-import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-documentos8';
+import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-conferencia9';
 import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261029-aceite2';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-documentos8';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-conferencia9';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
