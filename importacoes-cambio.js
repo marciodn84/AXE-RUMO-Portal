@@ -136,6 +136,15 @@ export function initConciliacaoCambio(api,parent){
   if(!editing&&opts.editar&&item?.status!=='Cancelado')toolbar.append(btn('Editar registro',()=>edit(item,true)));
   body.append(toolbar,el('h3',tipo==='vinculos'?'Vínculo contrato × DI/DUIMP':tipo==='contratos'?'Contrato de câmbio':'Declaração de importação'));
   if(item?.id&&tipo!=='vinculos')balances(item,body);
+  if(item?.id&&t==='contratos'&&!editing&&opts.editar&&!item.dados?.data_liquidacao)toolbar.append(btn('Sugerir liquidação pelo SWIFT',async()=>{
+   const s=await api({acao:'fx_liquidacao_sugerir',tipo:'contratos',id:item.id});if(!valid(g)||current?.id!==item.id)return;
+   const dialog=el('dialog',undefined,'imp-picker');const close=()=>{dialog.close();dialog.remove();dialogs.delete(dialog);};dialogs.add(dialog);root.append(dialog);
+   dialog.append(el('h3','Conferir liquidação do contrato '+s.referencia),el('p','Data da liquidação: '+(s.anterior?date(s.anterior):'Não informada')+' → '+date(s.data)),el('p','Data-valor do SWIFT (campo 32A). Confira se corresponde à liquidação efetiva antes de aprovar. A comprovação por DI/DUIMP permanece separada.'));
+   for(const f of s.fontes)dialog.append(el('p',f.arquivo+' · '+money(f.valor,item.moeda)+' · '+date(f.data)+' · '+(f.origem||[]).join(' ')));
+   const label=el('label'),check=el('input');check.type='checkbox';check.setAttribute('aria-label','Conferi a data do SWIFT e confirmo a liquidação');label.append(check,el('span','Conferi a data do SWIFT e confirmo a liquidação'));dialog.append(label);
+   dialog.append(btn('Cancelar',close),btn('Aprovar data de liquidação',async()=>{if(!check.checked)throw Error('Confirme a conferência da data antes de aprovar.');busy=true;try{await api({acao:'fx_liquidacao_aprovar',tipo:'contratos',id:s.id,versao:s.versao,data:s.data,confirmado:true});}finally{busy=false;}close();if(!valid(g))return;await open(item.id);msg.textContent='Data de liquidação confirmada pelo SWIFT. Histórico e origem preservados. Recalcule a prévia do custo.';}));dialog.addEventListener('cancel',ev=>{ev.preventDefault();close();});dialog.showModal();
+  }));
+
   if(tipo==='contratos'&&!item?.id)entradaPDF(body,item);
   if(tipo==='contratos'){if(item?.id&&!editing)void anexosContrato(item,body);else if(item?.id)body.append(el('p','Salve as alterações para consultar os anexos.'));else if(!pdfNovo)body.append(el('p','Você também pode preencher manualmente e anexar os arquivos depois.'));}
   const form=el('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);

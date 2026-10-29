@@ -1,5 +1,5 @@
 import './validacao-campos.js?v=20261029-transporte10';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-pagcusto11';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-swiftliq12';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261029-transporte10';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';

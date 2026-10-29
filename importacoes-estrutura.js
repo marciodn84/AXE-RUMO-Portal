@@ -7,8 +7,8 @@ import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-transp
 import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261029-pagcusto11';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-transporte10';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261029-swiftliq12';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-swiftliq12';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
