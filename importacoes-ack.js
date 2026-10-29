@@ -1,5 +1,5 @@
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo14';
-import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo14';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo15';
+import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo15';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};

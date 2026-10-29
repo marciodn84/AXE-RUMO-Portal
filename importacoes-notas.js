@@ -1,6 +1,7 @@
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo14';
+import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo15';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261029-aceite2';
-import {initLeituraDI} from './importacoes-di.js?v=20261029-fluxo14';
+import {initLeituraDI} from './importacoes-di.js?v=20261029-fluxo15';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const brl=v=>v==null?'Não apurado':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 export function initNotasImportacao(api,parent){
@@ -27,7 +28,7 @@ export function initNotasImportacao(api,parent){
   const box=el('fieldset');box.append(el('legend',tipo==='XML'?'Nova nota de entrada · XML Nomus':'PDF/DANFE da nota'));
   const file=input(box,tipo==='XML'?'Selecionar XML (até 2 MB)':'Selecionar PDF (até 8 MB)','','file');file.accept=tipo==='XML'?'.xml,application/xml,text/xml':'.pdf,application/pdf';
   let preview=null;const out=el('div');file.onchange=()=>{preview=null;uploadPending=null;out.replaceChildren();};
-  async function prepare(){const f=file.files[0];if(!f)throw Error('Selecione o arquivo');if(!f.size||f.size>(tipo==='XML'?2097152:8388608))throw Error('Arquivo acima do limite ou vazio');return {tipo,nome:f.name,conteudo:await fileBase64(f)};}
+  async function prepare(){const f=file.files[0];if(!f)throw Error('Selecione o arquivo');if(!f.size||f.size>(tipo==='XML'?2097152:8388608))throw Error('Arquivo acima do limite ou vazio');return {tipo,nome:f.name,conteudo:await fileBase64(f),...(tipo==='PDF'?{paginas:await lerPDFImportacao(f,t=>msg.textContent=t)}:{})};}
   if(tipo==='XML')box.append(button('Ler XML e conferir',async()=>{
    const payload=await prepare();const r=await locked(()=>api({acao:'nf_ler_xml',...payload}));preview={payload,xml:r};out.replaceChildren(el('p','NF-e '+r.numero+' · Série '+r.serie+' · '+r.itens.length+' item(ns) · '+brl(r.totais.vNF)),el('p','Chave: '+r.chave));r.avisos.forEach(x=>out.append(el('p',x,'status error')));
    if(r.autorizada)out.append(button('Anexar este XML',async()=>{if(!preview)return;uploadPending??={acao:'nf_upload',...preview.payload,requisicao_id:crypto.randomUUID()};const saved=await locked(()=>api(uploadPending));uploadPending=null;await open(saved.id);msg.textContent='XML anexado. Selecione o embarque, vincule os produtos e anexe o PDF.';}));
@@ -97,7 +98,7 @@ export function initNotasImportacao(api,parent){
    body.append(box);
   }
   const checks=el('fieldset');checks.append(el('legend','Conferência documental'),el('p','O ERP compara FOB aduaneiro em reais, frete, seguro e tributos de cada item da DI/DUIMP com o XML. Vincule a leitura e o item da declaração em cada linha. Valores não informados e diferenças impedem a conciliação.'));
-  checkbox(checks,'Conferi o PDF: corresponde à chave, aos produtos e aos valores deste XML',data.pdf_conferido,v=>data.pdf_conferido=v).dataset.necessarioConciliar='true';
+  const pdfcheck=checkbox(checks,'Conferi o PDF: corresponde à chave, aos produtos e aos valores deste XML',data.pdf_conferido,v=>data.pdf_conferido=v);pdfcheck.dataset.necessarioConciliar='true';if(data.pdf_fonte_automatica)pdfcheck.closest('label').hidden=true;
 
   if(note.xml.itens.some(i=>Number(i.outras||0)>0))checkbox(checks,'Conferi as outras despesas do XML nos documentos complementares',data.outras_conferidas,v=>data.outras_conferidas=v).dataset.necessarioConciliar='true';
   const ref=input(checks,'Observações da conferência',data.referencia_conferencia||'','textarea');ref.oninput=()=>{data.referencia_conferencia=ref.value;changed();};if(readOnly)checks.querySelectorAll('input,textarea').forEach(x=>x.disabled=true);body.append(checks);
