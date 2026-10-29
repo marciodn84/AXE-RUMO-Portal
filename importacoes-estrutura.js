@@ -1,3 +1,4 @@
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261028-cambio1';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
@@ -11,7 +12,7 @@ export function initEstruturaImportacao(api,legacy){
  let tipo='pedidos',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
- const guard=()=>!busy&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
+ const guard=()=>!busy&&fx.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  const check=g=>g===epoch&&!root.hidden;
  function button(text,fn){const b=node('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
@@ -26,10 +27,11 @@ export function initEstruturaImportacao(api,legacy){
  const fields=(parent,defs,data={})=>Object.fromEntries(defs.map(([k,l,t,c])=>[k,field(parent,k,l,data[k],t||'text',c)]));
  const read=inputs=>Object.fromEntries(Object.entries(inputs).map(([k,e])=>[k,e.value.trim()]));
  function grid(parent,title){const box=node('fieldset');box.append(node('legend',title));const g=node('div',undefined,'import-mapping');box.append(g);parent.append(box);return g;}
- function renderNav(){nav.replaceChildren();for(const [key,label] of [['pedidos','Pedidos de compra'],['parcelas','Parcelas'],['embarques','Embarques'],['anteriores','Registros anteriores']]){
-  const b=button(label,async()=>{if(!guard()||!legacy.canLeave())return;dirty=false;pending=null;current=null;closeDialogs();await legacy.show(false);tipo=key;page=0;epoch++;renderNav();if(key==='anteriores'){body.replaceChildren(node('p','Registros da primeira versão, preservados com seu histórico. Eles não reservam quantidades na nova estrutura.'));await legacy.show(true);}else await list();});b.setAttribute('aria-pressed',String(tipo===key));nav.append(b);
+ function renderNav(){nav.replaceChildren();for(const [key,label] of [['pedidos','Pedidos de compra'],['parcelas','Parcelas'],['embarques','Embarques'],['cambio','Conciliação cambial'],['anteriores','Registros anteriores']]){
+  const b=button(label,async()=>{if(!guard()||!legacy.canLeave())return;dirty=false;pending=null;current=null;closeDialogs();await legacy.show(false);await fx.show(false);tipo=key;page=0;epoch++;renderNav();if(key==='cambio'){body.replaceChildren();msg.textContent='';await fx.show(true);}else if(key==='anteriores'){body.replaceChildren(node('p','Registros da primeira versão, preservados com seu histórico. Eles não reservam quantidades na nova estrutura.'));await legacy.show(true);}else await list();});b.setAttribute('aria-pressed',String(tipo===key));nav.append(b);
  }}
  root.append(node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro'),nav,msg,body);
+ const fx=initConciliacaoCambio(api,root);
  let searchValue='';
  async function list(){
   const g=epoch,s=++seq;body.replaceChildren();msg.textContent='Consultando…';
@@ -190,10 +192,10 @@ export function initEstruturaImportacao(api,legacy){
  return {
   canLeave:()=>root.hidden||(guard()&&legacy.canLeave()),
   async show(visible){
-   epoch++;seq++;closeDialogs();if(!visible){root.hidden=true;legacy.show(false);return;}
+   epoch++;seq++;closeDialogs();fx.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
    root.hidden=false;dirty=false;pending=null;current=null;tipo='pedidos';page=0;searchValue='';renderNav();const g=epoch;
    try{opts=await api({acao:'v2_opcoes'});if(check(g))await list();}catch(e){if(check(g))msg.textContent=e.message;}
   },
-  reset(){epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
+  reset(){fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };
 }
