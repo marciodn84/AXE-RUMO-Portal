@@ -17,3 +17,24 @@
 .imp-di-review fieldset{min-width:0;max-width:100%;box-sizing:border-box}.imp-di-review .import-mapping,.imp-di-review .import-mapping>label{min-width:0}.imp-di-review input{min-width:0;width:100%}.imp-di-review td input{width:130px}.imp-di-review input[type=checkbox]{width:22px;align-self:flex-start}
 
 .imp-estrutura input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}
+
+/* Keep control sizing independent of flex direction and neighbouring content. */
+.imp-internacional button,.imp-picker button{min-height:42px;height:auto;max-width:100%;padding:10px 16px;line-height:1.35;align-self:end;white-space:normal;overflow-wrap:anywhere}
+.imp-internacional input:not([type=checkbox]):not([type=radio]):not([type=file]),.imp-internacional select,.imp-picker input:not([type=checkbox]):not([type=radio]):not([type=file]),.imp-picker select{height:42px;min-height:42px;flex:none;padding:9px 12px;font:inherit;line-height:1.35}
+.imp-internacional textarea,.imp-picker textarea{min-height:96px;height:auto;font:inherit;padding:10px 12px;line-height:1.5}
+.imp-internacional .cadastro-toolbar{align-items:flex-end;gap:12px;min-height:0}
+.imp-internacional .cadastro-toolbar>label{flex:1 1 260px;max-width:420px;margin:0}
+.imp-internacional .cadastro-toolbar label input{flex:none;height:42px}
+.imp-internacional .cadastro-toolbar>input{flex:1 1 260px;max-width:420px}
+.imp-internacional .cadastro-toolbar>button{flex:0 1 auto;margin:0;align-self:flex-end}
+.imp-internacional .cadastro-toolbar>span{flex:0 1 auto;align-self:center}
+.imp-internacional .catalog-tabs{align-items:center;gap:8px}
+.imp-internacional .catalog-tabs>button{margin:0;min-height:42px;align-self:center}
+.imp-internacional .import-mapping,.imp-internacional .imp-line{align-items:start}
+.imp-internacional .status:empty{display:none}
+@media(max-width:650px){
+ .imp-internacional .cadastro-toolbar>label,.imp-internacional .cadastro-toolbar>input{flex:1 1 100%;max-width:none}
+ .imp-internacional .cadastro-toolbar>button{flex:0 1 auto}
+ .imp-internacional .cadastro-toolbar>span{flex:0 1 auto}
+ .imp-internacional .catalog-tabs>button{flex:1 1 calc(50% - 8px)}
+}
