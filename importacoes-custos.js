@@ -47,6 +47,7 @@ export function initCustosImportacao(api,parent){
  }
  function result(r,out,estado){
   out.replaceChildren(el('h3',(estado==='Final'?'Custo final':'Custo calculado — provisório')+': '+money(r.custo_total)));
+  if(r.transporte_fonte){const t=r.transporte_fonte;out.append(el('p','Frete documental: '+t.valor+' USD × taxa DUIMP '+(t.cambio||'pendente')+' = '+money(t.valor_brl)+' · DUIMP '+(t.duimp_numero||'pendente')+' · registro '+(t.data_registro_duimp||'pendente')+' · '+(t.fonte_taxa||'Taxa ainda não confirmada')+'.'));}
   if(r.pendencias.length){const ul=el('ul');r.pendencias.forEach(x=>ul.append(el('li',x)));out.append(el('p','Pendências para finalizar:'),ul);}else out.append(el('p','Conferências completas. Revise a memória antes de finalizar.'));
   const table=el('table'),head=el('tr');['Pedido / linha','Produto','Qtde','FOB pago BRL','FOB estimado','Frete','Demais','Multas','Tributos','Créditos considerados','Custo total','Custo unitário'].forEach(x=>head.append(el('th',x)));table.append(head);
   for(const x of r.itens){const tr=el('tr');[x.pedido+' / '+x.linha,x.descricao,x.quantidade,money(x.fob_brl),money(x.fob_estimado),money(x.frete),money(x.demais),money(x.multa),money(x.tributos),money(x.credito),money(x.custo_total),x.custo_unitario==null?'Pendente':Number(x.custo_unitario).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:8})].forEach(v=>tr.append(el('td',v)));table.append(tr);}
@@ -59,7 +60,7 @@ export function initCustosImportacao(api,parent){
   }));
  }
  function render(editing){
-  const g=epoch,e=current.embarque,saved=current.custo,d=saved?.dados||{pagamentos:[],despesas:[],tributos:[]};body.replaceChildren();msg.textContent='';
+  const g=epoch,e=current.embarque,saved=current.custo,base=saved?.dados||{pagamentos:[],despesas:[],tributos:[]},frete=current.transporte,d={...base,despesas:[...(base.despesas||[]).filter(x=>!x.origem_transporte),...(frete?[frete]:[])]};body.replaceChildren();msg.textContent='';
   const toolbar=el('div',undefined,'cadastro-toolbar');toolbar.append(btn('Voltar aos embarques',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
   if(opts.editar&&!editing&&saved?.estado!=='Final')toolbar.append(btn('Editar apuração',()=>render(true)));
   if(opts.editar&&saved?.estado==='Final')toolbar.append(btn('Reabrir custo com justificativa',async()=>{
@@ -68,6 +69,7 @@ export function initCustosImportacao(api,parent){
   toolbar.append(btn('Fechamentos do despachante',async()=>{if(dirty)throw Error('Salve a apuração provisória antes de anexar ou importar um fechamento.');await fechamento.open(e,saved,!!opts.editar&&saved?.estado!=='Final',async()=>{dirty=false;pending=null;await open(e.id);msg.textContent='Fechamento importado no custo provisório. Revise a memória e o tratamento dos créditos antes de finalizar.';});}));
   body.append(toolbar,el('h3',e.referencia+' · '+e.fornecedor),el('p','Moeda FOB: '+e.moeda+' · Embarque: '+e.status+' · Apuração: '+(saved?.estado||'Nova')));
   if(saved&&saved.resultado.embarque_fonte?.versao!==e.versao)body.append(el('p','O embarque foi alterado após esta apuração. Recalcule a prévia antes de finalizar.','status error'));
+  if(frete)body.append(el('p','Frete documental: '+Number(frete.valor).toLocaleString('pt-BR')+' USD · '+money(frete.valor_brl)+' · taxa DUIMP '+(frete.cambio||'pendente')+'. Rateio pelo peso real bruto dos itens. Alterações devem ser feitas em Documentos de transporte, no embarque.'));
   const form=el('form');form.onsubmit=ev=>ev.preventDefault();form.addEventListener('input',change);form.addEventListener('change',change);body.append(form);
   const header=fields(grid(form,'Referências e projeção'),[['referencia','Referência do fechamento / documentos'],['cambio_estimado','Câmbio estimado para FOB ainda não pago (opcional)','number'],['observacoes','Observações','textarea']],d);
   form.append(el('p','O câmbio estimado só projeta valores ainda não pagos; a finalização exige os pagamentos e o câmbio efetivo completos. A taxa aduaneira não converte o custo FOB: informe os tributos já apurados em reais.'));
@@ -75,9 +77,10 @@ export function initCustosImportacao(api,parent){
   function collection(key,title,defs,defaults,extra){
    const box=el('fieldset');box.append(el('legend',title));const cards=el('div');box.append(cards);groups[key]=[];
    function add(x={}){
-    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,origem_fechamento:x.origem_fechamento||null};
+    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,origem_fechamento:x.origem_fechamento||null,origem_transporte:x.origem_transporte||null};
     f.referencia.required=true;if(key!=='despesas')f.pedido_item_id.required=true;if(key==='pagamentos'){f.valor_me.min='0.01';f.valor_brl.min='0.01';}if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
-    if(editing)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
+    if(row.origem_transporte){for(const input of Object.values(f))input.disabled=true;card.append(el('p','Frete dos documentos de transporte; câmbio USD/BRL exclusivo da DUIMP '+(x.duimp_numero||'(pendente)')+'.'));}
+    if(editing&&!row.origem_transporte)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
    }(d[key]||[]).forEach(add);
    if(editing)box.append(btn('Adicionar '+title.toLowerCase(),()=>{if(groups[key].length>=100)throw Error('Até 100 registros por seção.');const f=add();change();Object.values(f)[0].focus();}));form.append(box);
   }
@@ -90,7 +93,9 @@ export function initCustosImportacao(api,parent){
   });
   collection('despesas','Despesas',[
    ['referencia','Referência da despesa / comprovante'],['categoria','Categoria','text',['Frete','Seguro','Taxas','Despachante','Despesas aduaneiras','Taxas bancárias','Outras','Multa']],['valor','Valor da despesa','number'],['moeda','Moeda da despesa','text',['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF']],['cambio','Taxa efetiva da despesa para BRL','number'],['situacao','Confirmação da despesa','text',['Prevista','Confirmada']],['data','Data da despesa','date'],['pedido_item_id','Produto penalizado (obrigatório para multa)','text',items]
-  ],{moeda:'BRL',situacao:'Prevista',categoria:'Frete'});
+  ],{moeda:'BRL',situacao:'Prevista',categoria:'Frete'},(card,row,x)=>{
+   if(frete&&!row.origem_transporte){const label=el('label'),check=el('input');check.type='checkbox';check.checked=x.frete_adicional===true;check.setAttribute('aria-label','Este frete é adicional e não duplica o documento de transporte');label.append(check,el('span','Este frete é adicional e não duplica o documento de transporte'));card.append(label);row.adicional=check;row.f.justificativa_frete=field(card,'justificativa_frete','Justificativa e documento do frete adicional',x.justificativa_frete||'');const sync=()=>{const active=row.f.categoria.value==='Frete';label.hidden=!active;check.required=active;check.disabled=!editing||!active;row.f.justificativa_frete.closest('label').hidden=!active;row.f.justificativa_frete.required=active;};row.f.categoria.addEventListener('change',sync);sync();}
+  });
   collection('tributos','Tributos e créditos',[
    ['pedido_item_id','Item tributado','text',items],['tributo','Tributo','text',['II','IPI','ICMS','PIS','COFINS','IBS','CBS','Outros']],['valor','Valor aduaneiro do tributo em BRL','number'],['credito','Crédito informado em BRL','number'],['tratamento','Tratamento do crédito','text',['Pendente','Sem crédito','Crédito validado']],['referencia','Documento / referência do tributo'],['regra_contabilidade','Regra aprovada pela contabilidade / referência']
   ],{credito:0,tratamento:'Pendente'});
@@ -101,7 +106,7 @@ export function initCustosImportacao(api,parent){
   form.append(el('p','Este módulo não movimenta estoque nem atualiza o Nomus. Os tributos e créditos são informados conforme os documentos e a régua da contabilidade; não há cálculo automático de incidência tributária.'));
   const out=el('section',undefined,'imp-custo-resultado');body.append(out);
   if(calc)result(calc,out,saved?.estado);
-  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
+  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
   function syncRequired(finalizar=false){for(const row of groups.despesas){row.f.pedido_item_id.required=row.f.categoria.value==='Multa';row.f.data.required=finalizar&&row.f.situacao.value==='Confirmada';}for(const c of Object.values(checks))c.required=finalizar;}
   async function preview(){
    syncRequired();if(!validarCampos(form))return null;
