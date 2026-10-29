@@ -1,10 +1,12 @@
+import {initLeituraDI} from './importacoes-di.js?v=20261028-di1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const brl=v=>v==null?'Não apurado':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 export function initNotasImportacao(api,parent){
  const root=el('section',undefined,'imp-notas');root.hidden=true;parent.append(root);
  let editable=false,busy=false,dirty=false,epoch=0,page=0,query='',note=null,data=null,shipment=null,pending=null,uploadPending=null;
- const products=new Map(),declarations=new Map(),dialogs=new Set(),msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');root.append(msg,body);
- const guard=()=>!busy&&(!dirty||confirm('Há alterações da nota não salvas. Deseja descartá-las?'));
+ const readings=new Map(),products=new Map(),declarations=new Map(),dialogs=new Set(),msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');root.append(msg,body);
+ const diReader=initLeituraDI(api,v=>busy=v);
+ const guard=()=>diReader.canLeave()&&!busy&&(!dirty||confirm('Há alterações da nota não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  function button(label,action){const b=el('button',label);b.type='button';b.onclick=async()=>{if(busy)return;const e=epoch;try{b.disabled=true;await action();}catch(err){if(e===epoch){msg.textContent=err.message;msg.className='status error';}}finally{if(b.isConnected)b.disabled=false;}};return b;}
  function input(parent,label,value='',type='text'){const l=el('label',label),i=el(type==='textarea'?'textarea':'input');if(type!=='textarea')i.type=type;i.value=value??'';i.setAttribute('aria-label',label);if(type==='number'){i.min='0';i.step='any';}l.append(i);parent.append(l);return i;}
@@ -38,11 +40,30 @@ export function initNotasImportacao(api,parent){
   table(out,['Nota','Emissão','Valor fiscal','Embarque','Situação','Ação'],r.linhas.map(x=>[x.numero,String(x.emissao||'').slice(0,10).split('-').reverse().join('/'),brl(x.valor),x.embarque||'Não vinculado',x.estado,button('Abrir nota',()=>open(x.id))]));
   const prev=button('Anterior',async()=>{page--;await list();}),next=button('Próxima',async()=>{page++;await list();});prev.disabled=page===0;next.disabled=(page+1)*30>=r.total;out.append(prev,el('span',' Página '+(page+1)+' · '+r.total+' nota(s) '),next);msg.textContent='';
  }
- async function open(id){const g=epoch;const r=await api({acao:'nf_detalhe',id});if(g!==epoch||root.hidden)return;note=r;shipment=r.embarque;data=structuredClone(r.dados||{vinculos:[]});data.vinculos??=[];r.produtos?.forEach(p=>products.set(String(p.id),p));r.declaracoes?.forEach(d=>declarations.set(d.id,d));dirty=false;pending=null;render();}
+ async function open(id){const g=epoch;const r=await api({acao:'nf_detalhe',id});if(g!==epoch||root.hidden)return;note=r;shipment=r.embarque;data=structuredClone(r.dados||{vinculos:[]});data.vinculos??=[];r.produtos?.forEach(p=>products.set(String(p.id),p));r.declaracoes?.forEach(d=>declarations.set(d.id,d));for(const row of data.vinculos)if(row.leitura_id&&!readings.has(row.leitura_id)){const reading=await api({acao:'nf_di_detalhe',leitura_id:row.leitura_id});if(g!==epoch||root.hidden)return;readings.set(reading.id,reading);}
+ dirty=false;pending=null;render();}
  const productLabel=id=>{const p=products.get(String(id));return p?(p.codigo_axe||'#'+p.id)+' · '+p.descricao_referencia:'Selecionar produto AXE';};
  const declarationLabel=id=>declarations.get(id)?.referencia||'Selecionar DI/DUIMP';
  async function chooseProduct(row){await picker('Produto do cadastro AXE',(pagina,busca)=>api({acao:'nf_produtos',pagina,busca}),[['Código',p=>p.codigo_axe||'#'+p.id],['Descrição AXE',p=>p.descricao_referencia],['Unidade',p=>p.unidade_referencia],['NCM',p=>p.ncm_referencia||'Pendente']],p=>{products.set(String(p.id),p);row.produto_id=String(p.id);changed();render();});}
- async function chooseDI(row){if(!shipment)throw Error('Selecione o embarque primeiro');await picker('DI/DUIMP do processo',(pagina,busca)=>api({acao:'fx_listar',tipo:'declaracoes',pagina,busca}),[['Declaração',x=>x.referencia],['Fornecedor',x=>x.fornecedor],['Moeda',x=>x.moeda]],async d=>{const full=await locked(()=>api({acao:'fx_detalhe',tipo:'declaracoes',id:d.id}));if(String(full.fornecedor_id)!==String(shipment.fornecedor_id)||full.moeda!==shipment.moeda)throw Error('Selecione uma declaração do mesmo fornecedor e moeda do embarque.');declarations.set(d.id,d);row.declaracao_id=d.id;changed();render();});}
+ async function chooseDI(row){if(!shipment)throw Error('Selecione o embarque primeiro');await picker('DI/DUIMP do processo',(pagina,busca)=>api({acao:'fx_listar',tipo:'declaracoes',pagina,busca}),[['Declaração',x=>x.referencia],['Fornecedor',x=>x.fornecedor],['Moeda',x=>x.moeda]],async d=>{const full=await locked(()=>api({acao:'fx_detalhe',tipo:'declaracoes',id:d.id}));if(String(full.fornecedor_id)!==String(shipment.fornecedor_id)||full.moeda!==shipment.moeda)throw Error('Selecione uma declaração do mesmo fornecedor e moeda do embarque.');declarations.set(d.id,d);row.declaracao_id=d.id;row.leitura_id='';row.di_item='';changed();render();});}
+
+ function addDIControls(group,grid,row,readOnly){
+  const reading=readings.get(row.leitura_id);
+  grid.append(button(reading?'Leitura: '+reading.nome+' · Item '+(row.di_item||'não selecionado'):'Selecionar leitura e item da DI/DUIMP',async()=>{
+   if(!row.declaracao_id)throw Error('Selecione a DI/DUIMP primeiro.');
+   await picker('Leituras da declaração',(pagina)=>api({acao:'nf_di_listar',declaracao_id:row.declaracao_id,pagina}),[['Documento',x=>x.nome],['Situação',x=>x.pronto?'Leitura confirmada':'Envio pendente'],['Data',x=>new Date(x.criado_em).toLocaleString('pt-BR')]],x=>{if(!x.pronto)throw Error('Conclua o envio do documento primeiro.');readings.set(x.id,x);row.leitura_id=x.id;row.di_item='';row.fator_di||='1';changed();render();});
+  }));
+  if(!readOnly)group.append(button('Ler PDF desta DI/DUIMP',async()=>{
+   if(!row.declaracao_id)throw Error('Selecione a DI/DUIMP primeiro.');
+   await diReader.open({id:row.declaracao_id,referencia:declarationLabel(row.declaracao_id)},async saved=>{const r=await api({acao:'nf_di_detalhe',leitura_id:saved.id});readings.set(r.id,r);row.leitura_id=r.id;row.di_item='';row.fator_di||='1';changed();render();msg.textContent='Leitura anexada. Selecione o item correspondente e confira os valores.';});
+  }));
+  if(reading){const l=el('label','Item/adição da DI/DUIMP'),select=el('select');select.setAttribute('aria-label','Item/adição da DI/DUIMP');select.append(new Option('Selecionar item',''));for(const item of reading.revisado.itens)select.append(new Option('Item '+item.id+' · NCM '+(item.ncm||'?')+' · Quantidade '+(item.quantidade.valor??'?')+' '+(item.unidade||'unidade a confirmar'),item.id));select.value=row.di_item||'';select.onchange=()=>{row.di_item=select.value;changed();};l.append(select);grid.append(l);
+   const hist=el('details');hist.append(el('summary','Revisão da leitura e correções registradas'),el('pre',JSON.stringify(reading.revisado,null,2)));group.append(hist);
+   const download=button('Baixar DI/DUIMP original',async()=>{const r=await api({acao:'nf_di_baixar',leitura_id:reading.id});const a=el('a','Abrir original');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';a.click();});download.dataset.readonlyAllowed='true';group.append(download);
+  }
+  const factor=input(grid,'Fator: unidade da nota → unidade comercial DI/DUIMP',row.fator_di||'1','number'),reason=input(grid,'Justificativa da unidade/conversão DI/DUIMP',row.justificativa_di||'','textarea');factor.oninput=()=>{row.fator_di=factor.value;changed();};reason.oninput=()=>{row.justificativa_di=reason.value;changed();};
+ }
+
  function render(){
   const readOnly=!editable||note.estado==='Conciliada';body.replaceChildren();msg.textContent='';
   body.append(button('Voltar às notas',async()=>{if(guard()){dirty=false;await list();}}),el('h2','NF-e '+note.xml.numero+' · Série '+note.xml.serie+' · '+note.estado),el('p','Chave: '+note.chave,'nf-chave'),el('p','Emitente: '+note.xml.emitente+' · CNPJ '+note.xml.cnpj),el('p','Valor fiscal: '+brl(note.xml.totais.vNF)+' · Protocolo informado no XML: '+(note.xml.protocolo||'Ausente')));
@@ -62,18 +83,20 @@ export function initNotasImportacao(api,parent){
     const group=el('fieldset'),grid=el('div',undefined,'import-mapping');group.append(el('legend','Vínculo com pedido e produto'),grid);
     const pb=button(productLabel(row.produto_id),()=>chooseProduct(row)),db=button(declarationLabel(row.declaracao_id),()=>chooseDI(row));grid.append(pb,db);
     const l=el('label','Item do pedido neste embarque'),s=el('select');s.setAttribute('aria-label','Item do pedido neste embarque');s.append(new Option('Selecionar item',''));for(const x of shipment?.itens||[])s.append(new Option(x.pedido+' · Linha '+x.linha+' · '+x.descricao+' · Recebido '+x.recebida+' '+x.unidade,x.pedido_item_id));s.value=row.pedido_item_id||'';s.onchange=()=>{row.pedido_item_id=s.value;changed();};l.append(s);grid.append(l);
+    addDIControls(group,grid,row,readOnly);
     const qty=input(grid,'Quantidade da nota vinculada',row.quantidade,'number'),factor=input(grid,'Fator: unidade da nota → unidade AXE/pedido',row.fator||'1','number'),reason=input(grid,'Justificativa de conversão / divergência / conferência manual',row.justificativa||'','textarea');
     qty.oninput=()=>{row.quantidade=qty.value;changed();};factor.oninput=()=>{row.fator=factor.value;changed();};reason.oninput=()=>{row.justificativa=reason.value;changed();};
     if(!readOnly)group.append(button('Remover vínculo',()=>{data.vinculos.splice(data.vinculos.indexOf(row),1);changed();render();}));
-    if(readOnly)group.querySelectorAll('input,select,textarea,button').forEach(x=>x.disabled=true);box.append(group);
+    if(readOnly)group.querySelectorAll('input,select,textarea,button:not([data-readonly-allowed])').forEach(x=>x.disabled=true);box.append(group);
    }
-   if(!readOnly)box.append(button('Adicionar vínculo à linha '+item.linha,()=>{if(!shipment)throw Error('Selecione o embarque primeiro');data.vinculos.push({linha:item.linha,produto_id:rows[0]?.produto_id||'',pedido_item_id:'',declaracao_id:'',quantidade:rows.length?'':item.quantidade,fator:'1',justificativa:''});changed();render();}));
+   if(!readOnly)box.append(button('Adicionar vínculo à linha '+item.linha,()=>{if(!shipment)throw Error('Selecione o embarque primeiro');data.vinculos.push({linha:item.linha,produto_id:rows[0]?.produto_id||'',pedido_item_id:'',declaracao_id:'',quantidade:rows.length?'':item.quantidade,fator:'1',justificativa:'',fator_di:'1',leitura_id:'',di_item:'',justificativa_di:''});changed();render();}));
    body.append(box);
   }
-  const checks=el('fieldset');checks.append(el('legend','Conferência documental'),el('p','Os números e as datas da DI/DUIMP e os saldos de quantidades são conferidos pelo ERP. Confira os valores e tributos nos documentos: a DI/DUIMP cadastrada ainda não contém esse detalhamento para comparação automática.'));
+  const checks=el('fieldset');checks.append(el('legend','Conferência documental'),el('p','O ERP compara FOB aduaneiro em reais, frete, seguro e tributos de cada item da DI/DUIMP com o XML. Vincule a leitura e o item da declaração em cada linha. Valores não informados e diferenças impedem a conciliação.'));
   checkbox(checks,'Conferi o PDF: corresponde à chave, aos produtos e aos valores deste XML',data.pdf_conferido,v=>data.pdf_conferido=v);
-  checkbox(checks,'Conferi os valores e tributos com a DI/DUIMP e os documentos do processo',data.fiscal_conferido,v=>data.fiscal_conferido=v);
-  const ref=input(checks,'Referência da conferência (documento, página ou observação)',data.referencia_conferencia||'','textarea');ref.oninput=()=>{data.referencia_conferencia=ref.value;changed();};if(readOnly)checks.querySelectorAll('input,textarea').forEach(x=>x.disabled=true);body.append(checks);
+
+  if(note.xml.itens.some(i=>Number(i.outras||0)>0))checkbox(checks,'Conferi as outras despesas do XML nos documentos complementares',data.outras_conferidas,v=>data.outras_conferidas=v);
+  const ref=input(checks,'Observações da conferência',data.referencia_conferencia||'','textarea');ref.oninput=()=>{data.referencia_conferencia=ref.value;changed();};if(readOnly)checks.querySelectorAll('input,textarea').forEach(x=>x.disabled=true);body.append(checks);
   const result=el('div');body.append(button('Conferir vínculos e saldos',async()=>{const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(result,r);}),result);
   if(note.resultado)showResult(result,note.resultado);
   if(!readOnly){
@@ -81,7 +104,7 @@ export function initNotasImportacao(api,parent){
   }else if(editable){body.append(button('Reabrir conciliação',async()=>{const motivo=prompt('Motivo da reabertura da conciliação:');if(!motivo?.trim())return;pending??={acao:'nf_reabrir',id:note.id,versao:note.versao,motivo,requisicao_id:crypto.randomUUID()};const r=await locked(()=>api(pending));dirty=false;pending=null;await open(r.id);}));}
   const history=el('details'),out=el('div');history.append(el('summary','Histórico da nota'),button('Consultar histórico da nota',async()=>{const r=await api({acao:'nf_historico',id:note.id});out.replaceChildren();for(const x of r.linhas){const d=el('details');d.append(el('summary',new Date(x.criado_em).toLocaleString('pt-BR')),el('pre',JSON.stringify(x,null,2)));out.append(d);}}),out);body.append(history);
  }
- function showResult(target,r){target.replaceChildren(el('h3',r.apto?'Conferência sem pendências':'Pendências para conciliação'));for(const p of r.pendencias)target.append(el('p',p,'status error'));table(target,['Item do pedido','Recebido','Outras notas','Nesta nota (unidade AXE)','Saldo'],r.quantidades.map(x=>[x.pedido_item_id,x.recebida,x.outras_notas,x.vinculada,x.saldo]));target.append(el('p','Valor fiscal da nota: '+brl(r.valor_fiscal)+' · Custo real do embarque: '+brl(r.custo_real)),el('p',r.nota||'A nota não substitui a apuração do custo real.'));}
+ function showResult(target,r){target.replaceChildren(el('h3',r.apto?'Conferência sem pendências':'Pendências para conciliação'));for(const p of r.pendencias)target.append(el('p',p,'status error'));if(r.fiscal?.length)table(target,['Linha','Campo (BRL)','DI/DUIMP','XML Nomus','Diferença','Situação','Origem'],r.fiscal.map(x=>[x.linha,x.campo,brl(x.di),brl(x.xml),brl(x.diferenca),x.situacao,x.fontes.map(f=>f.declaracao+' · Item '+f.item+' · Pág. '+(f.pagina??'?')+' · '+(f.origem||'Extraído')+' · Parcial '+f.quantidade_parcial+'/'+f.quantidade_integral).join(' | ')]));if(r.usos_di?.length)table(target,['Item DI/DUIMP','Declarado','Outras notas','Nesta nota','Saldo'],r.usos_di.map(x=>[x.item,x.declarada,x.outras_notas,x.quantidade,x.saldo]));table(target,['Item do pedido','Recebido','Outras notas','Nesta nota (unidade AXE)','Saldo'],r.quantidades.map(x=>[x.pedido_item_id,x.recebida,x.outras_notas,x.vinculada,x.saldo]));target.append(el('p','Valor fiscal da nota: '+brl(r.valor_fiscal)+' · Custo real do embarque: '+brl(r.custo_real)),el('p',r.nota||'A nota não substitui a apuração do custo real.'));}
  async function save(conciliar,target){
   for(const row of data.vinculos)if(!row.produto_id||!row.pedido_item_id||!row.declaracao_id||!Number(row.quantidade)||!Number(row.fator))throw Error('Complete ou remova os vínculos incompletos antes de salvar.');
   if(conciliar){const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(target,r);if(!r.apto)throw Error('Resolva as pendências indicadas antes de conciliar.');if(!confirm('Confirmar a conciliação desta NF-e, com os produtos, quantidades e documentos conferidos?'))return;}
@@ -89,5 +112,5 @@ export function initNotasImportacao(api,parent){
   const r=await locked(()=>api(pending));dirty=false;pending=null;await open(r.id);msg.textContent=conciliar?'Nota conciliada. Histórico preservado.':'Conferência salva como pendente.';msg.className='status';
  }
  window.addEventListener('beforeunload',e=>{if(!root.hidden&&(dirty||busy)){e.preventDefault();e.returnValue='';}});
- return {canLeave:()=>root.hidden||guard(),async show(visible){epoch++;for(const d of dialogs)d.close();root.hidden=!visible;if(!visible)return;dirty=false;pending=null;page=0;query='';const g=epoch;try{const o=await api({acao:'nf_opcoes'});if(g!==epoch)return;editable=o.editar;await list();}catch(e){msg.textContent=e.message;}},reset(){epoch++;for(const d of dialogs)d.close();root.hidden=true;body.replaceChildren();products.clear();declarations.clear();dirty=false;pending=null;uploadPending=null;note=null;data=null;}};
+ return {canLeave:()=>root.hidden||guard(),async show(visible){epoch++;for(const d of dialogs)d.close();root.hidden=!visible;if(!visible)return;dirty=false;pending=null;page=0;query='';const g=epoch;try{const o=await api({acao:'nf_opcoes'});if(g!==epoch)return;editable=o.editar;await list();}catch(e){msg.textContent=e.message;}},reset(){diReader.reset();epoch++;for(const d of dialogs)d.close();root.hidden=true;body.replaceChildren();readings.clear();products.clear();declarations.clear();dirty=false;pending=null;uploadPending=null;note=null;data=null;}};
 }

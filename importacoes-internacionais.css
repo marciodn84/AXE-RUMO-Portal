@@ -11,3 +11,7 @@
 .imp-notas fieldset{margin:1rem 0;min-width:0}.imp-notas button{max-width:100%;white-space:normal;overflow-wrap:anywhere}.imp-notas .nf-chave{overflow-wrap:anywhere}.imp-notas input[type=file]{max-width:100%}.imp-notas textarea{min-height:72px}.imp-notas pre{white-space:pre-wrap;overflow-wrap:anywhere}
 
 .imp-notas input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}.imp-notas [type=checkbox]{accent-color:#155d86}
+
+.imp-di-review{max-width:1100px}.imp-di-review label{display:flex;flex-direction:column;gap:6px;margin:8px 0}.imp-di-review input,.imp-di-review textarea{box-sizing:border-box;max-width:100%}.imp-di-review .scroll{max-width:100%;overflow:auto}.imp-di-review pre{white-space:pre-wrap;overflow-wrap:anywhere}.imp-di-review input[type=checkbox]{width:22px;min-height:22px}.imp-di-review td input{width:130px}.imp-di-review th{white-space:normal}
+
+.imp-di-review fieldset{min-width:0;max-width:100%;box-sizing:border-box}.imp-di-review .import-mapping,.imp-di-review .import-mapping>label{min-width:0}.imp-di-review input{min-width:0;width:100%}.imp-di-review td input{width:130px}.imp-di-review input[type=checkbox]{width:22px;align-self:flex-start}
