@@ -1,10 +1,11 @@
+import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-parcelas6';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
-import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-cambio5';
+import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-parcelas6';
 import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261029-aceite2';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-cambio5';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-parcelas6';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
@@ -18,7 +19,7 @@ export function initEstruturaImportacao(api,legacy){
  let tipo='pedidos',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
- const guard=()=>!busy&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
+ const guard=()=>!busy&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  const check=g=>g===epoch&&!root.hidden;
  function button(text,fn){const b=node('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
@@ -38,6 +39,7 @@ export function initEstruturaImportacao(api,legacy){
  }}
  root.append(node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro'),nav,msg,body);
  const entrada=initEntradaEmail(api,root);
+ const planos=initParcelasSugeridas(api,root,async id=>{await open(id);});
  const ack=initACKImportacao(api,root,async id=>{await open(id);msg.textContent='ACK anexado e recebimento confirmado. Histórico preservado.';});
  const fx=initConciliacaoCambio(api,root);
  const custos=initCustosImportacao(api,root);
@@ -99,7 +101,7 @@ export function initEstruturaImportacao(api,legacy){
   if(tipo==='pedidos'){
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
     ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
-    ['data_pedido','Data do pedido','date'],['ack_numero','Número do ACK'],['ack_data','Data do ACK','date'],['observacoes','Observações','textarea']
+    ['data_pedido','Data do pedido','date'],['condicao_pagamento','Condição de pagamento','textarea'],['ack_numero','Número do ACK'],['ack_data','Data do ACK','date'],['observacoes','Observações','textarea']
    ],item||{status:'Rascunho',moeda:'USD'});
    const section=node('fieldset');section.append(node('legend','Itens do pedido'));const cards=node('div');section.append(cards);form.append(section);
    let lines=[];
@@ -142,6 +144,7 @@ export function initEstruturaImportacao(api,legacy){
        const normalize=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
        const match=opts.fornecedores.filter(f=>normalize(f.nome)===normalize(parsed.fornecedor));if(match.length===1&&parsed.fornecedor)general.fornecedor_id.value=String(match[0].id);else general.fornecedor_id.value='';
        for(const x of parsed.itens)add({...x,quantidade:x.quantidade??'',valor_unitario:x.valor_unitario??'',peso_bruto_unitario:'',disponibilizada:0,data_disponibilidade:''});
+       general.condicao_pagamento.value=(parsed.condicoes_comerciais||[]).filter(x=>/^(Payment|Pagamento)\s*:/i.test(x)).map(x=>x.replace(/^[^:]+:\s*/, '')).join('; ');
        const entrega=parsed.itens.filter(x=>x.entrega_documento).map(x=>'Linha '+x.linha+': entrega prevista no PDF '+x.entrega_documento).join('\n');
        general.observacoes.value=[general.observacoes.value,'Origem: PDF Nomus '+arquivo.nome+' · SHA-256 '+arquivo.hash,'Fornecedor no PDF: '+(parsed.fornecedor||'Não identificado'),entrega,...(parsed.condicoes_comerciais||[]),...parsed.avisos].filter(Boolean).join('\n');
        changed();summary();status.textContent='Formulário preenchido. Confirme o fornecedor e os códigos do cadastro AXE; depois clique em Salvar pedido. Nenhum registro foi criado pela leitura.';
@@ -154,6 +157,7 @@ export function initEstruturaImportacao(api,legacy){
     info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
    if(item&&!editing){
+    const sugestoes=node('section');body.append(sugestoes);void planos.render(item,sugestoes,opts.editar);
     const box=node('section');box.append(node('h3','Parcelas deste pedido'));
     for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
     if(opts.editar)box.append(button('Adicionar parcela deste pedido',()=>{tipo='parcelas';renderNav();dirty=false;pending=null;edit(null,item);}));body.append(box);
@@ -240,7 +244,7 @@ export function initEstruturaImportacao(api,legacy){
    root.hidden=false;dirty=false;pending=null;current=null;tipo='pedidos';page=0;searchValue='';renderNav();const g=epoch;
    try{opts=await api({acao:'v2_opcoes'});if(check(g))await list();}catch(e){if(check(g))msg.textContent=e.message;}
   },
-  reset(){entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
+  reset(){planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };
 }
 
