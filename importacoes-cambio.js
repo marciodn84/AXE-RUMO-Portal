@@ -1,3 +1,4 @@
+import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['USD','EUR','GBP','CAD','CNY','JPY','CHF','BRL'];
 const money=(v,c)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:c||'USD'}).format(Number(v||0));
@@ -18,7 +19,7 @@ export function initConciliacaoCambio(api,parent){
  function field(parent,k,label,v='',type='text',choices){
   const l=el('label',label),e=el(choices?'select':type==='textarea'?'textarea':'input');e.name=k;e.setAttribute('aria-label',label);
   if(choices)for(const x of choices){const [v,t]=Array.isArray(x)?x:[x,x];e.append(new Option(t,v));}else if(type!=='textarea')e.type=type;
-  e.value=v??'';if(type==='number'){e.min=0;e.step='any';}l.append(e);parent.append(l);return e;
+  e.value=v??'';e.required=['referencia','fornecedor_id','moeda','valor','valor_pedido','status','banco'].includes(k);if(type==='number'){e.min=['valor','valor_pedido'].includes(k)?'0.01':'0';e.step='any';}l.append(e);parent.append(l);return e;
  }
  const fields=(p,defs,d={})=>Object.fromEntries(defs.map(([k,l,t,c])=>[k,field(p,k,l,d[k],t||'text',c)]));
  const values=f=>Object.fromEntries(Object.entries(f).map(([k,e])=>[k,e.value.trim()]));
@@ -156,7 +157,7 @@ export function initConciliacaoCambio(api,parent){
   if(!editing)for(const e of form.querySelectorAll('input,select,textarea'))e.disabled=true;
   if(editing){
    const save=btn('Salvar '+(tipo==='vinculos'?'vínculo':tipo==='contratos'?'contrato':'declaração'),async()=>{
-    if(!form.reportValidity())return;
+    const st=form.querySelector('[name=status]')?.value;for(const n of form.querySelectorAll('[name=data_envio]'))n.required=t==='vinculos'&&['Enviado','Baixado'].includes(st);for(const n of form.querySelectorAll('[name=motivo]'))n.required=st==='Cancelado';for(const n of form.querySelectorAll('[name=data_posicao_banco]'))n.required=!!form.querySelector('[name=saldo_banco]')?.value;for(const n of form.querySelectorAll('[name=data_baixa],[name=evidencia]'))n.required=t==='vinculos'&&form.querySelector('[name=status]')?.value==='Baixado';if(!validarCampos(form))return;
     if(!pending)pending={acao:'fx_salvar',tipo:t,id:isNew?null:item?.id||null,versao:isNew?null:item?.versao||null,requisicao_id:crypto.randomUUID(),dados:collect()};
     busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);
     let r;try{r=await api(pending);}finally{busy=false;if(valid(g))controls.forEach((x,i)=>x.disabled=states[i]);}
@@ -173,3 +174,4 @@ export function initConciliacaoCambio(api,parent){
   try{opts=await api({acao:'fx_opcoes'});if(valid(g))await list();}catch(e){if(valid(g))msg.textContent=e.message;}
  },reset(){epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};body.replaceChildren();}};
 }
+

@@ -1,4 +1,4 @@
-import {initEstruturaImportacao} from './importacoes-estrutura.js?v=20261028-pdfpedido1';
+import {initEstruturaImportacao} from './importacoes-estrutura.js?v=20261029-aceite2';
 export const etapas=['Planejamento','Pedido emitido','Aguardando embarque','Em trânsito','Em desembaraço','Recebida parcialmente','Recebida','Encerrada','Cancelada'];
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -62,3 +62,4 @@ function initRegistrosAnteriores(api){
 }
 
 export function initImportacoesInternacionais(api){return initEstruturaImportacao(api,initRegistrosAnteriores(api));}
+

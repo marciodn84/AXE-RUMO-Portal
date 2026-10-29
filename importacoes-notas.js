@@ -1,7 +1,9 @@
+import {validarCampos,marcarErro} from './validacao-campos.js?v=20261029-aceite2';
 import {initLeituraDI} from './importacoes-di.js?v=20261028-di1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const brl=v=>v==null?'Não apurado':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 export function initNotasImportacao(api,parent){
+ const controlesVinculos=new WeakMap();
  const root=el('section',undefined,'imp-notas');root.hidden=true;parent.append(root);
  let editable=false,busy=false,dirty=false,epoch=0,page=0,query='',note=null,data=null,shipment=null,pending=null,uploadPending=null;
  const readings=new Map(),products=new Map(),declarations=new Map(),dialogs=new Set(),msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');root.append(msg,body);
@@ -57,7 +59,7 @@ export function initNotasImportacao(api,parent){
    if(!row.declaracao_id)throw Error('Selecione a DI/DUIMP primeiro.');
    await diReader.open({id:row.declaracao_id,referencia:declarationLabel(row.declaracao_id)},async saved=>{const r=await api({acao:'nf_di_detalhe',leitura_id:saved.id});readings.set(r.id,r);row.leitura_id=r.id;row.di_item='';row.fator_di||='1';changed();render();msg.textContent='Leitura anexada. Selecione o item correspondente e confira os valores.';});
   }));
-  if(reading){const l=el('label','Item/adição da DI/DUIMP'),select=el('select');select.setAttribute('aria-label','Item/adição da DI/DUIMP');select.append(new Option('Selecionar item',''));for(const item of reading.revisado.itens)select.append(new Option('Item '+item.id+' · NCM '+(item.ncm||'?')+' · Quantidade '+(item.quantidade.valor??'?')+' '+(item.unidade||'unidade a confirmar'),item.id));select.value=row.di_item||'';select.onchange=()=>{row.di_item=select.value;changed();};l.append(select);grid.append(l);
+  if(reading){const l=el('label','Item/adição da DI/DUIMP'),select=el('select');select.setAttribute('aria-label','Item/adição da DI/DUIMP');select.dataset.necessarioConciliar='true';select.append(new Option('Selecionar item',''));for(const item of reading.revisado.itens)select.append(new Option('Item '+item.id+' · NCM '+(item.ncm||'?')+' · Quantidade '+(item.quantidade.valor??'?')+' '+(item.unidade||'unidade a confirmar'),item.id));select.value=row.di_item||'';select.onchange=()=>{row.di_item=select.value;changed();};l.append(select);grid.append(l);
    const hist=el('details');hist.append(el('summary','Revisão da leitura e correções registradas'),el('pre',JSON.stringify(reading.revisado,null,2)));group.append(hist);
    const download=button('Baixar DI/DUIMP original',async()=>{const r=await api({acao:'nf_di_baixar',leitura_id:reading.id});const a=el('a','Abrir original');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';a.click();});download.dataset.readonlyAllowed='true';group.append(download);
   }
@@ -82,9 +84,10 @@ export function initNotasImportacao(api,parent){
    for(const row of rows){
     const group=el('fieldset'),grid=el('div',undefined,'import-mapping');group.append(el('legend','Vínculo com pedido e produto'),grid);
     const pb=button(productLabel(row.produto_id),()=>chooseProduct(row)),db=button(declarationLabel(row.declaracao_id),()=>chooseDI(row));grid.append(pb,db);
-    const l=el('label','Item do pedido neste embarque'),s=el('select');s.setAttribute('aria-label','Item do pedido neste embarque');s.append(new Option('Selecionar item',''));for(const x of shipment?.itens||[])s.append(new Option(x.pedido+' · Linha '+x.linha+' · '+x.descricao+' · Recebido '+x.recebida+' '+x.unidade,x.pedido_item_id));s.value=row.pedido_item_id||'';s.onchange=()=>{row.pedido_item_id=s.value;changed();};l.append(s);grid.append(l);
+    const l=el('label','Item do pedido neste embarque'),s=el('select');s.setAttribute('aria-label','Item do pedido neste embarque');s.required=true;s.append(new Option('Selecionar item',''));for(const x of shipment?.itens||[])s.append(new Option(x.pedido+' · Linha '+x.linha+' · '+x.descricao+' · Recebido '+x.recebida+' '+x.unidade,x.pedido_item_id));s.value=row.pedido_item_id||'';s.onchange=()=>{row.pedido_item_id=s.value;changed();};l.append(s);grid.append(l);
     addDIControls(group,grid,row,readOnly);
     const qty=input(grid,'Quantidade da nota vinculada',row.quantidade,'number'),factor=input(grid,'Fator: unidade da nota → unidade AXE/pedido',row.fator||'1','number'),reason=input(grid,'Justificativa de conversão / divergência / conferência manual',row.justificativa||'','textarea');
+    qty.required=true;qty.min='0.000001';factor.required=true;factor.min='0.000001';controlesVinculos.set(row,{produto:pb,declaracao:db,item:s,leitura:grid.querySelectorAll('button')[2]});
     qty.oninput=()=>{row.quantidade=qty.value;changed();};factor.oninput=()=>{row.fator=factor.value;changed();};reason.oninput=()=>{row.justificativa=reason.value;changed();};
     if(!readOnly)group.append(button('Remover vínculo',()=>{data.vinculos.splice(data.vinculos.indexOf(row),1);changed();render();}));
     if(readOnly)group.querySelectorAll('input,select,textarea,button:not([data-readonly-allowed])').forEach(x=>x.disabled=true);box.append(group);
@@ -93,9 +96,9 @@ export function initNotasImportacao(api,parent){
    body.append(box);
   }
   const checks=el('fieldset');checks.append(el('legend','Conferência documental'),el('p','O ERP compara FOB aduaneiro em reais, frete, seguro e tributos de cada item da DI/DUIMP com o XML. Vincule a leitura e o item da declaração em cada linha. Valores não informados e diferenças impedem a conciliação.'));
-  checkbox(checks,'Conferi o PDF: corresponde à chave, aos produtos e aos valores deste XML',data.pdf_conferido,v=>data.pdf_conferido=v);
+  checkbox(checks,'Conferi o PDF: corresponde à chave, aos produtos e aos valores deste XML',data.pdf_conferido,v=>data.pdf_conferido=v).dataset.necessarioConciliar='true';
 
-  if(note.xml.itens.some(i=>Number(i.outras||0)>0))checkbox(checks,'Conferi as outras despesas do XML nos documentos complementares',data.outras_conferidas,v=>data.outras_conferidas=v);
+  if(note.xml.itens.some(i=>Number(i.outras||0)>0))checkbox(checks,'Conferi as outras despesas do XML nos documentos complementares',data.outras_conferidas,v=>data.outras_conferidas=v).dataset.necessarioConciliar='true';
   const ref=input(checks,'Observações da conferência',data.referencia_conferencia||'','textarea');ref.oninput=()=>{data.referencia_conferencia=ref.value;changed();};if(readOnly)checks.querySelectorAll('input,textarea').forEach(x=>x.disabled=true);body.append(checks);
   const result=el('div');body.append(button('Conferir vínculos e saldos',async()=>{const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(result,r);}),result);
   if(note.resultado)showResult(result,note.resultado);
@@ -106,6 +109,7 @@ export function initNotasImportacao(api,parent){
  }
  function showResult(target,r){target.replaceChildren(el('h3',r.apto?'Conferência sem pendências':'Pendências para conciliação'));for(const p of r.pendencias)target.append(el('p',p,'status error'));if(r.fiscal?.length)table(target,['Linha','Campo (BRL)','DI/DUIMP','XML Nomus','Diferença','Situação','Origem'],r.fiscal.map(x=>[x.linha,x.campo,brl(x.di),brl(x.xml),brl(x.diferenca),x.situacao,x.fontes.map(f=>f.declaracao+' · Item '+f.item+' · Pág. '+(f.pagina??'?')+' · '+(f.origem||'Extraído')+' · Parcial '+f.quantidade_parcial+'/'+f.quantidade_integral).join(' | ')]));if(r.usos_di?.length)table(target,['Item DI/DUIMP','Declarado','Outras notas','Nesta nota','Saldo'],r.usos_di.map(x=>[x.item,x.declarada,x.outras_notas,x.quantidade,x.saldo]));table(target,['Item do pedido','Recebido','Outras notas','Nesta nota (unidade AXE)','Saldo'],r.quantidades.map(x=>[x.pedido_item_id,x.recebida,x.outras_notas,x.vinculada,x.saldo]));target.append(el('p','Valor fiscal da nota: '+brl(r.valor_fiscal)+' · Custo real do embarque: '+brl(r.custo_real)),el('p',r.nota||'A nota não substitui a apuração do custo real.'));}
  async function save(conciliar,target){
+  for(const c of body.querySelectorAll('[data-necessario-conciliar]'))c.required=conciliar;let faltando=false;for(const row of data.vinculos){const c=controlesVinculos.get(row);if(c){if(conciliar&&!row.leitura_id&&c.leitura){marcarErro(c.leitura,'Selecione a leitura da DI / DUIMP.');faltando=true;}if(!row.produto_id){marcarErro(c.produto,'Selecione o produto do cadastro.');faltando=true;}if(!row.declaracao_id){marcarErro(c.declaracao,'Selecione a DI / DUIMP.');faltando=true;}}}const camposValidos=validarCampos(body);if(faltando&&camposValidos){const primeiro=body.querySelector('.campo-invalido');primeiro?.scrollIntoView({block:'center'});primeiro?.focus();}if(faltando||!camposValidos)throw Error('Preencha os campos destacados em vermelho.');
   for(const row of data.vinculos)if(!row.produto_id||!row.pedido_item_id||!row.declaracao_id||!Number(row.quantidade)||!Number(row.fator))throw Error('Complete ou remova os vínculos incompletos antes de salvar.');
   if(conciliar){const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(target,r);if(!r.apto)throw Error('Resolva as pendências indicadas antes de conciliar.');if(!confirm('Confirmar a conciliação desta NF-e, com os produtos, quantidades e documentos conferidos?'))return;}
   if(!pending)pending={acao:'nf_salvar',id:note.id,versao:note.versao,embarque_id:shipment?.id||null,dados:structuredClone(data),conciliar,requisicao_id:crypto.randomUUID()};else if(pending.conciliar!==conciliar)throw Error('Repita a última operação de salvamento para confirmar seu resultado antes de mudar a ação.');
@@ -114,3 +118,4 @@ export function initNotasImportacao(api,parent){
  window.addEventListener('beforeunload',e=>{if(!root.hidden&&(dirty||busy)){e.preventDefault();e.returnValue='';}});
  return {canLeave:()=>root.hidden||guard(),async show(visible){epoch++;for(const d of dialogs)d.close();root.hidden=!visible;if(!visible)return;dirty=false;pending=null;page=0;query='';const g=epoch;try{const o=await api({acao:'nf_opcoes'});if(g!==epoch)return;editable=o.editar;await list();}catch(e){msg.textContent=e.message;}},reset(){diReader.reset();epoch++;for(const d of dialogs)d.close();root.hidden=true;body.replaceChildren();readings.clear();products.clear();declarations.clear();dirty=false;pending=null;uploadPending=null;note=null;data=null;}};
 }
+

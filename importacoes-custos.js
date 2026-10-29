@@ -1,3 +1,4 @@
+import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
 import {initFechamentoDespachante} from './importacoes-fechamento.js?v=20261028-fech1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const money=v=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
@@ -19,7 +20,7 @@ export function initCustosImportacao(api,parent){
  function field(p,k,label,v='',type='text',choices){
   const l=el('label',label),e=el(choices?'select':type==='textarea'?'textarea':'input');e.name=k;e.setAttribute('aria-label',label);
   if(choices)for(const x of choices){const [v,t]=Array.isArray(x)?x:[x,x];e.append(new Option(t,v));}else if(type!=='textarea')e.type=type;
-  e.value=v??'';if(type==='number'){e.min=0;e.step='any';}l.append(e);p.append(l);return e;
+  e.value=v??'';e.required=['valor','valor_me','categoria','moeda','tributo','tratamento'].includes(k);if(type==='number'){e.min=0;e.step='any';}l.append(e);p.append(l);return e;
  }
  const fields=(p,defs,d={})=>Object.fromEntries(defs.map(([k,l,t,c])=>[k,field(p,k,l,d[k],t||'text',c)]));
  const read=f=>Object.fromEntries(Object.entries(f).map(([k,e])=>[k,e.value.trim()]));
@@ -75,7 +76,7 @@ export function initCustosImportacao(api,parent){
    const box=el('fieldset');box.append(el('legend',title));const cards=el('div');box.append(cards);groups[key]=[];
    function add(x={}){
     const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,origem_fechamento:x.origem_fechamento||null};
-    if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
+    f.referencia.required=true;if(key!=='despesas')f.pedido_item_id.required=true;if(key==='pagamentos'){f.valor_me.min='0.01';f.valor_brl.min='0.01';}if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
     if(editing)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
    }(d[key]||[]).forEach(add);
    if(editing)box.append(btn('Adicionar '+title.toLowerCase(),()=>{if(groups[key].length>=100)throw Error('Até 100 registros por seção.');const f=add();change();Object.values(f)[0].focus();}));form.append(box);
@@ -84,7 +85,7 @@ export function initCustosImportacao(api,parent){
    ['pedido_item_id','Item pago','text',items],['valor_me','Valor atribuído em '+e.moeda,'number'],['valor_brl','Valor efetivamente pago em BRL (manual)','number'],['referencia','Referência do pagamento / contrato'],['data_pagamento','Data do pagamento manual','date']
   ],{},(card,row,x)=>{
    const note=el('p');card.append(note);
-   function update(){row.f.valor_brl.disabled=!editing||!!row.contrato_id;row.f.data_pagamento.disabled=!editing||!!row.contrato_id;note.textContent=row.contrato_id?'Contrato vinculado: '+row.f.referencia.value+'. O servidor calcula o BRL proporcional ao débito efetivo, sem usar o saldo de comprovação.':'Pagamento manual: informe o valor real em BRL, a referência e a data. Cada valor deve ser atribuído uma única vez.';}
+   function update(){row.f.valor_brl.required=!row.contrato_id;row.f.data_pagamento.required=!row.contrato_id;row.f.valor_brl.disabled=!editing||!!row.contrato_id;row.f.data_pagamento.disabled=!editing||!!row.contrato_id;note.textContent=row.contrato_id?'Contrato vinculado: '+row.f.referencia.value+'. O servidor calcula o BRL proporcional ao débito efetivo, sem usar o saldo de comprovação.':'Pagamento manual: informe o valor real em BRL, a referência e a data. Cada valor deve ser atribuído uma única vez.';}
    if(editing){card.append(btn('Selecionar contrato cadastrado',()=>pickContract(c=>{row.contrato_id=c.id;row.f.referencia.value=c.referencia;row.f.valor_brl.value='';row.f.data_pagamento.value='';update();change();})),btn('Usar comprovante manual',()=>{row.contrato_id=null;update();change();}));}update();
   });
   collection('despesas','Despesas',[
@@ -101,15 +102,16 @@ export function initCustosImportacao(api,parent){
   const out=el('section',undefined,'imp-custo-resultado');body.append(out);
   if(calc)result(calc,out,saved?.estado);
   const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
+  function syncRequired(finalizar=false){for(const row of groups.despesas){row.f.pedido_item_id.required=row.f.categoria.value==='Multa';row.f.data.required=finalizar&&row.f.situacao.value==='Confirmada';}for(const c of Object.values(checks))c.required=finalizar;}
   async function preview(){
-   if(!form.reportValidity())return null;
+   syncRequired();if(!validarCampos(form))return null;
    const payload=collect(),s=++seq;busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);let r;try{r=await api({acao:'custo_prever',embarque_id:e.id,dados:payload});}finally{busy=false;if(valid(g))controls.forEach((x,i)=>x.disabled=states[i]);}
    if(!valid(g)||s!==seq)return null;calc=r;previewValid=true;result(r,out,'Provisório');msg.textContent='Prévia calculada. Nenhuma alteração foi gravada.';return r;
   }
   if(editing){
    form.append(btn('Calcular prévia e rateios',preview));
    async function save(finalizar){
-    if(!form.reportValidity())return;
+    syncRequired(finalizar);if(!validarCampos(form))return;
     if(finalizar){const r=await preview();if(!r)return;if(!r.apto_finalizar)throw Error('Resolva as pendências da prévia antes de finalizar.');
      if(!confirm('Finalizar custo de '+money(r.custo_total)+' para '+e.referencia+'? Alterações posteriores exigirão reabertura com justificativa.'))return;
     }
@@ -128,3 +130,4 @@ export function initCustosImportacao(api,parent){
  window.addEventListener('beforeunload',e=>{if(!root.hidden&&(dirty||busy)){e.preventDefault();e.returnValue='';}});
  return {canLeave:guard,async show(v,id){epoch++;seq++;closeDialogs();root.hidden=!v;dirty=false;pending=null;current=null;calc=null;if(!v)return;const g=epoch;try{opts=await api({acao:'custo_opcoes'});if(valid(g)){if(id)await open(id);else await list();}}catch(e){if(valid(g))msg.textContent=e.message;}},reset(){fechamento.reset();epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;calc=null;opts={editar:false};body.replaceChildren();}};
 }
+

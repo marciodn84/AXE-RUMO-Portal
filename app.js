@@ -1,6 +1,7 @@
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261028-pdfpedido1';
+import './validacao-campos.js?v=20261029-aceite2';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-aceite2';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261028-pdfpedido1';
+import {initERP} from './erp.js?v=20261029-aceite2';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';
 import {initCadastros} from './cadastros.js?v=20261023-gestao1';
 import {initCatalogo} from './catalogo.js?v=20261023-gestao1';
@@ -45,11 +46,12 @@ const catalogo=initCatalogo(payload=>call(payload,'axe-catalogo'));
 const importacao=initImportacao(payload=>call(payload,'axe-importacao'));
 const comercial=initComercial(payload=>call(payload,'axe-comercial'));
 const gestao=initGestao(payload=>call(payload,'axe-gestao'));
-const importacoesInternacionais=initImportacoesInternacionais(payload=>call(payload,(payload.acao?.startsWith('fech_')||payload.acao?.startsWith('pedido_pdf_'))?'axe-importacoes-fechamento':payload.acao?.startsWith('nf_')?'axe-importacoes-notas':'axe-importacoes-internacionais'));
+const importacoesInternacionais=initImportacoesInternacionais(payload=>call(payload,(payload.acao?.startsWith('ack_')||payload.acao?.startsWith('email_'))?'axe-documentos-entrada':(payload.acao?.startsWith('fech_')||payload.acao?.startsWith('pedido_pdf_'))?'axe-importacoes-fechamento':payload.acao?.startsWith('nf_')?'axe-importacoes-notas':'axe-importacoes-internacionais'));
 const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais);
 document.addEventListener('axe-tributacao-produto',event=>erp.navigate('tributacao-produtos',event.detail));
 new MutationObserver(()=>{if($('panel').hidden){fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();gestao.reset();importacoesInternacionais.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
 document.addEventListener('axe-produtos-empresa',event=>erp.navigate('equivalencias',event.detail));
 
 document.addEventListener('axe-simular-proposta',event=>erp.navigate('simulador',event.detail));
+
 

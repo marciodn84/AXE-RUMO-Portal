@@ -38,3 +38,6 @@
  .imp-internacional .cadastro-toolbar>span{flex:0 1 auto}
  .imp-internacional .catalog-tabs>button{flex:1 1 calc(50% - 8px)}
 }
+
+
+.imp-ack{width:min(1100px,94vw);max-height:90vh;overflow:auto}.imp-ack pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.imp-ack .import-mapping{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px}.imp-ack label{display:flex;flex-direction:column;gap:6px;margin:12px 0}.imp-ack input[type=checkbox]{align-self:flex-start}.imp-ack fieldset{min-width:0}.imp-ack table{width:100%}.imp-ack td,.imp-ack th{padding:8px;text-align:left}.imp-ack button{margin:8px 8px 8px 0}.imp-ack textarea{width:100%;box-sizing:border-box}
