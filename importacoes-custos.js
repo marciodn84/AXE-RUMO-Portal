@@ -73,6 +73,7 @@ export function initCustosImportacao(api,parent){
   const form=el('form');form.onsubmit=ev=>ev.preventDefault();form.addEventListener('input',change);form.addEventListener('change',change);body.append(form);
   const header=fields(grid(form,'Referências e projeção'),[['referencia','Referência do fechamento / documentos'],['cambio_estimado','Câmbio estimado para FOB ainda não pago (opcional)','number'],['observacoes','Observações','textarea']],d);
   form.append(el('p','O câmbio estimado só projeta valores ainda não pagos; a finalização exige os pagamentos e o câmbio efetivo completos. A taxa aduaneira não converte o custo FOB: informe os tributos já apurados em reais.'));
+  const adders={};
   const items=[['','Selecionar item'],...e.itens.map(x=>[x.pedido_item_id,x.pedido+' / '+x.linha+' · '+x.descricao])],groups={};
   function collection(key,title,defs,defaults,extra){
    const box=el('fieldset');box.append(el('legend',title));const cards=el('div');box.append(cards);groups[key]=[];
@@ -81,7 +82,7 @@ export function initCustosImportacao(api,parent){
     f.referencia.required=true;if(key!=='despesas')f.pedido_item_id.required=true;if(key==='pagamentos'){f.valor_me.min='0.01';f.valor_brl.min='0.01';}if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
     if(row.origem_transporte){for(const input of Object.values(f))input.disabled=true;card.append(el('p','Frete dos documentos de transporte; câmbio USD/BRL exclusivo da DUIMP '+(x.duimp_numero||'(pendente)')+'.'));}
     if(editing&&!row.origem_transporte)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
-   }(d[key]||[]).forEach(add);
+   }adders[key]=add;(d[key]||[]).forEach(add);
    if(editing)box.append(btn('Adicionar '+title.toLowerCase(),()=>{if(groups[key].length>=100)throw Error('Até 100 registros por seção.');const f=add();change();Object.values(f)[0].focus();}));form.append(box);
   }
   collection('pagamentos','Pagamentos FOB',[
@@ -91,6 +92,19 @@ export function initCustosImportacao(api,parent){
    function update(){row.f.valor_brl.required=!row.contrato_id;row.f.data_pagamento.required=!row.contrato_id;row.f.valor_brl.disabled=!editing||!!row.contrato_id;row.f.data_pagamento.disabled=!editing||!!row.contrato_id;note.textContent=row.contrato_id?'Contrato vinculado: '+row.f.referencia.value+'. O servidor calcula o BRL proporcional ao débito efetivo, sem usar o saldo de comprovação.':'Pagamento manual: informe o valor real em BRL, a referência e a data. Cada valor deve ser atribuído uma única vez.';}
    if(editing){card.append(btn('Selecionar contrato cadastrado',()=>pickContract(c=>{row.contrato_id=c.id;row.f.referencia.value=c.referencia;row.f.valor_brl.value='';row.f.data_pagamento.value='';update();change();})),btn('Usar comprovante manual',()=>{row.contrato_id=null;update();change();}));}update();
   });
+  if(editing)form.append(btn('Sugerir pagamentos já registrados',async()=>{
+   if(groups.pagamentos.length)throw Error('Os pagamentos já preenchidos foram preservados. Revise-os antes de solicitar uma nova sugestão.');
+   const fresh=await api({acao:'custo_detalhe',embarque_id:e.id});if(!valid(g))return;
+   const suggestion=fresh.sugestao_pagamentos;if(!suggestion)throw Error('Sugestão de pagamentos indisponível.');
+   if(!suggestion.pagamentos.length)throw Error(suggestion.avisos.join(' ')||'Nenhum pagamento disponível para sugerir.');
+   const dialog=el('dialog',undefined,'imp-picker'),table=el('table'),head=el('tr');
+   ['Item','Contrato','Valor em '+e.moeda].forEach(t=>head.append(el('th',t)));table.append(head);
+   for(const p of suggestion.pagamentos){const row=el('tr'),it=e.itens.find(x=>x.pedido_item_id===p.pedido_item_id);[it?it.pedido+' / '+it.linha:p.pedido_item_id,p.referencia,Number(p.valor_me).toFixed(2)].forEach(t=>row.append(el('td',t)));table.append(row);}
+   const close=()=>{dialog.close();dialog.remove();dialogs.delete(dialog);};dialogs.add(dialog);root.append(dialog);
+   dialog.append(el('h3','Conferir pagamentos sugeridos'),el('p','Distribuição proporcional ao FOB dos itens deste pedido, limitada ao saldo pago disponível. Nenhum novo pagamento será criado. O BRL será calculado pelo contrato; a aprovação preenche a apuração e o salvamento reserva os saldos.'),table);
+   for(const a of suggestion.avisos)dialog.append(el('p',a));
+   dialog.append(btn('Cancelar',close),btn('Aprovar vínculos na apuração',()=>{if(groups.pagamentos.length)throw Error('A apuração mudou. Refaça a sugestão.');suggestion.pagamentos.forEach(p=>adders.pagamentos(p));change();close();msg.textContent='Vínculos aprovados no formulário. Calcule a prévia e salve a apuração para registrar. Nenhum pagamento foi criado.';}));dialog.addEventListener('cancel',ev=>{ev.preventDefault();close();});dialog.showModal();
+  }));
   collection('despesas','Despesas',[
    ['referencia','Referência da despesa / comprovante'],['categoria','Categoria','text',['Frete','Seguro','Taxas','Despachante','Despesas aduaneiras','Taxas bancárias','Outras','Multa']],['valor','Valor da despesa','number'],['moeda','Moeda da despesa','text',['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF']],['cambio','Taxa efetiva da despesa para BRL','number'],['situacao','Confirmação da despesa','text',['Prevista','Confirmada']],['data','Data da despesa','date'],['pedido_item_id','Produto penalizado (obrigatório para multa)','text',items]
   ],{moeda:'BRL',situacao:'Prevista',categoria:'Frete'},(card,row,x)=>{
