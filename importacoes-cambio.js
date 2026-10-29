@@ -113,7 +113,7 @@ export function initConciliacaoCambio(api,parent){
    box.append(el('p','PDF de até 8 MB. O anexo preserva o original e não preenche valores nem confirma baixa bancária.'),controls,label,btn('Anexar arquivo',async()=>{
     if(!validarCampos(box))return;const f=file.files?.[0];if(!f)throw Error('Selecione o arquivo PDF.');if(!check.checked)throw Error('Confirme o vínculo do arquivo com este contrato.');if(f.size>8388608||!f.size)throw Error('Selecione PDF de até 8 MB.');
     if(!retry){const bytes=new Uint8Array(await f.arrayBuffer());if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Selecione um arquivo PDF válido.');let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));retry={acao:'fxdoc_upload',contrato_id:item.id,categoria:category.value,nome:f.name,conteudo:btoa(binary),confirmado:true,requisicao_id:crypto.randomUUID()};}
-    busy=true;try{await api(retry);retry=null;file.value='';check.checked=false;await load();status.textContent='Arquivo anexado. Valores e saldos preservados.';}finally{busy=false;}
+    busy=true;try{await api(retry);retry=null;file.value='';check.checked=false;await load();status.textContent='Arquivo anexado. Para registrar o pagamento, abra o pedido ou a parcela e use Contrato e SWIFT — registrar pagamento.';}finally{busy=false;}
    }));
   }
   try{await load();}catch(e){status.textContent=e.message;}

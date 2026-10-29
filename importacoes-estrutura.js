@@ -1,11 +1,13 @@
-import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-parcelas6';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-documentos8';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-documentos8';
+import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-documentos8';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
-import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-parcelas6';
+import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-documentos8';
 import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261029-aceite2';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-parcelas6';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-documentos8';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
@@ -19,7 +21,7 @@ export function initEstruturaImportacao(api,legacy){
  let tipo='pedidos',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
- const guard=()=>!busy&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
+ const guard=()=>!busy&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  const check=g=>g===epoch&&!root.hidden;
  function button(text,fn){const b=node('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
@@ -39,6 +41,8 @@ export function initEstruturaImportacao(api,legacy){
  }}
  root.append(node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro'),nav,msg,body);
  const entrada=initEntradaEmail(api,root);
+ const pagamento=initPagamentoDocumental(api,root,async r=>{await open(tipo==='parcelas'?r.id:r.pedido_id);});
+ const liberacao=initLiberacaoDocumental(api,root,async id=>{await open(id);});
  const planos=initParcelasSugeridas(api,root,async id=>{await open(id);});
  const ack=initACKImportacao(api,root,async id=>{await open(id);msg.textContent='ACK anexado e recebimento confirmado. Histórico preservado.';});
  const fx=initConciliacaoCambio(api,root);
@@ -70,7 +74,7 @@ export function initEstruturaImportacao(api,legacy){
  }
  function situacaoParcela(x){if(x.status==='Cancelada')return 'Cancelada';if(Number(x.valor_pago)>=Number(x.valor))return 'Paga';if(Number(x.valor_pago)>0)return 'Paga parcialmente';if(!x.vencimento)return 'Aguardando data-base';return x.vencimento<new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})?'Vencida':'A pagar';}
  async function open(id){if(!guard())return;const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
- function closeDialogs(){ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
+ function closeDialogs(){pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
   const dialog=node('dialog',undefined,'imp-picker'),heading=node('h2',title),status=node('p'),q=node('input');q.type='search';q.placeholder='Buscar';q.setAttribute('aria-label','Buscar no seletor');
   const rows=node('div',undefined,'scroll'),bar=node('div',undefined,'cadastro-toolbar');let pagina=0,request=0;const g=epoch;
@@ -93,7 +97,9 @@ export function initEstruturaImportacao(api,legacy){
   current=item;body.replaceChildren();msg.textContent='';const g=epoch,t=tipo;
   const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
-  if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar))); 
+  if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
+  if(!editing&&item&&opts.editar&&tipo==='pedidos')top.append(pagamento.button(item.id));
+  if(!editing&&item&&opts.editar&&tipo==='parcelas')top.append(pagamento.button(item.pedido_id,item.id)); 
   body.append(top,node('h2',(item?item.referencia:tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque')));
   const form=node('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
   let collect,summary=()=>{};
@@ -154,9 +160,10 @@ export function initEstruturaImportacao(api,legacy){
    }
    collect=()=>({...read(general),itens:lines.map(l=>({id:l.id,...read(l.inputs)}))});
    summary=()=>{general.ack_numero.required=general.status.value==='ACK recebido';general.ack_data.required=general.status.value==='ACK recebido';const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
-    info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
+    info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(total-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
    if(item&&!editing){
+    const documentos=node('section');body.append(documentos);void liberacao.render(item,documentos,opts.editar);
     const sugestoes=node('section');body.append(sugestoes);void planos.render(item,sugestoes,opts.editar);
     const box=node('section');box.append(node('h3','Parcelas deste pedido'));
     for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
@@ -244,7 +251,7 @@ export function initEstruturaImportacao(api,legacy){
    root.hidden=false;dirty=false;pending=null;current=null;tipo='pedidos';page=0;searchValue='';renderNav();const g=epoch;
    try{opts=await api({acao:'v2_opcoes'});if(check(g))await list();}catch(e){if(check(g))msg.textContent=e.message;}
   },
-  reset(){planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
+  reset(){pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };
 }
 
