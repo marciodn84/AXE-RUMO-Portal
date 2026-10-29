@@ -7,8 +7,8 @@ import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-transp
 import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261029-swiftliq12';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-swiftliq12';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261029-conexao13';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-conexao13';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
@@ -241,6 +241,11 @@ export function initEstruturaImportacao(api,legacy){
    });form.append(save);
   }else if(item){
    if(tipo==='embarques'){const documentos=node('section');body.append(documentos);void transporte.render(item,documentos,opts.editar);}
+   if(tipo==='embarques'){
+    const financeiro=node('section'),estado=node('p','Consultando pagamentos vinculados…');financeiro.append(node('h3','Pagamento da parcial e do embarque'),estado);body.append(financeiro);
+    void api({acao:'custo_detalhe',embarque_id:item.id}).then(r=>{if(!financeiro.isConnected)return;const fin=r.financeiro;if(!fin){estado.textContent='Consulte os pagamentos na apuração de custo.';return;}estado.textContent='FOB: '+money(fin.fob,item.moeda)+' · Pagamento vinculado: '+money(fin.pago_vinculado,item.moeda)+' · Sem vínculo aprovado: '+money(Math.max(0,Number(fin.fob)-Number(fin.pago_vinculado)),item.moeda)+'. Pagamentos registrados no pedido podem ser vinculados na apuração; isso não cria uma nova cobrança.';for(const p of fin.parcelas||[])financeiro.append(node('p',p.referencia+' · Contrato '+p.contrato+' · Remessa em '+dt(p.data_pagamento)+' · '+money(p.valor_no_embarque,item.moeda)));}).catch(e=>{if(financeiro.isConnected)estado.textContent=e.message;});
+   }
+
    if(tipo==='embarques')body.append(button('Apurar custo deste embarque',async()=>{if(!guard())return;tipo='custos';renderNav();body.replaceChildren();msg.textContent='';await custos.show(true,item.id);}));
    const history=node('details');history.append(node('summary','Histórico de alterações'));const out=node('div');
    history.append(button('Consultar histórico',async()=>{const r=await api({acao:'v2_historico',tipo:t,id:item.id});if(!check(g)||current?.id!==item.id)return;out.replaceChildren();for(const e of r.linhas){const entry=node('details');entry.append(node('summary',new Date(e.criado_em).toLocaleString('pt-BR')+' · '+(e.anterior?'Alteração':'Criação')),node('pre',JSON.stringify(e,null,2)));out.append(entry);}}),out);body.append(history);

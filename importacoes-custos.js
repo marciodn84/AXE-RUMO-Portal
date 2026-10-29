@@ -70,6 +70,7 @@ export function initCustosImportacao(api,parent){
   body.append(toolbar,el('h3',e.referencia+' · '+e.fornecedor),el('p','Moeda FOB: '+e.moeda+' · Embarque: '+e.status+' · Apuração: '+(saved?.estado||'Nova')));
   if(saved&&saved.resultado.embarque_fonte?.versao!==e.versao)body.append(el('p','O embarque foi alterado após esta apuração. Recalcule a prévia antes de finalizar.','status error'));
   if(frete)body.append(el('p','Frete documental: '+Number(frete.valor).toLocaleString('pt-BR')+' USD · '+money(frete.valor_brl)+' · taxa DUIMP '+(frete.cambio||'pendente')+'. Rateio pelo peso real bruto dos itens. Alterações devem ser feitas em Documentos de transporte, no embarque.'));
+  if(current.financeiro){const fin=current.financeiro,pend=Math.max(0,Number(fin.fob)-Number(fin.pago_vinculado));body.append(el('p','Pagamento vinculado a este embarque: '+Number(fin.pago_vinculado).toLocaleString('pt-BR')+' '+e.moeda+' · FOB sem vínculo de pagamento aprovado: '+pend.toLocaleString('pt-BR')+' '+e.moeda+'. Este saldo de vínculo não significa uma nova cobrança.'));}
   const form=el('form');form.onsubmit=ev=>ev.preventDefault();form.addEventListener('input',change);form.addEventListener('change',change);body.append(form);
   const header=fields(grid(form,'Referências e projeção'),[['referencia','Referência do fechamento / documentos'],['cambio_estimado','Câmbio estimado para FOB ainda não pago (opcional)','number'],['observacoes','Observações','textarea']],d);
   form.append(el('p','O câmbio estimado só projeta valores ainda não pagos; a finalização exige os pagamentos e o câmbio efetivo completos. A taxa aduaneira não converte o custo FOB: informe os tributos já apurados em reais.'));
@@ -78,7 +79,7 @@ export function initCustosImportacao(api,parent){
   function collection(key,title,defs,defaults,extra){
    const box=el('fieldset');box.append(el('legend',title));const cards=el('div');box.append(cards);groups[key]=[];
    function add(x={}){
-    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,origem_fechamento:x.origem_fechamento||null,origem_transporte:x.origem_transporte||null};
+    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,remessa_id:x.remessa_id||null,parcela_id:x.parcela_id||null,remessa_referencia:x.remessa_referencia||'',parcela_referencia:x.parcela_referencia||'',origem_fechamento:x.origem_fechamento||null,origem_transporte:x.origem_transporte||null};
     f.referencia.required=true;if(key!=='despesas')f.pedido_item_id.required=true;if(key==='pagamentos'){f.valor_me.min='0.01';f.valor_brl.min='0.01';}if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
     if(row.origem_transporte){for(const input of Object.values(f))input.disabled=true;card.append(el('p','Frete dos documentos de transporte; câmbio USD/BRL exclusivo da DUIMP '+(x.duimp_numero||'(pendente)')+'.'));}
     if(editing&&!row.origem_transporte)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
@@ -90,20 +91,24 @@ export function initCustosImportacao(api,parent){
   ],{},(card,row,x)=>{
    const note=el('p');card.append(note);
    function update(){row.f.valor_brl.required=!row.contrato_id;row.f.data_pagamento.required=!row.contrato_id;row.f.valor_brl.disabled=!editing||!!row.contrato_id;row.f.data_pagamento.disabled=!editing||!!row.contrato_id;note.textContent=row.contrato_id?'Contrato vinculado: '+row.f.referencia.value+'. O servidor calcula o BRL proporcional ao débito efetivo, sem usar o saldo de comprovação.':'Pagamento manual: informe o valor real em BRL, a referência e a data. Cada valor deve ser atribuído uma única vez.';}
-   if(editing){card.append(btn('Selecionar contrato cadastrado',()=>pickContract(c=>{row.contrato_id=c.id;row.f.referencia.value=c.referencia;row.f.valor_brl.value='';row.f.data_pagamento.value='';update();change();})),btn('Usar comprovante manual',()=>{row.contrato_id=null;update();change();}));}update();
+   if(row.remessa_id)card.append(el('p','SWIFT/remessa: '+(row.remessa_referencia||row.remessa_id)+' · Parcela: '+(row.parcela_referencia||row.parcela_id)+' · Liquidação da remessa: '+(x.data_pagamento||'não informada')+'. O saldo não liquidado do contrato não bloqueia este pagamento.'));
+   if(editing){card.append(btn('Selecionar contrato cadastrado',()=>pickContract(c=>{row.remessa_id=null;row.parcela_id=null;row.contrato_id=c.id;row.f.referencia.value=c.referencia;row.f.valor_brl.value='';row.f.data_pagamento.value='';update();change();})),btn('Usar comprovante manual',()=>{row.remessa_id=null;row.parcela_id=null;row.contrato_id=null;update();change();}));}update();
   });
   if(editing)form.append(btn('Sugerir pagamentos já registrados',async()=>{
-   if(groups.pagamentos.length)throw Error('Os pagamentos já preenchidos foram preservados. Revise-os antes de solicitar uma nova sugestão.');
+   const signature=rows=>JSON.stringify(rows.map(p=>[p.id,p.pedido_item_id,p.contrato_id||null,Number(p.valor_me)]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
+   const before=groups.pagamentos.map(r=>({id:r.id,...read(r.f),contrato_id:r.contrato_id}));
    const fresh=await api({acao:'custo_detalhe',embarque_id:e.id});if(!valid(g))return;
+   const stored=fresh.custo?.dados?.pagamentos||[];if(signature(before)!==signature(stored))throw Error('Salve ou descarte as alterações de pagamentos antes de complementar os vínculos.');
    const suggestion=fresh.sugestao_pagamentos;if(!suggestion)throw Error('Sugestão de pagamentos indisponível.');
-   if(!suggestion.pagamentos.length)throw Error(suggestion.avisos.join(' ')||'Nenhum pagamento disponível para sugerir.');
+   const additions=suggestion.pagamentos.filter(p=>!before.some(x=>x.id===p.id));
+   if(!additions.length)throw Error(suggestion.avisos.join(' ')||'Nenhum pagamento disponível para sugerir.');
    const dialog=el('dialog',undefined,'imp-picker'),table=el('table'),head=el('tr');
-   ['Item','Contrato','Valor em '+e.moeda].forEach(t=>head.append(el('th',t)));table.append(head);
-   for(const p of suggestion.pagamentos){const row=el('tr'),it=e.itens.find(x=>x.pedido_item_id===p.pedido_item_id);[it?it.pedido+' / '+it.linha:p.pedido_item_id,p.referencia,Number(p.valor_me).toFixed(2)].forEach(t=>row.append(el('td',t)));table.append(row);}
+   ['Item','Contrato','Parcela','Remessa / SWIFT','Data da remessa','Valor em '+e.moeda].forEach(t=>head.append(el('th',t)));table.append(head);
+   for(const p of additions){const row=el('tr'),it=e.itens.find(x=>x.pedido_item_id===p.pedido_item_id);[it?it.pedido+' / '+it.linha:p.pedido_item_id,p.referencia,p.parcela_referencia||'—',p.remessa_referencia||'—',p.data_pagamento||'—',Number(p.valor_me).toFixed(2)].forEach(t=>row.append(el('td',t)));table.append(row);}
    const close=()=>{dialog.close();dialog.remove();dialogs.delete(dialog);};dialogs.add(dialog);root.append(dialog);
-   dialog.append(el('h3','Conferir pagamentos sugeridos'),el('p','Distribuição proporcional ao FOB dos itens deste pedido, limitada ao saldo pago disponível. Nenhum novo pagamento será criado. O BRL será calculado pelo contrato; a aprovação preenche a apuração e o salvamento reserva os saldos.'),table);
+   dialog.append(el('h3','Conferir pagamentos sugeridos'),el('p',suggestion.criterio||''),el('p','Distribuição limitada ao saldo de cada remessa e parcela. Nenhum novo pagamento será criado. Ao salvar, os vínculos serão registrados na parcial, no embarque e no custo, sem consumir o mesmo saldo duas vezes.'),table);
    for(const a of suggestion.avisos)dialog.append(el('p',a));
-   dialog.append(btn('Cancelar',close),btn('Aprovar vínculos na apuração',()=>{if(groups.pagamentos.length)throw Error('A apuração mudou. Refaça a sugestão.');suggestion.pagamentos.forEach(p=>adders.pagamentos(p));change();close();msg.textContent='Vínculos aprovados no formulário. Calcule a prévia e salve a apuração para registrar. Nenhum pagamento foi criado.';}));dialog.addEventListener('cancel',ev=>{ev.preventDefault();close();});dialog.showModal();
+   dialog.append(btn('Cancelar',close),btn('Aprovar vínculos na apuração',()=>{if(signature(groups.pagamentos.map(r=>({id:r.id,...read(r.f),contrato_id:r.contrato_id})))!==signature(before))throw Error('A apuração mudou. Refaça a sugestão.');additions.forEach(p=>adders.pagamentos(p));change();close();msg.textContent='Vínculos aprovados no formulário. Calcule a prévia e salve a apuração para registrar. Nenhum pagamento foi criado.';}));dialog.addEventListener('cancel',ev=>{ev.preventDefault();close();});dialog.showModal();
   }));
   collection('despesas','Despesas',[
    ['referencia','Referência da despesa / comprovante'],['categoria','Categoria','text',['Frete','Seguro','Taxas','Despachante','Despesas aduaneiras','Taxas bancárias','Outras','Multa']],['valor','Valor da despesa','number'],['moeda','Moeda da despesa','text',['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF']],['cambio','Taxa efetiva da despesa para BRL','number'],['situacao','Confirmação da despesa','text',['Prevista','Confirmada']],['data','Data da despesa','date'],['pedido_item_id','Produto penalizado (obrigatório para multa)','text',items]
@@ -120,7 +125,7 @@ export function initCustosImportacao(api,parent){
   form.append(el('p','Este módulo não movimenta estoque nem atualiza o Nomus. Os tributos e créditos são informados conforme os documentos e a régua da contabilidade; não há cálculo automático de incidência tributária.'));
   const out=el('section',undefined,'imp-custo-resultado');body.append(out);
   if(calc)result(calc,out,saved?.estado);
-  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
+  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id,remessa_id:r.remessa_id,parcela_id:r.parcela_id,remessa_referencia:r.remessa_referencia,parcela_referencia:r.parcela_referencia}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
   function syncRequired(finalizar=false){for(const row of groups.despesas){row.f.pedido_item_id.required=row.f.categoria.value==='Multa';row.f.data.required=finalizar&&row.f.situacao.value==='Confirmada';}for(const c of Object.values(checks))c.required=finalizar;}
   async function preview(){
    syncRequired();if(!validarCampos(form))return null;
@@ -138,7 +143,7 @@ export function initCustosImportacao(api,parent){
     if(!pending||pending.finalizar!==finalizar)pending={...payload,requisicao_id:crypto.randomUUID()};
     busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);
     try{await api(pending);}finally{busy=false;if(valid(g))controls.forEach((x,i)=>x.disabled=states[i]);}
-    if(!valid(g))return;dirty=false;pending=null;await open(e.id);msg.textContent=finalizar?'Custo finalizado. Memória e histórico preservados.':'Apuração provisória salva. Saldos de pagamentos reservados.';msg.className='status';
+    if(!valid(g))return;dirty=false;pending=null;await open(e.id);msg.textContent=finalizar?'Custo finalizado. Memória e histórico preservados.':'Apuração provisória salva. Pagamentos conectados à parcial e ao embarque; saldos reservados sem duplicação.';msg.className='status';
    }
    form.append(btn('Salvar apuração provisória',()=>save(false)),btn('Finalizar custo',()=>save(true)));
   }else for(const x of form.querySelectorAll('input,select,textarea'))x.disabled=true;
