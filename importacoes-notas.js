@@ -1,5 +1,6 @@
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo14';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261029-aceite2';
-import {initLeituraDI} from './importacoes-di.js?v=20261028-di1';
+import {initLeituraDI} from './importacoes-di.js?v=20261029-fluxo14';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const brl=v=>v==null?'Não apurado':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 export function initNotasImportacao(api,parent){
@@ -46,7 +47,7 @@ export function initNotasImportacao(api,parent){
  dirty=false;pending=null;render();}
  const productLabel=id=>{const p=products.get(String(id));return p?(p.codigo_axe||'#'+p.id)+' · '+p.descricao_referencia:'Selecionar produto AXE';};
  const declarationLabel=id=>declarations.get(id)?.referencia||'Selecionar DI/DUIMP';
- async function chooseProduct(row){await picker('Produto do cadastro AXE',(pagina,busca)=>api({acao:'nf_produtos',pagina,busca}),[['Código',p=>p.codigo_axe||'#'+p.id],['Descrição AXE',p=>p.descricao_referencia],['Unidade',p=>p.unidade_referencia],['NCM',p=>p.ncm_referencia||'Pendente']],p=>{products.set(String(p.id),p);row.produto_id=String(p.id);changed();render();});}
+ async function chooseProduct(row){const source=shipment?.itens.find(x=>x.pedido_item_id===row.pedido_item_id);const cad=initCadastrosImportacao(api,root);await cad.escolher('produto',source?{descricao_referencia:source.descricao,unidade_referencia:source.unidade}:{},p=>{products.set(String(p.id),p);row.produto_id=String(p.id);changed();render();});}
  async function chooseDI(row){if(!shipment)throw Error('Selecione o embarque primeiro');await picker('DI/DUIMP do processo',(pagina,busca)=>api({acao:'fx_listar',tipo:'declaracoes',pagina,busca}),[['Declaração',x=>x.referencia],['Fornecedor',x=>x.fornecedor],['Moeda',x=>x.moeda]],async d=>{const full=await locked(()=>api({acao:'fx_detalhe',tipo:'declaracoes',id:d.id}));if(String(full.fornecedor_id)!==String(shipment.fornecedor_id)||full.moeda!==shipment.moeda)throw Error('Selecione uma declaração do mesmo fornecedor e moeda do embarque.');declarations.set(d.id,d);row.declaracao_id=d.id;row.leitura_id='';row.di_item='';changed();render();});}
 
  function addDIControls(group,grid,row,readOnly){
@@ -84,7 +85,7 @@ export function initNotasImportacao(api,parent){
    for(const row of rows){
     const group=el('fieldset'),grid=el('div',undefined,'import-mapping');group.append(el('legend','Vínculo com pedido e produto'),grid);
     const pb=button(productLabel(row.produto_id),()=>chooseProduct(row)),db=button(declarationLabel(row.declaracao_id),()=>chooseDI(row));grid.append(pb,db);
-    const l=el('label','Item do pedido neste embarque'),s=el('select');s.setAttribute('aria-label','Item do pedido neste embarque');s.required=true;s.append(new Option('Selecionar item',''));for(const x of shipment?.itens||[])s.append(new Option(x.pedido+' · Linha '+x.linha+' · '+x.descricao+' · Recebido '+x.recebida+' '+x.unidade,x.pedido_item_id));s.value=row.pedido_item_id||'';s.onchange=()=>{row.pedido_item_id=s.value;changed();};l.append(s);grid.append(l);
+    const l=el('label','Item do pedido neste embarque'),s=el('select');s.setAttribute('aria-label','Item do pedido neste embarque');s.required=true;s.append(new Option('Selecionar item',''));for(const x of shipment?.itens||[])s.append(new Option(x.pedido+' · Linha '+x.linha+' · '+x.descricao+' · Recebido '+x.recebida+' '+x.unidade,x.pedido_item_id));s.value=row.pedido_item_id||'';s.onchange=()=>{row.pedido_item_id=s.value;const linked=shipment?.itens.find(x=>x.pedido_item_id===s.value);if(linked?.produto_id){row.produto_id=String(linked.produto_id);pb.textContent='Produto do cadastro AXE #'+linked.produto_id;}changed();};l.append(s);grid.append(l);
     addDIControls(group,grid,row,readOnly);
     const qty=input(grid,'Quantidade da nota vinculada',row.quantidade,'number'),factor=input(grid,'Fator: unidade da nota → unidade AXE/pedido',row.fator||'1','number'),reason=input(grid,'Justificativa de conversão / divergência / conferência manual',row.justificativa||'','textarea');
     qty.required=true;qty.min='0.000001';factor.required=true;factor.min='0.000001';controlesVinculos.set(row,{produto:pb,declaracao:db,item:s,leitura:grid.querySelectorAll('button')[2]});

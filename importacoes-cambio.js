@@ -1,3 +1,5 @@
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo14';
+import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo14';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
@@ -13,6 +15,7 @@ export function initConciliacaoCambio(api,parent){
  const root=el('section',undefined,'imp-internacional imp-cambio');root.hidden=true;parent.append(root);
  const nav=el('div',undefined,'catalog-tabs'),msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');
  root.append(el('h2','Conciliação cambial'),el('p','Pendência financeira independente do estoque e do custo dos produtos. Os vínculos usam o pedido de compra, mesmo que as invoices tenham números diferentes.','intro'),nav,msg,body);
+ const cadastros=initCadastrosImportacao(api,root);
  let pdfNovo=null,pdfPrecisaLer=false;
  let tipo='contratos',pagina=0,busca='',epoch=0,seq=0,dirty=false,busy=false,pending=null,current=null,opts={editar:false,fornecedores:[]};
  const dialogs=new Set(),valid=g=>g===epoch&&!root.hidden,guard=()=>root.hidden||!busy&&(!dirty||confirm('Há alterações cambiais não salvas. Deseja descartá-las?'));
@@ -108,8 +111,8 @@ export function initConciliacaoCambio(api,parent){
    if(!r.linhas.length)out.append(el('p','Nenhum arquivo anexado.'));
   }
   if(opts.editar&&item.status==='Ativo'){
-   const controls=el('div',undefined,'import-mapping'),category=field(controls,'categoria_anexo','Tipo do arquivo','CONTRATO','text',[['CONTRATO','Contrato de câmbio'],['SWIFT','Comprovante SWIFT']]),file=field(controls,'arquivo_cambio','Arquivo PDF','','file');file.accept='.pdf,application/pdf';file.required=true;const check=el('input');check.type='checkbox';check.required=true;Object.assign(check.style,{width:'18px',height:'18px',minHeight:'0',margin:'0',flex:'0 0 18px'});const label=el('label','Confirmo que o arquivo pertence ao contrato '+item.referencia);Object.assign(label.style,{display:'flex',flexDirection:'row',alignItems:'center',gap:'8px',margin:'16px 0'});label.prepend(check);let retry=null;
-   file.onchange=()=>{retry=null;check.checked=false;};category.onchange=()=>{retry=null;check.checked=false;};
+   const controls=el('div',undefined,'import-mapping'),category=field(controls,'categoria_anexo','Tipo do arquivo','CONTRATO','text',[['CONTRATO','Contrato de câmbio'],['SWIFT','Comprovante SWIFT']]),file=field(controls,'arquivo_cambio','Arquivo PDF','','file');file.accept='.pdf,application/pdf';file.required=true;const check=el('input');check.type='checkbox';check.required=true;Object.assign(check.style,{width:'18px',height:'18px',minHeight:'0',margin:'0',flex:'0 0 18px'});const label=el('label','Confirmo que o arquivo pertence ao contrato '+item.referencia);Object.assign(label.style,{display:'flex',flexDirection:'row',alignItems:'center',gap:'8px',margin:'16px 0'});label.prepend(check);aceiteDocumentoOficial(check,false);let retry=null;
+   file.onchange=()=>{retry=null;aceiteDocumentoOficial(check,false);};category.onchange=()=>{retry=null;aceiteDocumentoOficial(check,false);};
    box.append(el('p','PDF de até 8 MB. O anexo preserva o original e não preenche valores nem confirma baixa bancária.'),controls,label,btn('Anexar arquivo',async()=>{
     if(!validarCampos(box))return;const f=file.files?.[0];if(!f)throw Error('Selecione o arquivo PDF.');if(!check.checked)throw Error('Confirme o vínculo do arquivo com este contrato.');if(f.size>8388608||!f.size)throw Error('Selecione PDF de até 8 MB.');
     if(!retry){const bytes=new Uint8Array(await f.arrayBuffer());if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Selecione um arquivo PDF válido.');let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));retry={acao:'fxdoc_upload',contrato_id:item.id,categoria:category.value,nome:f.name,conteudo:btoa(binary),confirmado:true,requisicao_id:crypto.randomUUID()};}
@@ -163,6 +166,7 @@ export function initConciliacaoCambio(api,parent){
     ['referencia',tipo==='contratos'?'Número do contrato':'Número da DI / DUIMP'],['fornecedor_id','Fornecedor','text',[['','Selecionar fornecedor'],...opts.fornecedores.map(x=>[String(x.id),x.nome])]],
     ['moeda','Moeda das mercadorias','text',moedas],['valor',tipo==='contratos'?'Valor do contrato em moeda estrangeira':'Valor das mercadorias para comprovação (FOB)','number'],['status','Situação do documento','text',['Ativo','Cancelado']]
    ],item||{moeda:'USD',status:'Ativo'});f.valor.step='0.01';
+   if(editing)form.append(btn('Selecionar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{razao_social:pdfNovo?.leitura?.beneficiario||''},pr=>{if(![...f.fornecedor_id.options].some(o=>o.value===String(pr.id)))f.fornecedor_id.append(new Option(pr.razao_social,pr.id));f.fornecedor_id.value=String(pr.id);changed();})));
    const defs=tipo==='contratos'?[
     ['banco','Banco'],['data_contratacao','Data da contratação','date'],['data_liquidacao','Data da liquidação','date'],['prazo_comprovacao','Prazo de comprovação ao banco','date'],
     ['proforma','Proforma / invoice do pagamento'],['swift','Referência SWIFT / UETR'],['taxa','Taxa efetiva do banco para BRL','number'],['valor_brl','Valor efetivamente pago em BRL','number'],
@@ -198,7 +202,7 @@ export function initConciliacaoCambio(api,parent){
   }
   if(!editing)for(const e of form.querySelectorAll('input,select,textarea'))e.disabled=true;
   if(editing){
-   let aceite=null;if(t==='contratos'&&!item?.id&&pdfNovo){const label=el('label','Conferi os dados preenchidos, o fornecedor e o PDF do contrato.');aceite=el('input');aceite.type='checkbox';aceite.required=true;aceite.setAttribute('aria-label','Conferência dos dados do contrato e PDF');Object.assign(aceite.style,{width:'18px',height:'18px',minHeight:'0',margin:'0',flex:'0 0 18px'});Object.assign(label.style,{display:'flex',flexDirection:'row',gap:'8px',alignItems:'center'});label.prepend(aceite);form.append(label);}
+   let aceite=null;if(t==='contratos'&&!item?.id&&pdfNovo){const label=el('label','Conferi os dados preenchidos, o fornecedor e o PDF do contrato.');aceite=el('input');aceite.type='checkbox';aceite.required=true;aceite.setAttribute('aria-label','Conferência dos dados do contrato e PDF');Object.assign(aceite.style,{width:'18px',height:'18px',minHeight:'0',margin:'0',flex:'0 0 18px'});Object.assign(label.style,{display:'flex',flexDirection:'row',gap:'8px',alignItems:'center'});label.prepend(aceite);form.append(label);aceiteDocumentoOficial(aceite,temConflitoDocumental(pdfNovo?.leitura?.avisos));}
    const save=btn(pdfNovo&&!item?.id&&t==='contratos'?'Salvar contrato com PDF':'Salvar '+(tipo==='vinculos'?'vínculo':tipo==='contratos'?'contrato':'declaração'),async()=>{
     if(t==='contratos'&&!item?.id&&pdfPrecisaLer)throw Error('Clique em Ler PDF e preencher contrato antes de salvar o arquivo selecionado.');
     const st=form.querySelector('[name=status]')?.value;for(const n of form.querySelectorAll('[name=data_envio]'))n.required=t==='vinculos'&&['Enviado','Baixado'].includes(st);for(const n of form.querySelectorAll('[name=motivo]'))n.required=st==='Cancelado';for(const n of form.querySelectorAll('[name=data_posicao_banco]'))n.required=!!form.querySelector('[name=saldo_banco]')?.value;for(const n of form.querySelectorAll('[name=data_baixa],[name=evidencia]'))n.required=t==='vinculos'&&form.querySelector('[name=status]')?.value==='Baixado';if(!validarCampos(form))return;
@@ -212,9 +216,9 @@ export function initConciliacaoCambio(api,parent){
   }
  }
  window.addEventListener('beforeunload',e=>{if((dirty||busy)&&!root.hidden){e.preventDefault();e.returnValue='';}});
- return {canLeave:guard,async show(v){
+ return {canLeave:guard,async show(v,secao='contratos'){
   epoch++;seq++;closeDialogs();root.hidden=!v;if(!v){dirty=false;pending=null;pdfNovo=null;return;}
-  tipo='contratos';pagina=0;busca='';dirty=false;pending=null;current=null;tabs();const g=epoch;
+  tipo=['contratos','declaracoes'].includes(secao)?secao:'contratos';pagina=0;busca='';dirty=false;pending=null;current=null;tabs();const g=epoch;
   try{opts=await api({acao:'fx_opcoes'});if(valid(g))await list();}catch(e){if(valid(g))msg.textContent=e.message;}
  },reset(){epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;pdfNovo=null;opts={editar:false,fornecedores:[]};body.replaceChildren();}};
 }

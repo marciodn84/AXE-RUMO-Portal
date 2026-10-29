@@ -1,3 +1,4 @@
+import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo14';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 const keys=['FOB','Frete','Seguro','II','IPI','ICMS','PIS','COFINS','IBS','CBS'];
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
@@ -24,10 +25,10 @@ export function initLeituraDI(api,onBusy){
     const scroll=el('div');scroll.className='scroll';const table=el('table'),head=el('tr');['Campo (BRL)','Valor lido / revisado','Página','Origem / conflito'].forEach(t=>head.append(el('th',t)));table.append(head);
     for(const k of keys){const f=item.campos[k]??={valor:null,pagina:null,trecho:''},tr=el('tr'),v=el('td'),p=el('td'),evidence=el('td');field(v,k+' do item '+item.id,f.valor,x=>f.valor=x,'number');field(p,'Página de '+k+' do item '+item.id,f.pagina,x=>f.pagina=x,'number');const details=el('details');details.append(el('summary',f.conflitos?.length?'Conflito: '+f.conflitos.join(' / '):f.valor==null?'Não informado':'Ver trecho'),el('p',f.trecho||'Não reconhecido. Preencha somente com base no documento.'));evidence.append(details);tr.append(el('td',k),v,p,evidence);table.append(tr);}scroll.append(table);box.append(scroll);out.append(box);
    }
-   field(out,'Justificativa e referência documental das correções',review.motivo,v=>review.motivo=v,'textarea');
+   const correction=field(out,'Justificativa e referência documental das correções',review.motivo,v=>review.motivo=v,'textarea');correction.closest('label').hidden=true;out.addEventListener('input',e=>{if(e.target!==c&&e.target!==correction)correction.closest('label').hidden=false;});
    const text=el('details');text.append(el('summary','Texto reconhecido e confiança por página'));for(const p of pages){text.append(el('h3','Página '+p.pagina+' · '+p.metodo+(p.confianca==null?'':' · Confiança OCR '+p.confianca+'%')),el('pre',p.texto));}out.append(text);
-   const check=el('label'),c=el('input');c.type='checkbox';c.setAttribute('aria-label','Revisei a leitura com o documento original');check.append(c,document.createTextNode(' Revisei a leitura com o documento original, incluindo valores, itens, unidades e páginas de origem.'));out.append(check);
-   out.append(btn('Confirmar leitura e anexar original',async()=>{
+   const check=el('label'),c=el('input');c.type='checkbox';c.setAttribute('aria-label','Revisei a leitura com o documento original');check.append(c,document.createTextNode(' Revisei a leitura com o documento original, incluindo valores, itens, unidades e páginas de origem.'));out.append(check);aceiteDocumentoOficial(c,temConflitoDocumental(parsed.avisos)||parsed.itens.some(i=>Object.values(i.campos||{}).some(f=>f.conflitos?.length)));
+   out.append(btn('Importar DI/DUIMP e anexar original',async()=>{
     if(!c.checked)throw Error('Confirme a revisão da leitura.');
     if(!pending)pending={acao:'nf_di_upload',declaracao_id:declaration.id,nome:source.name,conteudo:await base64(source),paginas:pages,revisado:structuredClone(review),confirmado:true,requisicao_id:crypto.randomUUID()};
     status.textContent='Anexando o original e registrando a revisão…';const saved=await lock(()=>api(pending));dirty=false;close(true);await onSaved(saved);
@@ -44,3 +45,4 @@ export function initLeituraDI(api,onBusy){
  function base64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(Error('Não foi possível ler o arquivo'));r.readAsDataURL(file);});}
  return {open,canLeave,reset(){abort?.abort();close(true);}};
 }
+

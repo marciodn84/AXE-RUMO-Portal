@@ -1,8 +1,11 @@
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo14';
+import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo14';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const dt=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'Não identificado';
 export function initACKImportacao(api,root,onSaved){
+ const cadastros=initCadastrosImportacao(api,root);
  let dialog=null,dirty=false,busy=false,controller=null;
  const guard=()=>!busy&&(!dirty||confirm('Há um ACK em revisão. Deseja descartar esta revisão?'));
  function close(){controller?.abort();dialog?.close();dialog?.remove();dialog=null;dirty=false;}
@@ -26,7 +29,7 @@ export function initACKImportacao(api,root,onSaved){
    }
   }
   if(editar&&pedido.status!=='Cancelado'){
-   const box=el('fieldset');box.append(el('legend','Anexar ACK em PDF'),el('p','PDF de até 8 MB e 20 páginas. O documento será guardado somente após sua confirmação.'));
+   const box=el('fieldset');box.append(el('legend','Anexar ACK em PDF'),el('p','PDF de até 8 MB e 20 páginas. O documento oficial será conferido com o pedido durante a importação.'));
    const file=input(box,'Arquivo de ACK','file');file.accept='.pdf,application/pdf';let selected=null,pages=null,parsed=null,upload=null,applyReq=null;
    file.onchange=()=>{dirty=!!file.files[0];selected=null;pages=null;parsed=null;upload=null;applyReq=null;review.replaceChildren();status.textContent='';};
    box.append(btn('Ler ACK',async()=>{
@@ -36,18 +39,18 @@ export function initACKImportacao(api,root,onSaved){
     const grid=el('div',undefined,'import-mapping');review.append(el('h3','Revisão do ACK'),grid);
     const po=input(grid,'Pedido informado no ACK','text',parsed.pedido||''),num=input(grid,'Número do ACK','text',parsed.ack_numero||''),date=input(grid,'Data do ACK','date',parsed.ack_data||''),reason=input(review,'Justificativa para completar ou corrigir os dados lidos','textarea');
     po.required=true;num.required=true;date.required=true;const warnings=el('ul');for(const w of parsed.avisos)warnings.append(el('li',w));if(parsed.pedido&&parsed.pedido!==pedido.referencia)warnings.append(el('li','ATENÇÃO: o pedido do PDF é '+parsed.pedido+', diferente do cadastro aberto ('+pedido.referencia+'). Confira o arquivo.'));if(parsed.moeda&&parsed.moeda!==pedido.moeda)warnings.append(el('li','Moeda do ACK diverge do pedido; o documento não poderá ser aplicado.'));review.append(warnings);
-    const table=el('table'),head=el('tr');['Linha','Código do fornecedor','Quantidade ACK / pedido','Preço ACK / pedido','Data solicitada','Previsão fornecedor','Conferência'].forEach(t=>head.append(el('th',t)));table.append(head);
+    let conflitoItens=false;const table=el('table'),head=el('tr');['Linha','Código do fornecedor','Quantidade ACK / pedido','Preço ACK / pedido','Data solicitada','Previsão fornecedor','Conferência','Cadastro AXE'].forEach(t=>head.append(el('th',t)));table.append(head);
     for(const x of parsed.itens){const old=pedido.itens.find(y=>String(Number(y.linha))===String(Number(x.linha))),diff=[];
      if(!old)diff.push('Linha não localizada');else{if(Number(old.quantidade)!==Number(x.quantidade))diff.push('Quantidade diferente');if(Number(old.valor_unitario)!==Number(x.valor_unitario))diff.push('Preço diferente');const code=s=>String(s||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(old.codigo_fornecedor&&![x.codigo_fornecedor,x.part_number].some(c=>code(c)===code(old.codigo_fornecedor)))diff.push('Confira o código');}
-     const tr=el('tr');[x.linha,x.codigo_fornecedor,x.quantidade+' / '+(old?.quantidade??'—'),x.valor_unitario+' / '+(old?.valor_unitario??'—'),dt(x.data_solicitada),x.previsao_fornecedor,diff.join('; ')||'Quantidade e preço conferem'].forEach(t=>tr.append(el('td',t)));table.append(tr);
+     if(diff.length)conflitoItens=true;const tr=el('tr');[x.linha,x.codigo_fornecedor,x.quantidade+' / '+(old?.quantidade??'—'),x.valor_unitario+' / '+(old?.valor_unitario??'—'),dt(x.data_solicitada),x.previsao_fornecedor,diff.join('; ')||'Quantidade e preço conferem'].forEach(t=>tr.append(el('td',t)));const td=el('td');if(editar)td.append(btn(old?.produto_id?'Produto AXE #'+old.produto_id:'Selecionar ou cadastrar produto',()=>cadastros.escolher('produto',{codigo_anterior:old?.codigo_axe,part_number:x.codigo_fornecedor,descricao_referencia:old?.descricao,unidade_referencia:old?.unidade||x.unidade},async pr=>{if(old?.id){await api({acao:'custo_cadastro_vincular',tipo:'produto',item_id:old.id,cadastro_id:pr.id});Object.assign(pedido,await api({acao:'v2_detalhe',tipo:'pedidos',id:pedido.id}));}td.textContent=(pr.codigo_axe||'#'+pr.id)+' · '+pr.descricao_referencia;})));tr.append(td);table.append(tr);
     }
     if(parsed.itens.length){const scroll=el('div',undefined,'scroll');scroll.append(table);review.append(scroll);}
     if(parsed.condicoes.length)review.append(el('p','Condições no documento: '+parsed.condicoes.join('; ')));
     const details=el('details');details.append(el('summary','Texto e páginas do documento'));for(const p of parsed.paginas)details.append(el('h4','Página '+p.pagina+' · '+p.metodo),el('pre',p.texto));review.append(details);
     const preview=el('p'),check=input(review,'Conferi o documento, o fornecedor e as diferenças; confirmo o recebimento do ACK','checkbox');
-    const update=()=>{preview.textContent='Pedido '+pedido.referencia+' | Situação: '+pedido.status+' → ACK recebido | Número do ACK: '+(pedido.ack_numero||'vazio')+' → '+num.value+' | Data do ACK: '+dt(pedido.ack_data)+' → '+dt(date.value);upload=null;applyReq=null;check.checked=false;};
+    const update=()=>{preview.textContent='Pedido '+pedido.referencia+' | Situação: '+pedido.status+' → ACK recebido | Número do ACK: '+(pedido.ack_numero||'vazio')+' → '+num.value+' | Data do ACK: '+dt(pedido.ack_data)+' → '+dt(date.value);reason.closest('label').hidden=po.value.trim()===parsed.pedido&&num.value.trim()===parsed.ack_numero&&date.value===parsed.ack_data;upload=null;applyReq=null;check.checked=false;aceiteDocumentoOficial(check,conflitoItens||temConflitoDocumental(parsed.avisos)||po.value.trim()!==parsed.pedido||num.value.trim()!==parsed.ack_numero||date.value!==parsed.ack_data);};
     for(const f of [po,num,date,reason])f.addEventListener('input',update);update();review.append(preview);
-    review.append(btn('Anexar ACK e confirmar recebimento',async()=>{
+    review.append(btn('Importar ACK e atualizar processo',async()=>{
      reason.required=po.value.trim()!==(parsed.pedido||'')||num.value.trim()!==(parsed.ack_numero||'')||date.value!==(parsed.ack_data||'');if(!validarCampos(review))return;if(!check.checked)throw Error('Confirme a revisão do ACK.');if(po.value.trim()!==pedido.referencia)throw Error('O número do pedido precisa corresponder ao cadastro aberto.');
      if(!num.value.trim()||!date.value)throw Error('Informe número e data do ACK.');
      if(!upload)upload={acao:'ack_upload',...selected,pedido_id:pedido.id,requisicao_id:crypto.randomUUID(),confirmado:true,revisado:{pedido:po.value.trim(),ack_numero:num.value.trim(),ack_data:date.value,motivo:reason.value.trim()}};

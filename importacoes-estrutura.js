@@ -1,14 +1,17 @@
-import {initTransporteDocumental} from './importacoes-transporte.js?v=20261029-transporte10';
-import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-transporte10';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-transporte10';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo14';
+import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo14';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261029-fluxo14';
+import {initTransporteDocumental} from './importacoes-transporte.js?v=20261029-fluxo14';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-fluxo14';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-fluxo14';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-transporte10';
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
 import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-transporte10';
-import {initACKImportacao} from './importacoes-ack.js?v=20261029-aceite2';
+import {initACKImportacao} from './importacoes-ack.js?v=20261029-fluxo14';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261029-aceite2';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261029-conexao13';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-conexao13';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261029-fluxo14';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261029-fluxo14';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-fluxo14';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
@@ -19,10 +22,11 @@ export function vencimentoParcela(data,dias){if(!data)return '';const d=new Date
 export function initEstruturaImportacao(api,legacy){
  const root=node('section',undefined,'cadastro-screen imp-internacional imp-estrutura');root.hidden=true;
  document.getElementById('cadastrosRoot').append(root);
- let tipo='pedidos',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
+ let voltarFluxo=null;
+ let tipo='visao',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
- const guard=()=>!busy&&transporte.canLeave()&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
+ const guard=()=>!busy&&cadastros.canLeave()&&visao.canLeave()&&transporte.canLeave()&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  const check=g=>g===epoch&&!root.hidden;
  function button(text,fn){const b=node('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
@@ -37,10 +41,11 @@ export function initEstruturaImportacao(api,legacy){
  const fields=(parent,defs,data={})=>Object.fromEntries(defs.map(([k,l,t,c])=>[k,field(parent,k,l,data[k],t||'text',c)]));
  const read=inputs=>Object.fromEntries(Object.entries(inputs).map(([k,e])=>[k,e.value.trim()]));
  function grid(parent,title){const box=node('fieldset');box.append(node('legend',title));const g=node('div',undefined,'import-mapping');box.append(g);parent.append(box);return g;}
- function renderNav(){nav.replaceChildren();for(const [key,label] of [['pedidos','Pedidos de compra'],['entrada','Pré-cadastros de e-mail'],['parcelas','Parcelas'],['embarques','Embarques'],['cambio','Conciliação cambial'],['custos','Custo real'],['notas','Notas Nomus'],['anteriores','Registros anteriores']]){
-  const b=button(label,async()=>{if(!guard()||!legacy.canLeave())return;dirty=false;pending=null;current=null;closeDialogs();await legacy.show(false);await entrada.show(false);await fx.show(false);await custos.show(false);await notas.show(false);tipo=key;page=0;epoch++;renderNav();if(key==='entrada'){body.replaceChildren();msg.textContent='';await entrada.show(true,opts.editar);}else if(key==='notas'){body.replaceChildren();msg.textContent='';await notas.show(true);}else if(key==='custos'){body.replaceChildren();msg.textContent='';await custos.show(true);}else if(key==='cambio'){body.replaceChildren();msg.textContent='';await fx.show(true);}else if(key==='anteriores'){body.replaceChildren(node('p','Registros da primeira versão, preservados com seu histórico. Eles não reservam quantidades na nova estrutura.'));await legacy.show(true);}else await list();});b.setAttribute('aria-pressed',String(tipo===key));nav.append(b);
+ function renderNav(){nav.replaceChildren();for(const [key,label] of [['visao','Visão única'],['pedidos','Pedidos de compra'],['entrada','Pré-cadastros de e-mail'],['parcelas','Parcelas'],['embarques','Embarques'],['cambio','Conciliação cambial'],['custos','Custo real'],['notas','Notas Nomus'],['anteriores','Registros anteriores']]){
+  const b=button(label,async()=>{if(!guard()||!legacy.canLeave())return;dirty=false;pending=null;current=null;closeDialogs();await visao.show(false);await legacy.show(false);await entrada.show(false);await fx.show(false);await custos.show(false);await notas.show(false);tipo=key;voltarFluxo=null;page=0;epoch++;renderNav();if(key==='visao'){body.replaceChildren();msg.textContent='';await visao.show(true);}else if(key==='entrada'){body.replaceChildren();msg.textContent='';await entrada.show(true,opts.editar);}else if(key==='notas'){body.replaceChildren();msg.textContent='';await notas.show(true);}else if(key==='custos'){body.replaceChildren();msg.textContent='';await custos.show(true);}else if(key==='cambio'){body.replaceChildren();msg.textContent='';await fx.show(true);}else if(key==='anteriores'){body.replaceChildren(node('p','Registros da primeira versão, preservados com seu histórico. Eles não reservam quantidades na nova estrutura.'));await legacy.show(true);}else await list();});b.setAttribute('aria-pressed',String(tipo===key));nav.append(b);
  }}
  root.append(node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro'),nav,msg,body);
+ const cadastros=initCadastrosImportacao(api,root);
  const entrada=initEntradaEmail(api,root);
  const transporte=initTransporteDocumental(api,root,async id=>{await open(id);});
  const pagamento=initPagamentoDocumental(api,root,async r=>{await open(tipo==='parcelas'?r.id:r.pedido_id);});
@@ -50,6 +55,11 @@ export function initEstruturaImportacao(api,legacy){
  const fx=initConciliacaoCambio(api,root);
  const custos=initCustosImportacao(api,root);
  const notas=initNotasImportacao(api,root);
+ const visao=initVisaoImportacao(api,root,async(t,id,pedidoId)=>{
+  if(!guard())return;await visao.show(false);voltarFluxo=pedidoId||'novo';tipo=t;body.replaceChildren();
+  if(id){const d=await api({acao:'v2_detalhe',tipo:t,id});current=d;edit(d,null,true);}else edit(null);
+ });
+
  let searchValue='';
  async function list(){
   const g=epoch,s=++seq;body.replaceChildren();msg.textContent='Consultando…';
@@ -75,7 +85,7 @@ export function initEstruturaImportacao(api,legacy){
   pagination.append(prev,node('span','Página '+(page+1)+' · '+r.total+' registro(s)'),next);msg.textContent='';
  }
  function situacaoParcela(x){if(x.status==='Cancelada')return 'Cancelada';if(Number(x.valor_pago)>=Number(x.valor))return 'Paga';if(Number(x.valor_pago)>0)return 'Paga parcialmente';if(!x.vencimento)return 'Aguardando data-base';return x.vencimento<new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})?'Vencida':'A pagar';}
- async function open(id){if(!guard())return;const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
+ async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
  function closeDialogs(){transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
   const dialog=node('dialog',undefined,'imp-picker'),heading=node('h2',title),status=node('p'),q=node('input');q.type='search';q.placeholder='Buscar';q.setAttribute('aria-label','Buscar no seletor');
@@ -97,20 +107,21 @@ export function initEstruturaImportacao(api,legacy){
  });}
  function edit(item,order=null,editing=true){
   current=item;body.replaceChildren();msg.textContent='';const g=epoch,t=tipo;
-  const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
+  const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);return;}await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
   if(!editing&&item&&opts.editar&&tipo==='pedidos')top.append(pagamento.button(item.id));
   if(!editing&&item&&opts.editar&&tipo==='parcelas')top.append(pagamento.button(item.pedido_id,item.id)); 
   body.append(top,node('h2',(item?item.referencia:tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque')));
   const form=node('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
-  let collect,summary=()=>{};
+  let collect,summary=()=>{};const participantes={};
   const info=node('div',undefined,'planned-card');
   if(tipo==='pedidos'){
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
     ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
     ['data_pedido','Data do pedido','date'],['condicao_pagamento','Condição de pagamento','textarea'],['ack_numero','Número do ACK'],['ack_data','Data do ACK','date'],['observacoes','Observações','textarea']
    ],item||{status:'Rascunho',moeda:'USD'});
+   if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));general.fornecedor_id.value=String(pr.id);changed();})));
    const section=node('fieldset');section.append(node('legend','Itens do pedido'));const cards=node('div');section.append(cards);form.append(section);
    let lines=[];
    function add(x={}){
@@ -120,7 +131,11 @@ export function initEstruturaImportacao(api,legacy){
      ['quantidade','Quantidade pedida','number'],['valor_unitario','Preço unitário FOB','number'],['peso_bruto_unitario','Peso bruto unitário (kg)','number'],
      ['disponibilizada','Quantidade disponibilizada acumulada','number'],['data_disponibilidade','Data da disponibilidade','date']
     ],{linha:'',quantidade:1,valor_unitario:0,disponibilizada:0,...x});
-    const line={id:x.id||crypto.randomUUID(),inputs,card};lines.push(line);
+    const line={id:x.id||crypto.randomUUID(),produto_id:x.produto_id||null,inputs,card};lines.push(line);
+    if(!line.produto_id&&x.codigo_axe)void api({acao:'custo_cadastro_buscar',tipo:'produto',busca:x.codigo_axe}).then(r=>{if(!card.isConnected)return;const exact=r.linhas.filter(p=>[p.codigo_axe,p.codigo_anterior].includes(x.codigo_axe));if(exact.length===1){line.produto_id=exact[0].id;produtoLabel.textContent=(exact[0].codigo_axe||'#'+exact[0].id)+' · '+exact[0].descricao_referencia;}}).catch(()=>{});
+
+    const produtoLabel=node('p',line.produto_id?'Produto do cadastro AXE #'+line.produto_id:'Produto do cadastro ainda não vinculado');card.prepend(produtoLabel);
+    if(editing)card.append(button('Selecionar produto do cadastro',()=>cadastros.escolher('produto',{codigo_anterior:inputs.codigo_axe.value,part_number:inputs.codigo_fornecedor.value,descricao_referencia:inputs.descricao.value,unidade_referencia:inputs.unidade.value},pr=>{line.produto_id=pr.id;produtoLabel.textContent=(pr.codigo_axe||'#'+pr.id)+' · '+pr.descricao_referencia;if(!inputs.descricao.value)inputs.descricao.value=pr.descricao_referencia||'';if(!inputs.unidade.value)inputs.unidade.value=pr.unidade_referencia||'';changed();})));
     if(x.reservada!==undefined)card.append(node('p','Reservada em embarques: '+x.reservada+' · Recebida: '+x.recebida));
     if(editing)card.append(button('Remover item',()=>{lines=lines.filter(l=>l!==line);card.remove();changed();summary();}));
     cards.append(card);return inputs;
@@ -143,8 +158,8 @@ export function initEstruturaImportacao(api,legacy){
       for(const warning of r.avisos)preview.append(node('p',warning,'status error'));
       const scroll=node('div',undefined,'scroll'),table=node('table'),head=node('tr');['Linha','Código Nomus','Descrição','Unidade','Quantidade','Preço unitário','Subtotal PDF'].forEach(t=>head.append(node('th',t)));table.append(head);
       for(const x of r.itens){const tr=node('tr');[x.linha,x.codigo_axe,x.descricao,x.unidade,x.quantidade??'Confirmar',x.valor_unitario??'Confirmar',x.subtotal_documento??'Não informado'].forEach(t=>tr.append(node('td',t)));table.append(tr);}scroll.append(table);preview.append(scroll);
-      const l=node('label'),c=node('input');c.type='checkbox';c.setAttribute('aria-label','Conferi os dados extraídos do pedido Nomus');l.append(c,document.createTextNode(' Conferi os dados extraídos e vou revisar o fornecedor, os códigos e os valores no formulário.'));preview.append(l);
-      const apply=button('Preencher formulário para revisão',()=>{
+      const l=node('label'),c=node('input');c.type='checkbox';c.setAttribute('aria-label','Conferi os dados extraídos do pedido Nomus');l.append(c,document.createTextNode(' Conferi os dados extraídos e vou revisar o fornecedor, os códigos e os valores no formulário.'));preview.append(l);aceiteDocumentoOficial(c,temConflitoDocumental(r.avisos));
+      const apply=button('Usar dados do documento',()=>{
        if(!c.checked)throw Error('Confirme a conferência dos dados extraídos.');if(!parsed?.itens.length)throw Error('Nenhum item foi reconhecido. Use o cadastro manual.');
        if((lines.length||general.referencia.value)&&!confirm('Substituir os dados e itens ainda não salvos deste novo pedido pelos dados lidos do PDF?'))return;
        cards.replaceChildren();lines=[];
@@ -160,7 +175,7 @@ export function initEstruturaImportacao(api,legacy){
      }finally{busy=false;if(check(g))controls.forEach((c,i)=>{if(c.isConnected)c.disabled=states[i];});}
     }),status,preview);form.prepend(box);
    }
-   collect=()=>({...read(general),itens:lines.map(l=>({id:l.id,...read(l.inputs)}))});
+   collect=()=>({...read(general),itens:lines.map(l=>({id:l.id,produto_id:l.produto_id,...read(l.inputs)}))});
    summary=()=>{general.ack_numero.required=general.status.value==='ACK recebido';general.ack_data.required=general.status.value==='ACK recebido';const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
     info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(total-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
@@ -194,10 +209,12 @@ export function initEstruturaImportacao(api,legacy){
     ['referencia','Referência do embarque'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda FOB e cotação do frete','text',moedas],['status','Situação','text',etapasEmbarque]
    ],item||{moeda:'USD',status:'Planejamento'});
    const meta=fields(grid(form,'Transporte e acompanhamento'),[
-    ['servico','Serviço','text',['','DHL','Agente de cargas']],['transportador','Transportador / agente escolhido'],['despachante','Despachante aduaneiro'],['data_envio_despachante','Data de envio ao despachante','date'],
+    ['servico','Serviço','text',['','DHL','Agente de cargas']],['data_envio_despachante','Data de envio ao despachante','date'],
     ['rastreio','AWB / BL / rastreamento'],['etiqueta','Referência da etiqueta'],['previsao_coleta','Coleta prevista','date'],['data_coleta','Coleta realizada','date'],['previsao_chegada','Chegada prevista','date'],
     ['frete_cotado','Frete cotado na moeda selecionada','number'],['urgente','Urgente','text',['Não','Sim']],['motivo','Motivo de urgência / cancelamento'],['observacoes','Observações','textarea']
    ],item?.dados||{urgente:'Não'});
+   const pessoas=grid(form,'Participantes do embarque');
+   for(const role of ['transportador','despachante']){const old=(item?.participantes||[]).find(p=>p.papel===role),select=field(pessoas,role,role==='transportador'?'Transportador':'Despachante',old?.id||'','text',[['','Selecionar cadastro'],...(old?[[String(old.id),old.nome]]:[])]);if(old)participantes[role]=old.id;select.addEventListener('change',()=>{participantes[role]=select.value||null;changed();});if(editing)pessoas.append(button('Buscar ou cadastrar '+role,()=>cadastros.escolher('participante',{razao_social:item?.dados?.[role]||''},pr=>{if(![...select.options].some(o=>o.value===String(pr.id)))select.append(new Option(pr.razao_social,pr.id));select.value=String(pr.id);participantes[role]=pr.id;changed();})));}
    const section=node('fieldset');section.append(node('legend','Itens selecionados de pedidos'));const cards=node('div');section.append(cards);form.append(section);let lines=[];
    function add(x){
     if(lines.some(l=>l.pedido_item_id===(x.pedido_item_id||x.id)))throw Error('Este item já está selecionado. Edite sua quantidade.');
@@ -219,7 +236,7 @@ export function initEstruturaImportacao(api,legacy){
       if(x.moeda!==f.moeda.value)throw Error('Selecione a mesma moeda do pedido.');const inputs=add(x);changed();summary();setTimeout(()=>inputs.quantidade.focus(),0);
      });
    }));
-   collect=()=>({...read(f),dados:read(meta),itens:lines.map(l=>({pedido_item_id:l.pedido_item_id,...read(l.inputs)}))});
+   collect=()=>({...read(f),dados:{...(item?.dados||{}),...read(meta)},itens:lines.map(l=>({pedido_item_id:l.pedido_item_id,...read(l.inputs)}))});
    summary=()=>{meta.data_coleta.required=['Em trânsito','Em desembaraço','Recebido'].includes(f.status.value);meta.motivo.required=meta.urgente.value==='Sim'||f.status.value==='Cancelado';const d=collect(),total=lines.reduce((s,l)=>s+Number(l.inputs.quantidade.value||0)*Number(l.valor_unitario),0),frete=Number(d.dados.frete_cotado||0);
     const pendentePeso=lines.some(l=>!Number(l.inputs.peso_bruto.value));
     info.replaceChildren(node('h3','FOB selecionado: '+money(total,d.moeda)),node('p','Peso bruto informado: '+lines.reduce((s,l)=>s+Number(l.inputs.peso_bruto.value||0),0).toLocaleString('pt-BR')+' kg'+(pendentePeso?' · Há itens sem peso informado.':'')),
@@ -237,7 +254,7 @@ export function initEstruturaImportacao(api,legacy){
     if(!pending)pending={acao:'v2_salvar',tipo:t,id:item?.id||null,versao:item?.versao||null,requisicao_id:crypto.randomUUID(),dados};
     busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')];controls.forEach(e=>e.disabled=true);
     let r;try{r=await api(pending);}finally{busy=false;if(check(g)){controls.forEach(e=>e.disabled=false);summary();}}
-    if(!check(g))return;dirty=false;pending=null;await open(r.id);msg.textContent='Registro salvo. Histórico preservado.';msg.className='status';
+    if(!check(g))return;if(t==='embarques')for(const [role,id]of Object.entries(participantes))if(id)await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:r.id,cadastro_id:id});dirty=false;pending=null;await open(r.id);msg.textContent='Registro salvo. Histórico preservado.';msg.className='status';
    });form.append(save);
   }else if(item){
    if(tipo==='embarques'){const documentos=node('section');body.append(documentos);void transporte.render(item,documentos,opts.editar);}
@@ -255,11 +272,11 @@ export function initEstruturaImportacao(api,legacy){
  return {
   canLeave:()=>root.hidden||(guard()&&legacy.canLeave()),
   async show(visible){
-   epoch++;seq++;closeDialogs();entrada.show(false);fx.show(false);custos.show(false);notas.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
-   root.hidden=false;dirty=false;pending=null;current=null;tipo='pedidos';page=0;searchValue='';renderNav();const g=epoch;
-   try{opts=await api({acao:'v2_opcoes'});if(check(g))await list();}catch(e){if(check(g))msg.textContent=e.message;}
+   epoch++;seq++;closeDialogs();entrada.show(false);fx.show(false);custos.show(false);notas.show(false);visao.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
+   root.hidden=false;dirty=false;pending=null;current=null;tipo='visao';voltarFluxo=null;page=0;searchValue='';renderNav();const g=epoch;
+   try{opts=await api({acao:'v2_opcoes'});if(check(g))await visao.show(true);}catch(e){if(check(g))msg.textContent=e.message;}
   },
-  reset(){transporte.reset();pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
+  reset(){cadastros.reset();visao.reset();voltarFluxo=null;transporte.reset();pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };
 }
 
