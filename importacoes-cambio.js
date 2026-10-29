@@ -1,4 +1,5 @@
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
+import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['USD','EUR','GBP','CAD','CNY','JPY','CHF','BRL'];
 const money=(v,c)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:c||'USD'}).format(Number(v||0));
@@ -12,6 +13,7 @@ export function initConciliacaoCambio(api,parent){
  const root=el('section',undefined,'imp-internacional imp-cambio');root.hidden=true;parent.append(root);
  const nav=el('div',undefined,'catalog-tabs'),msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');
  root.append(el('h2','Conciliação cambial'),el('p','Pendência financeira independente do estoque e do custo dos produtos. Os vínculos usam o pedido de compra, mesmo que as invoices tenham números diferentes.','intro'),nav,msg,body);
+ let pdfNovo=null,pdfPrecisaLer=false;
  let tipo='contratos',pagina=0,busca='',epoch=0,seq=0,dirty=false,busy=false,pending=null,current=null,opts={editar:false,fornecedores:[]};
  const dialogs=new Set(),valid=g=>g===epoch&&!root.hidden,guard=()=>root.hidden||!busy&&(!dirty||confirm('Há alterações cambiais não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
@@ -32,7 +34,7 @@ export function initConciliacaoCambio(api,parent){
   const g=epoch,s=++seq;body.replaceChildren();msg.textContent='Consultando saldos…';
   const toolbar=el('div',undefined,'cadastro-toolbar'),q=field(toolbar,'busca','Buscar contrato, declaração ou pedido',busca,'search');
   toolbar.append(btn('Buscar',async()=>{busca=q.value;pagina=0;await list();}));
-  if(opts.editar&&tipo!=='sugestoes')toolbar.append(btn(tipo==='contratos'?'Novo contrato':tipo==='declaracoes'?'Nova DI / DUIMP':'Novo vínculo',()=>tipo==='vinculos'?chooseLink():edit(null)));
+  if(opts.editar&&tipo!=='sugestoes')toolbar.append(btn(tipo==='contratos'?'Novo contrato':tipo==='declaracoes'?'Nova DI / DUIMP':'Novo vínculo',()=>{pdfNovo=null;pdfPrecisaLer=false;return tipo==='vinculos'?chooseLink():edit(null);}));
   if(tipo==='vinculos')toolbar.append(btn('Exportar pendentes para banco (CSV)',async()=>{
    const r=await api({acao:'fx_exportar',tipo:'vinculos',busca});if(!valid(g))return;
    if(!r.total)throw Error('Nenhum vínculo preparado ou enviado para exportar.');
@@ -116,13 +118,26 @@ export function initConciliacaoCambio(api,parent){
   }
   try{await load();}catch(e){status.textContent=e.message;}
  }
+ function entradaPDF(where,item){
+  const box=el('fieldset'),file=el('input'),status=el('p');box.append(el('legend','Começar pelo PDF do contrato'),el('p','Carregue o documento, confira os dados preenchidos e escolha o fornecedor. Nada será cadastrado durante a leitura.'));file.type='file';file.accept='.pdf,application/pdf';file.setAttribute('aria-label','PDF do novo contrato');let escolhido=null;
+  file.onchange=()=>{escolhido=file.files?.[0]||null;pdfPrecisaLer=!!escolhido;};box.append(file,btn('Ler PDF e preencher contrato',async()=>{
+   if(!escolhido)throw Error('Selecione o PDF do contrato.');if(dirty&&!confirm('Substituir os dados em preenchimento pela leitura do PDF?'))return;
+   busy=true;file.disabled=true;const escolhidoAtual=escolhido,g=epoch;try{const paginas=await lerPDFImportacao(escolhidoAtual,t=>status.textContent=t);const bytes=new Uint8Array(await escolhidoAtual.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));const conteudo=btoa(binary);const r=await api({acao:'fxdoc_ler',conteudo,paginas});if(!valid(g)||!box.isConnected)return;
+    const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');const matched=opts.fornecedores.filter(f=>r.beneficiario&&normalize(f.nome)===normalize(r.beneficiario));
+    pdfPrecisaLer=false;pdfNovo={nome:escolhidoAtual.name,conteudo,paginas,leitura:r};dirty=false;pending=null;edit({...r.dados,status:'Ativo',fornecedor_id:matched.length===1?matched[0].id:'',pedidos:[]},true,true);dirty=true;
+   }finally{busy=false;if(file.isConnected)file.disabled=false;}
+  }),status);
+  if(pdfNovo){box.append(el('p','Arquivo selecionado: '+pdfNovo.nome),el('p','Beneficiário identificado: '+(pdfNovo.leitura.beneficiario||'Não identificado')+'. Confira o fornecedor cadastrado.'));for(const a of pdfNovo.leitura.avisos)box.append(el('p',a));const sources=el('details');sources.append(el('summary','Origem dos dados extraídos'));for(const x of pdfNovo.leitura.origens)sources.append(el('p',x.campo+': '+x.valor+' — '+x.trecho));box.append(sources);}
+  where.append(box);
+ }
  function edit(item,editing=true,isNew=false){
   const g=epoch,t=tipo;current=item;body.replaceChildren();msg.textContent='';
   const toolbar=el('div',undefined,'cadastro-toolbar');toolbar.append(btn('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
   if(!editing&&opts.editar&&item?.status!=='Cancelado')toolbar.append(btn('Editar registro',()=>edit(item,true)));
   body.append(toolbar,el('h3',tipo==='vinculos'?'Vínculo contrato × DI/DUIMP':tipo==='contratos'?'Contrato de câmbio':'Declaração de importação'));
   if(item?.id&&tipo!=='vinculos')balances(item,body);
-  if(tipo==='contratos'){if(item?.id&&!editing)void anexosContrato(item,body);else body.append(el('p','Salve o contrato para anexar o PDF do contrato e o comprovante SWIFT.'));}
+  if(tipo==='contratos'&&!item?.id)entradaPDF(body,item);
+  if(tipo==='contratos'){if(item?.id&&!editing)void anexosContrato(item,body);else if(item?.id)body.append(el('p','Salve as alterações para consultar os anexos.'));else if(!pdfNovo)body.append(el('p','Você também pode preencher manualmente e anexar os arquivos depois.'));}
   const form=el('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
   let collect;
   if(tipo==='vinculos'){
@@ -174,12 +189,14 @@ export function initConciliacaoCambio(api,parent){
   }
   if(!editing)for(const e of form.querySelectorAll('input,select,textarea'))e.disabled=true;
   if(editing){
-   const save=btn('Salvar '+(tipo==='vinculos'?'vínculo':tipo==='contratos'?'contrato':'declaração'),async()=>{
+   let aceite=null;if(t==='contratos'&&!item?.id&&pdfNovo){const label=el('label','Conferi os dados preenchidos, o fornecedor e o PDF do contrato.');aceite=el('input');aceite.type='checkbox';aceite.required=true;aceite.setAttribute('aria-label','Conferência dos dados do contrato e PDF');Object.assign(aceite.style,{width:'18px',height:'18px',minHeight:'0',margin:'0',flex:'0 0 18px'});Object.assign(label.style,{display:'flex',flexDirection:'row',gap:'8px',alignItems:'center'});label.prepend(aceite);form.append(label);}
+   const save=btn(pdfNovo&&!item?.id&&t==='contratos'?'Salvar contrato com PDF':'Salvar '+(tipo==='vinculos'?'vínculo':tipo==='contratos'?'contrato':'declaração'),async()=>{
+    if(t==='contratos'&&!item?.id&&pdfPrecisaLer)throw Error('Clique em Ler PDF e preencher contrato antes de salvar o arquivo selecionado.');
     const st=form.querySelector('[name=status]')?.value;for(const n of form.querySelectorAll('[name=data_envio]'))n.required=t==='vinculos'&&['Enviado','Baixado'].includes(st);for(const n of form.querySelectorAll('[name=motivo]'))n.required=st==='Cancelado';for(const n of form.querySelectorAll('[name=data_posicao_banco]'))n.required=!!form.querySelector('[name=saldo_banco]')?.value;for(const n of form.querySelectorAll('[name=data_baixa],[name=evidencia]'))n.required=t==='vinculos'&&form.querySelector('[name=status]')?.value==='Baixado';if(!validarCampos(form))return;
-    if(!pending)pending={acao:'fx_salvar',tipo:t,id:isNew?null:item?.id||null,versao:isNew?null:item?.versao||null,requisicao_id:crypto.randomUUID(),dados:collect()};
+    if(!pending)pending=pdfNovo&&!item?.id&&t==='contratos'?{acao:'fxdoc_criar',requisicao_id:crypto.randomUUID(),nome:pdfNovo.nome,conteudo:pdfNovo.conteudo,paginas:pdfNovo.paginas,confirmado:aceite?.checked===true,dados:collect()}:{acao:'fx_salvar',tipo:t,id:isNew?null:item?.id||null,versao:isNew?null:item?.versao||null,requisicao_id:crypto.randomUUID(),dados:collect()};
     busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);
     let r;try{r=await api(pending);}finally{busy=false;if(valid(g))controls.forEach((x,i)=>x.disabled=states[i]);}
-    if(!valid(g))return;dirty=false;pending=null;await open(r.id);msg.textContent='Registro salvo. Saldos recalculados e histórico preservado.';msg.className='status';
+    if(!valid(g))return;dirty=false;pending=null;pdfNovo=null;pdfPrecisaLer=false;await open(r.id);msg.textContent='Registro salvo. Saldos recalculados e histórico preservado.';msg.className='status';
    });form.append(save);
   }else if(item?.id){
    const history=el('details');history.append(el('summary','Histórico financeiro'));const out=el('div');history.append(btn('Consultar histórico financeiro',async()=>{const r=await api({acao:'fx_historico',tipo:t,id:item.id});if(!valid(g)||current?.id!==item.id)return;out.replaceChildren();for(const e of r.linhas){const d=el('details');d.append(el('summary',new Date(e.criado_em).toLocaleString('pt-BR')+' · '+(e.anterior?'Alteração':'Criação')),el('pre',JSON.stringify(e,null,2)));out.append(d);}}),out);body.append(history);
@@ -187,9 +204,9 @@ export function initConciliacaoCambio(api,parent){
  }
  window.addEventListener('beforeunload',e=>{if((dirty||busy)&&!root.hidden){e.preventDefault();e.returnValue='';}});
  return {canLeave:guard,async show(v){
-  epoch++;seq++;closeDialogs();root.hidden=!v;if(!v){dirty=false;pending=null;return;}
+  epoch++;seq++;closeDialogs();root.hidden=!v;if(!v){dirty=false;pending=null;pdfNovo=null;return;}
   tipo='contratos';pagina=0;busca='';dirty=false;pending=null;current=null;tabs();const g=epoch;
   try{opts=await api({acao:'fx_opcoes'});if(valid(g))await list();}catch(e){if(valid(g))msg.textContent=e.message;}
- },reset(){epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};body.replaceChildren();}};
+ },reset(){epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;pdfNovo=null;opts={editar:false,fornecedores:[]};body.replaceChildren();}};
 }
 

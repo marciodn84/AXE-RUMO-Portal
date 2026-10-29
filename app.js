@@ -1,7 +1,7 @@
-import './validacao-campos.js?v=20261029-cambio4';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-cambio4';
+import './validacao-campos.js?v=20261029-cambio5';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-cambio5';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261029-cambio4';
+import {initERP} from './erp.js?v=20261029-cambio5';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';
 import {initCadastros} from './cadastros.js?v=20261023-gestao1';
 import {initCatalogo} from './catalogo.js?v=20261023-gestao1';
