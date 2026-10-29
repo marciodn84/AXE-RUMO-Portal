@@ -7,3 +7,7 @@
 .imp-cambio{min-width:0;width:100%;box-sizing:border-box}.imp-cambio .erp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.imp-cambio .stat-card{min-width:0}.imp-cambio .stat-card strong{font-size:24px;overflow-wrap:anywhere;white-space:normal}.imp-cambio table td{vertical-align:top}.imp-cambio .catalog-tabs{position:static}@media(max-width:600px){.imp-cambio .erp-stats{grid-template-columns:1fr}}
 
 .imp-custos{width:100%;min-width:0}.imp-custos .import-mapping input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}.imp-custos .imp-custo-resultado{border-top:1px solid #d6e1ea;margin-top:24px;padding-top:20px}.imp-custos .imp-custo-resultado .scroll{max-height:none}.imp-custos .imp-line>p{overflow-wrap:anywhere}.imp-custos .imp-custo-resultado li{line-height:1.7}.imp-custos .imp-custo-resultado th{white-space:normal;min-width:90px}.imp-custos .imp-custo-resultado td{white-space:normal;min-width:90px}
+
+.imp-notas fieldset{margin:1rem 0;min-width:0}.imp-notas button{max-width:100%;white-space:normal;overflow-wrap:anywhere}.imp-notas .nf-chave{overflow-wrap:anywhere}.imp-notas input[type=file]{max-width:100%}.imp-notas textarea{min-height:72px}.imp-notas pre{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.imp-notas input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}.imp-notas [type=checkbox]{accent-color:#155d86}
