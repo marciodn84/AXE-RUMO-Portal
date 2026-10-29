@@ -1,3 +1,4 @@
+import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261028-fech1';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261028-fech1';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261028-cambio1';
@@ -110,6 +111,38 @@ export function initEstruturaImportacao(api,legacy){
    }
    (item?.itens||[]).forEach(add);
    if(editing)section.append(button('Adicionar item',()=>{if(lines.length>=100)throw Error('Até 100 itens por pedido.');const f=add();changed();f.linha.focus();}));
+   if(!item&&editing){
+    const box=node('fieldset'),status=node('p','','status'),preview=node('div');box.append(node('legend','Cadastrar pelo PDF do Nomus'),node('p','Leia o PDF do pedido de compra e confira os dados antes de preencher o formulário. O arquivo é usado para leitura; o pedido só será gravado em Salvar pedido.'));
+    const file=field(box,'pdf_nomus','PDF do pedido Nomus (até 8 MB / 20 páginas)','','file');file.accept='.pdf,application/pdf';let parsed=null,arquivo=null;
+    file.onchange=()=>{parsed=null;arquivo=null;preview.replaceChildren();status.textContent='';};
+    box.append(button('Ler PDF do Nomus',async()=>{
+     const selected=file.files[0];if(!selected)throw Error('Selecione o PDF do pedido.');
+     busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);
+     try{
+      const paginas=await lerPDFImportacao(selected,t=>status.textContent=t);
+      const conteudo=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(Error('Não foi possível ler o arquivo'));r.readAsDataURL(selected);});
+      const r=await api({acao:'pedido_pdf_ler',conteudo,paginas});if(!check(g))return;
+      const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await selected.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('');parsed=r;arquivo={nome:selected.name,hash};
+      preview.replaceChildren(node('p','Pedido: '+(r.referencia||'Não identificado')+' · Fornecedor no PDF: '+(r.fornecedor||'Não identificado')+' · '+r.itens.length+' item(ns)'),node('p','Data: '+dt(r.data_pedido)+' · Moeda: '+(r.moeda||'Confirmar')+' · Total do PDF: '+(r.total_documento?money(r.total_documento,r.moeda):'Não identificado')));
+      for(const warning of r.avisos)preview.append(node('p',warning,'status error'));
+      const scroll=node('div',undefined,'scroll'),table=node('table'),head=node('tr');['Linha','Código Nomus','Descrição','Unidade','Quantidade','Preço unitário','Subtotal PDF'].forEach(t=>head.append(node('th',t)));table.append(head);
+      for(const x of r.itens){const tr=node('tr');[x.linha,x.codigo_axe,x.descricao,x.unidade,x.quantidade??'Confirmar',x.valor_unitario??'Confirmar',x.subtotal_documento??'Não informado'].forEach(t=>tr.append(node('td',t)));table.append(tr);}scroll.append(table);preview.append(scroll);
+      const l=node('label'),c=node('input');c.type='checkbox';c.setAttribute('aria-label','Conferi os dados extraídos do pedido Nomus');l.append(c,document.createTextNode(' Conferi os dados extraídos e vou revisar o fornecedor, os códigos e os valores no formulário.'));preview.append(l);
+      const apply=button('Preencher formulário para revisão',()=>{
+       if(!c.checked)throw Error('Confirme a conferência dos dados extraídos.');if(!parsed?.itens.length)throw Error('Nenhum item foi reconhecido. Use o cadastro manual.');
+       if((lines.length||general.referencia.value)&&!confirm('Substituir os dados e itens ainda não salvos deste novo pedido pelos dados lidos do PDF?'))return;
+       cards.replaceChildren();lines=[];
+       general.referencia.value=parsed.referencia||'';general.data_pedido.value=parsed.data_pedido||'';general.moeda.value=parsed.moeda||'';
+       const normalize=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+       const match=opts.fornecedores.filter(f=>normalize(f.nome)===normalize(parsed.fornecedor));if(match.length===1&&parsed.fornecedor)general.fornecedor_id.value=String(match[0].id);else general.fornecedor_id.value='';
+       for(const x of parsed.itens)add({...x,quantidade:x.quantidade??'',valor_unitario:x.valor_unitario??'',peso_bruto_unitario:'',disponibilizada:0,data_disponibilidade:''});
+       const entrega=parsed.itens.filter(x=>x.entrega_documento).map(x=>'Linha '+x.linha+': entrega prevista no PDF '+x.entrega_documento).join('\n');
+       general.observacoes.value=[general.observacoes.value,'Origem: PDF Nomus '+arquivo.nome+' · SHA-256 '+arquivo.hash,'Fornecedor no PDF: '+(parsed.fornecedor||'Não identificado'),entrega,...(parsed.condicoes_comerciais||[]),...parsed.avisos].filter(Boolean).join('\n');
+       changed();summary();status.textContent='Formulário preenchido. Confirme o fornecedor e os códigos do cadastro AXE; depois clique em Salvar pedido. Nenhum registro foi criado pela leitura.';
+      });preview.append(apply);status.textContent='Leitura concluída. Revise os dados extraídos.';
+     }finally{busy=false;if(check(g))controls.forEach((c,i)=>{if(c.isConnected)c.disabled=states[i];});}
+    }),status,preview);form.prepend(box);
+   }
    collect=()=>({...read(general),itens:lines.map(l=>({id:l.id,...read(l.inputs)}))});
    summary=()=>{const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
     info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
