@@ -99,7 +99,7 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   refresh.disabled=false;
  }
  function navigate(key,produtoId){
-  const route=routes.get(key);if(!route)return;if(importacoesInternacionais&&!importacoesInternacionais.canLeave())return;current=key;
+  const route=routes.get(key);if(!route)return;if(importacoesInternacionais&&!importacoesInternacionais.canLeave())return;current=key;if(!panel.hidden){try{sessionStorage.setItem('axe:erp:ultima-tela',key);}catch{}}
   cadastros.show(null);if(fiscal)fiscal.show(null);if(catalogo)catalogo.show(null);if(importacao)importacao.show(false);if(comercial)comercial.show(null);if(gestao)gestao.show(null);if(importacoesInternacionais)importacoesInternacionais.show(false);home.hidden=true;future.hidden=true;
   for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key){let parent=b.parentElement;while(parent&&parent!==nav){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}}}
   breadcrumb.textContent=[route.group,route.subgroup,route.title].filter(Boolean).join(' / ');eyebrow.textContent=(route.subgroup||route.group).toLocaleUpperCase('pt-BR');title.textContent=route.title;
@@ -128,10 +128,11 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   }
   panel.classList.remove('menu-open');syncMenu();
  }
- const observer=new MutationObserver(()=>{if(!panel.hidden){navigate('inicio');refreshStats();}else{epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
+ const observer=new MutationObserver(()=>{if(!panel.hidden){let saved='inicio';try{const key=sessionStorage.getItem('axe:erp:ultima-tela');if(routes.has(key))saved=key;}catch{}navigate(saved);refreshStats();}else{epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
  observer.observe(panel,{attributes:true,attributeFilter:['hidden']});
  navigate('inicio');
  return {navigate};
 }
+
 
 
