@@ -1,4 +1,4 @@
-import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-excel23';
+import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente24';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const labels={produto:'Produto',cliente:'Cliente',fornecedor:'Fornecedor',referencia_cliente:'Referência do cliente',opcao_cliente:'Produto aceito pelo cliente',produto_fornecedor:'Produto do fornecedor',similar:'Similar técnico',documento:'Documento do produto'};
 const situations=[['EM_AVALIACAO','Em avaliação'],['APROVADO','Aprovado'],['BLOQUEADO','Bloqueado'],['INATIVO','Inativo']];
@@ -9,7 +9,7 @@ const schemas={
  'Características técnicas',['descricao_tecnica','Descrição técnica','textarea'],['marca','Marca'],['fabricante','Fabricante'],['part_number','Part number'],['modelo','Modelo'],['composicao','Composição','textarea'],['aplicacao','Aplicação','textarea'],
  'Classificação fiscal',['ncm_referencia','NCM (8 números)'],['ex_tipi','Ex-TIPI'],['cest','CEST (7 números)'],['gtin','GTIN / código de barras'],['origem_fiscal_padrao','Origem fiscal','select',false,origins],['pais_origem','País de origem (duas letras)'],
  'Estoque e medidas',['controla_estoque','Controla estoque','bool'],['controle_lote','Controla lote','bool'],['controle_serie','Controla número de série','bool'],['estoque_minimo','Estoque mínimo','number'],['peso_liquido_kg','Peso líquido (kg)','number'],['peso_bruto_kg','Peso bruto (kg)','number'],['comprimento_mm','Comprimento (mm)','number'],['largura_mm','Largura (mm)','number'],['altura_mm','Altura (mm)','number'],['observacoes','Observações','textarea']],
- cliente:['Identificação',['nome','Razão social','text',true],['nome_fantasia','Nome fantasia'],['cnpj','CNPJ (14 números)','text',true],['codigo_externo','Código do cliente (automático se vazio)'],['inscricao_estadual','Inscrição estadual'],['grupo_comercial','Grupo comercial'],['ativo','Ativo','bool',true],
+ cliente:['Identificação',['nome','Razão social','text',true],['nome_fantasia','Nome fantasia'],['cnpj','CNPJ (14 números)','text',true],['codigo_externo','Código externo / Nomus (opcional)'],['inscricao_estadual','Inscrição estadual'],['grupo_comercial','Grupo comercial'],['ativo','Ativo','bool',true],
  'Contato',['contato','Responsável'],['email','E-mail','email'],['telefone','Telefone'],['observacoes','Observações','textarea']],
  fornecedor:['Identificação',['razao_social','Razão social / nome','text',true],['nome_fantasia','Nome fantasia'],['pais','País (BR, US, CN…)','text',true],['cnpj','CNPJ do fornecedor nacional'],['documento_fiscal','Identificação fiscal estrangeira'],['inscricao_estadual','Inscrição estadual'],['ativo','Ativo','bool',true],
  'Contato e endereço',['contato','Responsável'],['email','E-mail','email'],['telefone','Telefone'],['endereco','Endereço completo','textarea'],['observacoes','Observações','textarea']],
@@ -24,7 +24,7 @@ const schemas={
  similar:['Relação técnica',['produto_id','Produto AXE','lookup:produto',true],['similar_id','Produto similar','lookup:produto',true],['justificativa','Justificativa técnica','textarea',true]],
  documento:['Referência documental',['produto_id','Produto AXE','lookup:produto',true],['tipo','Tipo de documento','text',true],['titulo','Título','text',true],['referencia_arquivo','Referência do arquivo ou endereço HTTPS','text',true],['revisao','Revisão'],['valido_desde','Válido desde','date'],['valido_ate','Válido até','date']]
 };
-const nameOf=(type,r)=>type==='produto'?[r.codigo_axe||r.codigo_anterior||'#'+r.id,r.descricao_referencia].join(' · '):type==='cliente'?[r.nome,r.cnpj].filter(Boolean).join(' · '):type==='fornecedor'?[r.razao_social,r.cnpj||r.documento_fiscal].filter(Boolean).join(' · '):['Cliente #'+r.cliente_id,r.codigo_cliente,r.descricao_cliente].join(' · ');
+const nameOf=(type,r)=>type==='produto'?[r.codigo_axe||r.codigo_anterior||'#'+r.id,r.descricao_referencia].join(' · '):type==='cliente'?['ID '+r.id,r.nome,r.cnpj].filter(Boolean).join(' · '):type==='fornecedor'?[r.razao_social,r.cnpj||r.documento_fiscal].filter(Boolean).join(' · '):['Cliente #'+r.cliente_id,r.codigo_cliente,r.descricao_cliente].join(' · ');
 export function initCatalogo(api){
  const root=document.getElementById('cadastrosRoot');const screen=node('section',undefined,'cadastro-screen');screen.hidden=true;root.append(screen);
  let epoch=0,request=0,active=null,type='fornecedor',page=0,query='',productFilter=null,referenceFilter=null,dialog=null;
@@ -73,7 +73,7 @@ export function initCatalogo(api){
   const gen=epoch;let record;try{record=id?await api({acao:'detalhe',tipo:kind,id:Number(id)}):{ativo:true,pais:kind==='fornecedor'?'BR':undefined,situacao:'EM_AVALIACAO',tipo_vinculo:'REFERENCIA',preferencial:false,...defaults};}catch(e){status.textContent=e.message;return;}if(gen!==epoch)return;
   if(dialog)dialog.remove();const dlg=node('dialog',undefined,'edit-dialog catalog-dialog');dialog=dlg;const form=node('form');form.append(node('h2',(id?'Editar: ':'Novo cadastro: ')+labels[kind]));
   if(kind==='produto')form.append(node('p','Código AXE: '+(record.codigo_axe||'gerado ao definir a forma de obtenção')+'. O código permanece igual se o NCM mudar. Alterações de descrição, unidade ou NCM voltam à conferência. Impostos e alíquotas são definidos nas regras fiscais.','intro'));
-  if(kind==='cliente')form.append(node('p','Os endereços de entrega e cobrança continuam em “Endereços e cobrança” na lista de clientes.','intro'));
+  if(kind==='cliente'){const identity=node('label','ID ERP'),value=node('input');value.type='text';value.readOnly=true;value.value=record.id??'';value.placeholder='Gerado automaticamente ao salvar';value.setAttribute('aria-label','ID ERP');identity.append(value);form.append(identity);}
   if(kind==='opcao_cliente'||kind==='produto_fornecedor')form.append(node('p','Conversão: quantidade de unidades AXE contida em uma unidade do cliente ou fornecedor. Ex.: uma caixa com 10 unidades AXE → fator 10.','intro'));
   const inputs={};let group;
   for(const field of schemas[kind]){
@@ -117,4 +117,5 @@ export function initCatalogo(api){
  document.addEventListener('axe-editar-catalogo',e=>edit(e.detail.tipo,e.detail.id));
  return {show,edit,reset(){epoch++;request++;active=null;screen.hidden=true;table.replaceChildren();cache.clear();if(dialog)dialog.remove();dialog=null;}};
 }
+
 
