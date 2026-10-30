@@ -60,7 +60,7 @@ export function initCustosImportacao(api,parent){
   }));
  }
  function render(editing){
-  const g=epoch,e=current.embarque,saved=current.custo,base=saved?.dados||{pagamentos:[],despesas:[],tributos:[]},frete=current.transporte,d={...base,despesas:[...(base.despesas||[]).filter(x=>!x.origem_transporte),...(frete?[frete]:[])]};body.replaceChildren();msg.textContent='';
+  const g=epoch,e=current.embarque,saved=current.custo,base=saved?.dados||{pagamentos:[],despesas:[],tributos:[]},frete=current.transporte,d={...base,despesas:[...(base.despesas||[]).filter(x=>!x.origem_transporte),...(frete?[frete]:[])]};d.pagamentos=(base.pagamentos||[]).map(x=>({...x,valor_brl:saved?.resultado?.pagamentos?.find(z=>z.id===x.id)?.valor_brl??x.valor_brl}));body.replaceChildren();msg.textContent='';
   const toolbar=el('div',undefined,'cadastro-toolbar');toolbar.append(btn('Voltar aos embarques',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
   if(opts.editar&&!editing&&saved?.estado!=='Final')toolbar.append(btn('Editar apuração',()=>render(true)));
   if(opts.editar&&saved?.estado==='Final')toolbar.append(btn('Reabrir custo com justificativa',async()=>{
@@ -79,22 +79,23 @@ export function initCustosImportacao(api,parent){
   function collection(key,title,defs,defaults,extra){
    const box=el('fieldset');box.append(el('legend',title));const cards=el('div');box.append(cards);groups[key]=[];
    function add(x={}){
-    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,contrato_id:x.contrato_id||null,remessa_id:x.remessa_id||null,parcela_id:x.parcela_id||null,remessa_referencia:x.remessa_referencia||'',parcela_referencia:x.parcela_referencia||'',origem_fechamento:x.origem_fechamento||null,origem_transporte:x.origem_transporte||null};
+    const card=el('article',undefined,'imp-line'),f=fields(card,defs,{...defaults,...x}),row={id:x.id||crypto.randomUUID(),f,automatico:x.origem_pagamento_automatico===true,contrato_id:x.contrato_id||null,remessa_id:x.remessa_id||null,parcela_id:x.parcela_id||null,remessa_referencia:x.remessa_referencia||'',parcela_referencia:x.parcela_referencia||'',origem_fechamento:x.origem_fechamento||null,origem_transporte:x.origem_transporte||null};
     f.referencia.required=true;if(key!=='despesas')f.pedido_item_id.required=true;if(key==='pagamentos'){f.valor_me.min='0.01';f.valor_brl.min='0.01';}if(extra)extra(card,row,x);groups[key].push(row);cards.append(card);
     if(row.origem_transporte){for(const input of Object.values(f))input.disabled=true;card.append(el('p','Frete dos documentos de transporte; câmbio USD/BRL exclusivo da DUIMP '+(x.duimp_numero||'(pendente)')+'.'));}
-    if(editing&&!row.origem_transporte)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
+    if(row.automatico){f.valor_brl.closest('label').firstChild.textContent='FOB em BRL pelo contrato (automático)';f.data_pagamento.closest('label').firstChild.textContent='Liquidação conforme o SWIFT';for(const input of Object.values(f))input.disabled=true;card.append(el('p','Pagamento reconhecido automaticamente pelo SWIFT e pela invoice.'));}
+    if(editing&&!row.origem_transporte&&!row.automatico)card.append(btn('Remover registro',()=>{groups[key]=groups[key].filter(z=>z!==row);card.remove();change();}));return f;
    }adders[key]=add;(d[key]||[]).forEach(add);
-   if(editing)box.append(btn('Adicionar '+title.toLowerCase(),()=>{if(groups[key].length>=100)throw Error('Até 100 registros por seção.');const f=add();change();Object.values(f)[0].focus();}));form.append(box);
+   if(editing){const target=key==='pagamentos'?el('details'):box;if(key==='pagamentos'){target.append(el('summary','Ajuste de pagamento para divergência'));box.append(target);}target.append(btn('Adicionar '+title.toLowerCase(),()=>{if(groups[key].length>=100)throw Error('Até 100 registros por seção.');const f=add();change();Object.values(f)[0].focus();}));}form.append(box);
   }
-  collection('pagamentos','Pagamentos FOB',[
+  collection('pagamentos','Mercadorias pagas — SWIFT / invoice',[
    ['pedido_item_id','Item pago','text',items],['valor_me','Valor atribuído em '+e.moeda,'number'],['valor_brl','Valor efetivamente pago em BRL (manual)','number'],['referencia','Referência do pagamento / contrato'],['data_pagamento','Data do pagamento manual','date']
   ],{},(card,row,x)=>{
    const note=el('p');card.append(note);
    function update(){row.f.valor_brl.required=!row.contrato_id;row.f.data_pagamento.required=!row.contrato_id;row.f.valor_brl.disabled=!editing||!!row.contrato_id;row.f.data_pagamento.disabled=!editing||!!row.contrato_id;note.textContent=row.contrato_id?'Contrato vinculado: '+row.f.referencia.value+'. O servidor calcula o BRL proporcional ao débito efetivo, sem usar o saldo de comprovação.':'Pagamento manual: informe o valor real em BRL, a referência e a data. Cada valor deve ser atribuído uma única vez.';}
    if(row.remessa_id)card.append(el('p','SWIFT/remessa: '+(row.remessa_referencia||row.remessa_id)+' · Parcela: '+(row.parcela_referencia||row.parcela_id)+' · Liquidação da remessa: '+(x.data_pagamento||'não informada')+'. O saldo não liquidado do contrato não bloqueia este pagamento.'));
-   if(editing){card.append(btn('Selecionar contrato cadastrado',()=>pickContract(c=>{row.remessa_id=null;row.parcela_id=null;row.contrato_id=c.id;row.f.referencia.value=c.referencia;row.f.valor_brl.value='';row.f.data_pagamento.value='';update();change();})),btn('Usar comprovante manual',()=>{row.remessa_id=null;row.parcela_id=null;row.contrato_id=null;update();change();}));}update();
+   if(editing&&!row.automatico){card.append(btn('Selecionar contrato cadastrado',()=>pickContract(c=>{row.remessa_id=null;row.parcela_id=null;row.contrato_id=c.id;row.f.referencia.value=c.referencia;row.f.valor_brl.value='';row.f.data_pagamento.value='';update();change();})),btn('Usar comprovante manual',()=>{row.remessa_id=null;row.parcela_id=null;row.contrato_id=null;update();change();}));}update();
   });
-  if(editing)form.append(btn('Sugerir pagamentos já registrados',async()=>{
+  if(editing){const fallback=el('details');fallback.append(el('summary','Resolver divergência de pagamentos'));form.append(fallback);fallback.append(btn('Sugerir pagamentos já registrados',async()=>{
    const signature=rows=>JSON.stringify(rows.map(p=>[p.id,p.pedido_item_id,p.contrato_id||null,Number(p.valor_me)]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
    const before=groups.pagamentos.map(r=>({id:r.id,...read(r.f),contrato_id:r.contrato_id}));
    const fresh=await api({acao:'custo_detalhe',embarque_id:e.id});if(!valid(g))return;
@@ -109,7 +110,7 @@ export function initCustosImportacao(api,parent){
    dialog.append(el('h3','Conferir pagamentos sugeridos'),el('p',suggestion.criterio||''),el('p','Distribuição limitada ao saldo de cada remessa e parcela. Nenhum novo pagamento será criado. Ao salvar, os vínculos serão registrados na parcial, no embarque e no custo, sem consumir o mesmo saldo duas vezes.'),table);
    for(const a of suggestion.avisos)dialog.append(el('p',a));
    dialog.append(btn('Cancelar',close),btn('Aprovar vínculos na apuração',()=>{if(signature(groups.pagamentos.map(r=>({id:r.id,...read(r.f),contrato_id:r.contrato_id})))!==signature(before))throw Error('A apuração mudou. Refaça a sugestão.');additions.forEach(p=>adders.pagamentos(p));change();close();msg.textContent='Vínculos aprovados no formulário. Calcule a prévia e salve a apuração para registrar. Nenhum pagamento foi criado.';}));dialog.addEventListener('cancel',ev=>{ev.preventDefault();close();});dialog.showModal();
-  }));
+  }));}
   collection('despesas','Despesas',[
    ['referencia','Referência da despesa / comprovante'],['categoria','Categoria','text',['Frete','Seguro','Taxas','Despachante','Despesas aduaneiras','Taxas bancárias','Outras','Multa']],['valor','Valor da despesa','number'],['moeda','Moeda da despesa','text',['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF']],['cambio','Taxa efetiva da despesa para BRL','number'],['situacao','Confirmação da despesa','text',['Prevista','Confirmada']],['data','Data da despesa','date'],['pedido_item_id','Produto penalizado (obrigatório para multa)','text',items]
   ],{moeda:'BRL',situacao:'Prevista',categoria:'Frete'},(card,row,x)=>{
@@ -125,7 +126,7 @@ export function initCustosImportacao(api,parent){
   form.append(el('p','Este módulo não movimenta estoque nem atualiza o Nomus. Os tributos e créditos são informados conforme os documentos e a régua da contabilidade; não há cálculo automático de incidência tributária.'));
   const out=el('section',undefined,'imp-custo-resultado');body.append(out);
   if(calc)result(calc,out,saved?.estado);
-  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{contrato_id:r.contrato_id,remessa_id:r.remessa_id,parcela_id:r.parcela_id,remessa_referencia:r.remessa_referencia,parcela_referencia:r.parcela_referencia}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
+  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{origem_pagamento_automatico:r.automatico,contrato_id:r.contrato_id,remessa_id:r.remessa_id,parcela_id:r.parcela_id,remessa_referencia:r.remessa_referencia,parcela_referencia:r.parcela_referencia}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
   function syncRequired(finalizar=false){for(const row of groups.despesas){row.f.pedido_item_id.required=row.f.categoria.value==='Multa';row.f.data.required=finalizar&&row.f.situacao.value==='Confirmada';}for(const c of Object.values(checks))c.required=finalizar;}
   async function preview(){
    syncRequired();if(!validarCampos(form))return null;

@@ -1,13 +1,13 @@
-import {initLeituraDI} from './importacoes-di.js?v=20261029-fluxo15';
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo15';
-import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261029-fluxo15';
-import {initACKImportacao} from './importacoes-ack.js?v=20261029-fluxo15';
-import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-fluxo15';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-fluxo15';
-import {initTransporteDocumental} from './importacoes-transporte.js?v=20261029-fluxo15';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261029-fluxo15';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-fluxo15';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261029-fluxo15';
+import {initLeituraDI} from './importacoes-di.js?v=20261029-swiftauto16';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-swiftauto16';
+import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261029-swiftauto16';
+import {initACKImportacao} from './importacoes-ack.js?v=20261029-swiftauto16';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-swiftauto16';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-swiftauto16';
+import {initTransporteDocumental} from './importacoes-transporte.js?v=20261029-swiftauto16';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261029-swiftauto16';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-swiftauto16';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261029-swiftauto16';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const date=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'Pendente';
 const money=(v,c='USD')=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:c}).format(Number(v));
@@ -15,9 +15,9 @@ export function initVisaoImportacao(api,parent,editCadastro){
  const root=el('section',null,'imp-internacional imp-fluxo');root.hidden=true;parent.append(root);
  const header=el('div'),summary=el('div'),work=el('section');work.hidden=true;root.append(header,summary,work);
  let declarationBusy=false;const leitorDI=initLeituraDI(wrapDI,v=>declarationBusy=v);function wrapDI(p){return wrap(p);}
- let id=null,current=null,page=0,query='',epoch=0,request=0,loading=false;
+ let avisosImportacao=[],id=null,current=null,page=0,query='',epoch=0,request=0,loading=false;
  const status=el('p');status.setAttribute('role','status');header.append(el('h2','Processo de importação — visão única'),status);
- const wrap=async p=>{const r=await api(p);if(/(?:salvar|aprovar|confirmar|aplicar|criar|importar|upload)$/.test(p.acao||'')&&id&&!root.hidden)void refresh();return r;};
+ const wrap=async p=>{const r=await api(p);if(r.pagamento_automatico?.avisos)avisosImportacao=r.pagamento_automatico.avisos;if(/(?:salvar|aprovar|confirmar|aplicar|criar|importar|upload)$/.test(p.acao||'')&&id&&!root.hidden)void refresh();return r;};
  const cadastros=initCadastrosImportacao(wrap,root);
  const ack=initACKImportacao(wrap,root,refresh),pay=initPagamentoDocumental(wrap,root,refresh),lib=initLiberacaoDocumental(wrap,root,refresh),trans=initTransporteDocumental(wrap,root,refresh);
  const cost=initCustosImportacao(wrap,work),fx=initConciliacaoCambio(wrap,work),notes=initNotasImportacao(wrap,work);
@@ -47,7 +47,7 @@ export function initVisaoImportacao(api,parent,editCadastro){
  function table(parent,heads,rows){const scroll=el('div',null,'scroll'),t=el('table'),h=el('tr');heads.forEach(x=>h.append(el('th',x)));t.append(h);for(const row of rows){const tr=el('tr');row.forEach(x=>{const td=el('td');td.append(x instanceof Node?x:document.createTextNode(String(x??'—')));tr.append(td);});t.append(tr);}scroll.append(t);parent.append(scroll);}
  async function download(kind,file){const r=await api({acao:kind,id:file.id});if(!r.url)throw Error('Arquivo não disponível');const url=new URL(r.url);if(url.protocol!=='https:')throw Error('Endereço de arquivo inválido');const a=el('a');a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';a.click();}
  async function refresh(){if(!id||root.hidden)return;const g=epoch,seq=++request,r=await api({acao:'custo_fluxo_detalhe',pedido_id:id});if(g!==epoch||seq!==request||root.hidden)return;current=r;render();}
- function render(){const r=current,p=r.pedido,f=resumirFluxo(r);summary.replaceChildren();status.textContent='Status atualizado pelos documentos e registros do processo.';
+ function render(){const r=current,p=r.pedido,f=resumirFluxo(r);summary.replaceChildren();status.textContent=avisosImportacao.length?avisosImportacao.join(' '):'Status atualizado pelos documentos e registros do processo.';
   const bar=el('div',null,'cadastro-toolbar');bar.append(btn('Todos os processos',async()=>{if(!await closeWork())return;id=null;await list();}),btn('Atualizar andamento',refresh));if(r.editar)bar.append(btn('Pedido e itens',()=>action('pedido')),btn('Importar ACK',()=>action('ack')),btn('Contrato e SWIFT',()=>action('pagamento')),btn('Invoice e packing list',()=>action('carga')));summary.append(bar,el('h3',p.referencia+' · '+p.fornecedor),el('p',f.status,'fluxo-status'));
   const cards=el('div',null,'erp-stats');for(const [label,value] of [['Pedido',money(f.total,p.moeda)],['Pago',money(f.paid,p.moeda)],['Saldo financeiro',money(f.total-f.paid,p.moeda)],['Saldo do fornecedor',money(f.saldoFornecedor,p.moeda)]]){const c=el('div',null,'stat-card');c.append(el('span',label),el('strong',value));cards.append(c);}summary.append(cards);
   const next=el('article',null,'fluxo-proxima');next.append(el('h3',f.next?'Próxima etapa: '+f.next.nome:'Processo operacional concluído'),el('p',f.next?'Necessário: '+f.next.documento:'As pendências de comprovação cambial permanecem no financeiro.'));if(f.next&&r.editar)next.append(btn('Resolver próxima etapa',()=>action(f.next.acao,f.ships.find(s=>s.proxima===f.next)?.embarque)));summary.append(next);
@@ -58,10 +58,10 @@ export function initVisaoImportacao(api,parent,editCadastro){
   for(const s of f.ships){const e=s.embarque,card=el('article',null,'fluxo-parcial');card.append(el('h3',e.referencia),el('p',s.status,'fluxo-status'),el('p','Situação logística: '+e.status+' · AWB/BL: '+(e.dados?.rastreio||'pendente')+' · Chegada prevista: '+date(e.dados?.previsao_chegada)));
    if(s.proxima)card.append(el('p','Próximo status: '+s.proxima.proximo+' · Necessário: '+s.proxima.documento,'fluxo-proxima'));
    table(card,['Etapa','Situação','Documento ou fato necessário','Ação'],s.etapas.map(t=>[t.nome,t.feito?'Concluída':'Pendente',t.documento,r.editar?btn(t.feito?'Consultar':'Continuar',()=>action(t.acao,e)):'Consulta']));
-   const fin=s.financeiro;card.append(el('h4','Financeiro desta parcial'),el('p','FOB '+money(fin.fob,e.moeda)+' · pagamento vinculado '+money(fin.pago_vinculado,e.moeda)+' · sem vínculo aprovado '+money(Math.max(0,Number(fin.fob)-Number(fin.pago_vinculado)),e.moeda)));
+   const fin=s.financeiro;card.append(el('h4','Financeiro desta parcial'),el('p','FOB '+money(fin.fob,e.moeda)+' · pagamento vinculado '+money(fin.pago_vinculado,e.moeda)+' · saldo ainda não comprovado pelo SWIFT '+money(Math.max(0,Number(fin.fob)-Number(fin.pago_vinculado)),e.moeda)));
    const participants=el('section');participants.append(el('h4','Participantes'));
    for(const role of ['transportador','despachante']){const bound=(e.participantes||[]).find(x=>x.papel===role);participants.append(el('p',(role==='transportador'?'Transportador: ':'Despachante: ')+(bound?bound.nome:'Cadastro não vinculado')));if(r.editar)participants.append(btn('Selecionar '+role,()=>cadastros.escolher('participante',{razao_social:e.dados?.[role]||''},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:e.id,cadastro_id:pr.id});await refresh();})));}card.append(participants);
-   if(r.editar)card.append(btn('Vincular pagamentos e apurar custo',()=>action('custo',e)));
+   if(r.editar)card.append(btn('Consultar pagamentos e apurar custo',()=>action('custo',e)));
    card.append(el('p','Frete: '+money(s.transporte?.dados?.frete_usd,'USD')+' · taxa DUIMP: '+(s.transporte?.dados?.taxa_duimp||'pendente')+' · Custo: '+(s.custo?.estado||'Ainda não salvo')+' · '+money(s.custo?.resultado?.custo_total,'BRL')));
    const docs=el('details');docs.append(el('summary','Documentos desta parcial'));
    for(const d of s.arquivos_carga)docs.append(btn(d.categoria+' · '+d.nome,()=>download('lib_baixar',d)));
