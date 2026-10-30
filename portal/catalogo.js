@@ -1,4 +1,4 @@
-import {padronizarAcoes} from './acoes-icones.js?v=20261030-acoes30';
+import {padronizarAcoes} from './acoes-icones.js?v=20261030-bloqueio31';
 import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261030-clienttabs27';
 import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
