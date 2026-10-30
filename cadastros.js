@@ -13,8 +13,8 @@ export function initCadastros(api){
  const root=document.getElementById('cadastrosRoot');
  for(const [key,[title,description]] of Object.entries(sections)){
   const section=el('section',undefined,'cadastro-screen');section.id='screen-'+key;section.hidden=true;
-  section.append(el('h2',title),el('p',description,'intro'));
-  const tools=el('form',undefined,'searchbar');const search=el('input');search.type='search';search.placeholder='Buscar por nome, código, pedido ou descrição';search.setAttribute('aria-label','Buscar em '+title);tools.append(search);
+  if(key!=='clientes')section.append(el('h2',title),el('p',description,'intro'));
+  const tools=el('form',undefined,'searchbar');const search=el('input');search.type='search';search.placeholder='Buscar por nome, código, pedido ou descrição';search.setAttribute('aria-label',key==='clientes'?'Buscar clientes':'Buscar em '+title);tools.append(search);
   const submit=el('button','Buscar');submit.type='submit';tools.append(submit,button('Atualizar',()=>load(key)));
   if(key==='clientes')tools.append(button('Novo cliente',()=>clientForm()));if(key==='produtos')tools.append(button('Novo produto',()=>productForm()));if(key==='regras')tools.append(button('Nova regra',()=>ruleForm()));
   if(key==='resolver'){const filter=el('select');filter.setAttribute('aria-label','Filtrar pendências por campo');for(const c of [['','Todos os campos'],['descricao_referencia','Descrição'],['unidade_referencia','Unidade'],['ncm_referencia','NCM'],['identificador','Vínculo de código']])filter.append(new Option(c[1],c[0]));filter.onchange=()=>{state[key].field=filter.value;state[key].page=0;load(key)};const lab=el('label','Ver escolhas salvas','versions-filter');const history=el('input');history.type='checkbox';history.onchange=()=>{state[key].history=history.checked;state[key].page=0;load(key)};lab.prepend(history);tools.append(filter,lab);}
