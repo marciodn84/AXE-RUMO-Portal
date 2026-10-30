@@ -1,7 +1,7 @@
 const common=[['id_externo','ID no ERP','id','identificador'],['cnpj','CNPJ'],['nome_fantasia','Nome fantasia'],['inscricao_estadual','Inscrição estadual'],['contato','Contato'],['email','E-mail'],['telefone','Telefone']];
 export const camposPlanilha={
  produto:[['codigo_axe','Código AXE'],['forma_obtencao','Forma de obtenção'],['codigo_anterior','Código do produto','Código'],['descricao_referencia','Descrição do produto','Descrição'],['unidade_referencia','Unidade','Unidade de medida','SiglaUnidadeMedida'],['tipo_item','Tipo de produto'],['grupo_legado','Grupo de produto'],['familia_legado','Família de produto'],['origem_fiscal_padrao','Origem padrão','OrigemProdutoPadrao'],['ncm_referencia','Código do NCM','NCM'],['part_number','Part number'],['marca','Marca'],['fabricante','Fabricante'],['gtin','GTIN','CódigoGTIN'],['pais_origem','País de origem'],['custo_referencia','Custo médio unitário'],['saldo_referencia','Saldo em estoque'],common[0]],
- cliente:[['nome','Razão social','Nome'],['codigo_externo','Código do cliente'],...common],
+ cliente:[['nome','Razão social','Nome'],...common.slice(1)],
  fornecedor:[['razao_social','Razão social','Nome'],['pais','País'],['documento_fiscal','Identificação fiscal estrangeira'],['endereco','Endereço'],...common]
 };
 

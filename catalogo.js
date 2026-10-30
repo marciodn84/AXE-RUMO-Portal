@@ -1,4 +1,4 @@
-import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente24';
+import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const labels={produto:'Produto',cliente:'Cliente',fornecedor:'Fornecedor',referencia_cliente:'Referência do cliente',opcao_cliente:'Produto aceito pelo cliente',produto_fornecedor:'Produto do fornecedor',similar:'Similar técnico',documento:'Documento do produto'};
 const situations=[['EM_AVALIACAO','Em avaliação'],['APROVADO','Aprovado'],['BLOQUEADO','Bloqueado'],['INATIVO','Inativo']];
@@ -9,7 +9,7 @@ const schemas={
  'Características técnicas',['descricao_tecnica','Descrição técnica','textarea'],['marca','Marca'],['fabricante','Fabricante'],['part_number','Part number'],['modelo','Modelo'],['composicao','Composição','textarea'],['aplicacao','Aplicação','textarea'],
  'Classificação fiscal',['ncm_referencia','NCM (8 números)'],['ex_tipi','Ex-TIPI'],['cest','CEST (7 números)'],['gtin','GTIN / código de barras'],['origem_fiscal_padrao','Origem fiscal','select',false,origins],['pais_origem','País de origem (duas letras)'],
  'Estoque e medidas',['controla_estoque','Controla estoque','bool'],['controle_lote','Controla lote','bool'],['controle_serie','Controla número de série','bool'],['estoque_minimo','Estoque mínimo','number'],['peso_liquido_kg','Peso líquido (kg)','number'],['peso_bruto_kg','Peso bruto (kg)','number'],['comprimento_mm','Comprimento (mm)','number'],['largura_mm','Largura (mm)','number'],['altura_mm','Altura (mm)','number'],['observacoes','Observações','textarea']],
- cliente:['Identificação',['nome','Razão social','text',true],['nome_fantasia','Nome fantasia'],['cnpj','CNPJ (14 números)','text',true],['codigo_externo','Código externo / Nomus (opcional)'],['inscricao_estadual','Inscrição estadual'],['grupo_comercial','Grupo comercial'],['ativo','Ativo','bool',true],
+ cliente:['Identificação',['nome','Razão social','text',true],['nome_fantasia','Nome fantasia'],['cnpj','CNPJ (14 números)','text',true],['inscricao_estadual','Inscrição estadual'],['grupo_comercial','Grupo comercial'],['ativo','Ativo','bool',true],
  'Contato',['contato','Responsável'],['email','E-mail','email'],['telefone','Telefone'],['observacoes','Observações','textarea']],
  fornecedor:['Identificação',['razao_social','Razão social / nome','text',true],['nome_fantasia','Nome fantasia'],['pais','País (BR, US, CN…)','text',true],['cnpj','CNPJ do fornecedor nacional'],['documento_fiscal','Identificação fiscal estrangeira'],['inscricao_estadual','Inscrição estadual'],['ativo','Ativo','bool',true],
  'Contato e endereço',['contato','Responsável'],['email','E-mail','email'],['telefone','Telefone'],['endereco','Endereço completo','textarea'],['observacoes','Observações','textarea']],
