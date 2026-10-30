@@ -1,3 +1,4 @@
+import {padronizarAcoes} from './acoes-icones.js?v=20261030-acoes30';
 import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261030-clienttabs27';
 import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -67,7 +68,7 @@ export function initCatalogo(api){
     if(kind==='referencia_cliente')actions.append(btn('Produtos aceitos',()=>{type='opcao_cliente';page=0;query='';search.value='';referenceFilter=r.id;return load();}),btn('Vincular produto AXE',()=>edit('opcao_cliente',null,{referencia_cliente_id:r.id})));
     if(kind==='fornecedor')actions.append(btn('Vincular produto',()=>edit('produto_fornecedor',null,{fornecedor_id:r.id})));
     tr.append(actions);body.append(tr);
-   }table.append(body);count.textContent=result.total?`${page*50+1}–${page*50+rows.length} de ${result.total}`:'Nenhum registro';previous.disabled=page===0;next.disabled=(page+1)*50>=result.total;status.textContent=rows.length?'Consulta atualizada.':'Nenhum cadastro nesta consulta. Use “Novo cadastro” para começar.';
+   }padronizarAcoes(body);table.append(body);count.textContent=result.total?`${page*50+1}–${page*50+rows.length} de ${result.total}`:'Nenhum registro';previous.disabled=page===0;next.disabled=(page+1)*50>=result.total;status.textContent=rows.length?'Consulta atualizada.':'Nenhum cadastro nesta consulta. Use “Novo cadastro” para começar.';
   }catch(e){if(gen===epoch&&run===request){status.textContent=e.message;status.className='status error';previous.disabled=page===0;}}
  }
  async function edit(kind,id,defaults={}){
