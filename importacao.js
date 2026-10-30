@@ -1,12 +1,7 @@
+import {camposPlanilha as definitions} from './planilha-cadastros.js?v=20261029-excel23';
 import {lerArquivo} from './importar-arquivo.js?v=20261023-gestao1';
 const n=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const common=[['id_externo','ID no ERP','id','identificador'],['cnpj','CNPJ'],['nome_fantasia','Nome fantasia'],['inscricao_estadual','Inscrição estadual'],['contato','Contato'],['email','E-mail'],['telefone','Telefone']];
-const definitions={
- produto:[['codigo_anterior','Código do produto','Código'],['descricao_referencia','Descrição do produto','Descrição'],['unidade_referencia','Unidade','Unidade de medida','SiglaUnidadeMedida'],['tipo_item','Tipo de produto'],['grupo_legado','Grupo de produto'],['familia_legado','Família de produto'],['origem_fiscal_padrao','Origem padrão','OrigemProdutoPadrao'],['ncm_referencia','Código do NCM','NCM'],['part_number','Part number'],['marca','Marca'],['fabricante','Fabricante'],['gtin','GTIN','CódigoGTIN'],['pais_origem','País de origem'],['custo_referencia','Custo médio unitário'],['saldo_referencia','Saldo em estoque'],common[0]],
- cliente:[['nome','Razão social','Nome'],['codigo_externo','Código do cliente'],...common],
- fornecedor:[['razao_social','Razão social','Nome'],['pais','País'],['documento_fiscal','Identificação fiscal estrangeira'],['endereco','Endereço'],...common]
-};
 const names=Object.fromEntries(Object.values(definitions).flat().map(([k,l])=>[k,l]));
 const states={RECEBIDO:'Recebido',NOVO:'Novo cadastro',SEM_ALTERACAO:'Sem alteração',DIVERGENTE:'Diferenças para revisar',INVALIDO:'Dados inválidos',AMBIGUO:'Correspondência ambígua',APLICADO:'Aplicado',IGNORADO:'Ignorado'};
 export function initImportacao(api){
@@ -31,7 +26,8 @@ export function initImportacao(api){
   do{result=await mutation('vincular',{lote_id:current,confirmacao:'VINCULAR'});if(gen!==epoch)return;message.textContent='Registrando correspondências… Restantes: '+result.restantes;}while(result.restantes>0&&result.vinculados>0);
   message.className='status';message.textContent='Correspondências registradas sem alterar os cadastros.';await loadPreview();
  });
- const items=n('div',undefined,'import-items');preview.append(title,summary,filter,reload,bindAll,items,back,position,next);root.append(preview);
+ const createAll=button('Criar todos os novos cadastros',async()=>{if(!confirm('Criar os registros classificados como novos nesta prévia? Registros com diferenças, erros ou correspondências ambíguas continuarão pendentes.'))return;const gen=epoch,current=lote;let r,total=0;do{r=await mutation('aplicar',{lote_id:current,novos_em_lote:true,confirmacao:'APLICAR_NOVOS'});if(gen!==epoch)return;total+=r.aplicados;message.textContent=total+' cadastros criados. Restantes: '+r.restantes;}while(r.restantes>0&&r.aplicados>0);await loadPreview();message.textContent=total+' novos cadastros criados. Diferenças e erros permanecem para revisão.';});
+ const items=n('div',undefined,'import-items');preview.append(title,summary,filter,reload,bindAll,createAll,items,back,position,next);root.append(preview);
  const mutation=async(operacao,dados)=>{const r=await api({acao:'mutacao',operacao,dados});return r.resultado||r;};
  const visible=gen=>gen===epoch&&!root.hidden;
  file.onchange=async()=>{const gen=epoch;send.disabled=true;try{const f=file.files[0];if(!f)return;filename=f.name;buffer=await f.arrayBuffer();sheets=await lerArquivo(buffer,filename);if(gen!==epoch)return;sheet.replaceChildren();sheets.forEach((s,i)=>sheet.append(new Option(s.nome,i)));header.value=1;buildMap();message.textContent='Arquivo lido localmente. Confira as colunas antes de enviar.';}catch(e){message.textContent=e.message;message.className='status error';}};
@@ -43,7 +39,7 @@ export function initImportacao(api){
   }
   const table=n('table'),tr=n('tr');head.cells.forEach(v=>tr.append(n('th',v)));table.append(tr);for(const row of rows.filter(r=>r.numero>head.numero).slice(0,3)){const tr=n('tr');head.cells.forEach((_,i)=>tr.append(n('td',row.cells[i]??'')));table.append(tr);}sample.append(n('h4','Amostra do arquivo'),table);
  }
- async function upload(){const gen=epoch;message.className='status';if(!buffer)throw Error('Escolha um arquivo.');const required=type.value==='produto'?['codigo_anterior','descricao_referencia']:type.value==='cliente'?['nome','cnpj']:['razao_social'];for(const key of required)if(mapping[key]==='')throw Error('Mapeie a coluna '+names[key]+'.');
+ async function upload(){const gen=epoch;message.className='status';if(!buffer)throw Error('Escolha um arquivo.');const required=type.value==='produto'?['codigo_anterior','descricao_referencia']:type.value==='cliente'?['nome','cnpj']:['razao_social'];for(const key of required)if(mapping[key]===''&&!(key==='codigo_anterior'&&mapping.codigo_axe!==''))throw Error('Mapeie a coluna '+names[key]+'.');
   const selected=sheets[Number(sheet.value)],head=selected.rows.find(r=>r.numero===Number(header.value)),rows=[];
   for(const row of selected.rows.filter(r=>r.numero>head.numero)){
    if(!row.cells.some(v=>String(v??'').trim()))continue;const original={};head.cells.forEach((label,i)=>original[String(i+1)+': '+String(label||'Coluna')]=row.cells[i]??'');const dados={};
@@ -60,7 +56,7 @@ export function initImportacao(api){
  async function loadLots(){const gen=epoch;const d=await api({acao:'lotes',pagina:lotePage});if(!visible(gen))return;historyList.replaceChildren();for(const r of d.linhas){historyList.append(button(r.arquivo+' · '+r.quantidade+' linhas · '+new Date(r.criado_em).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}),async()=>{lote=r.id;itemPage=0;filter.value='';await loadPreview();}));}if(!d.total)historyList.append(n('p','Nenhum arquivo recebido.'));prevLots.disabled=lotePage===0;nextLots.disabled=(lotePage+1)*50>=d.total;}
  filter.onchange=()=>{itemPage=0;loadPreview().catch(e=>{message.textContent=e.message;message.className='status error';});};
  async function loadPreview(){const gen=epoch,request=++seq;if(!lote)return;const current=lote;const [detail,data,totals]=await Promise.all([api({acao:'lote',lote_id:current}),api({acao:'itens',lote_id:current,pagina:itemPage,estado:filter.value}),api({acao:'resumo',lote_id:current})]);if(!visible(gen)||request!==seq||lote!==current)return;
-  const batch=detail.linhas[0];preview.hidden=false;title.textContent=batch.arquivo+' — prévia';summary.textContent=totals.linhas.map(x=>(states[x.estado]||x.estado)+': '+x.total).join(' · ');bindAll.hidden=!totals.linhas.some(x=>x.estado==='SEM_ALTERACAO'&&x.total>0);currentRows=data.linhas;items.replaceChildren();
+  const batch=detail.linhas[0];preview.hidden=false;title.textContent=batch.arquivo+' — prévia';summary.textContent=totals.linhas.map(x=>(states[x.estado]||x.estado)+': '+x.total).join(' · ');bindAll.hidden=!totals.linhas.some(x=>x.estado==='SEM_ALTERACAO'&&x.total>0);createAll.hidden=!totals.linhas.some(x=>x.estado==='NOVO'&&x.total>0);currentRows=data.linhas;items.replaceChildren();
   for(const row of currentRows){const card=n('article',undefined,'source-card');card.append(n('h4','Linha '+row.linha+' · '+(row.dados.descricao_referencia||row.dados.nome||row.dados.razao_social||row.chave_externa)),n('p',states[row.estado]||row.estado,'badge'),n('p',row.chave_externa+(row.alvo_id?' · Cadastro AXE #'+row.alvo_id:'')));if(row.erro)card.append(n('p',row.erro,'error'));
    const selected=[];
    if(row.estado==='DIVERGENTE'){
@@ -77,5 +73,6 @@ export function initImportacao(api){
    if(row.estado==='APLICADO')card.append(n('p','Campos aplicados: '+(row.campos_aplicados?.map(k=>names[k]||k).join(', ')||'somente vínculo externo')));items.append(card);
   }position.textContent=data.total?' '+(itemPage*50+1)+'–'+(itemPage*50+data.linhas.length)+' de '+data.total+' ':' Nenhuma linha nesta situação ';back.disabled=itemPage===0;next.disabled=(itemPage+1)*50>=data.total;preview.scrollIntoView({block:'start',behavior:'smooth'});
  }
- return {async show(value){epoch++;root.hidden=!value;if(!value)return;try{await loadLots();}catch(e){message.textContent=e.message;}},reset(){epoch++;seq++;root.hidden=true;file.value='';buffer=null;sheets=[];mapBox.replaceChildren();sample.replaceChildren();historyList.replaceChildren();items.replaceChildren();preview.hidden=true;lote=null;send.disabled=true;}};
+ return {async show(value,contexto={}){epoch++;root.hidden=!value;if(!value)return;if(definitions[contexto?.tipo]){type.value=contexto.tipo;file.value='';buffer=null;sheets=[];mapBox.replaceChildren();sample.replaceChildren();preview.hidden=true;lote=null;send.disabled=true;message.textContent='Selecione a planilha de '+(contexto.tipo==='cliente'?'Clientes':contexto.tipo==='produto'?'Produtos':'Fornecedores')+'.';}try{await loadLots();}catch(e){message.textContent=e.message;}},reset(){epoch++;seq++;root.hidden=true;file.value='';buffer=null;sheets=[];mapBox.replaceChildren();sample.replaceChildren();historyList.replaceChildren();items.replaceChildren();preview.hidden=true;lote=null;send.disabled=true;}};
 }
+

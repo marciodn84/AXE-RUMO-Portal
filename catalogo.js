@@ -1,3 +1,4 @@
+import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-excel23';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const labels={produto:'Produto',cliente:'Cliente',fornecedor:'Fornecedor',referencia_cliente:'Referência do cliente',opcao_cliente:'Produto aceito pelo cliente',produto_fornecedor:'Produto do fornecedor',similar:'Similar técnico',documento:'Documento do produto'};
 const situations=[['EM_AVALIACAO','Em avaliação'],['APROVADO','Aprovado'],['BLOQUEADO','Bloqueado'],['INATIVO','Inativo']];
@@ -33,11 +34,13 @@ export function initCatalogo(api){
  const status=node('p','','status');status.setAttribute('role','status');const tableWrap=node('div',undefined,'scroll'),table=node('table');tableWrap.append(table);
  const count=node('span'),previous=btn('Anterior',()=>{page--;return load();}),next=btn('Próxima',()=>{page++;return load();});const paging=node('div',undefined,'paging');paging.append(previous,count,next);
  tools.append(search,btn('Buscar',()=>{query=search.value.trim();page=0;return load();}),btn('Novo cadastro',()=>edit(type,null,productFilter?{produto_id:productFilter}:{})));
+ const excelTools=botoesPlanilha('fornecedor',api,{ativo:()=>active==='fornecedores'&&!screen.hidden,versao:()=>epoch,status:(text,error)=>{status.textContent=text;status.className=error?'status error':'status';}});excelTools.hidden=true;tools.append(excelTools);
  tools.onsubmit=e=>{e.preventDefault();query=search.value.trim();page=0;load();};screen.append(heading,intro,tabs,tools,status,tableWrap,paging);
  async function lookupRecord(kind,id){if(!id)return null;const key=kind+':'+id;if(!cache.has(key))cache.set(key,api({acao:'detalhe',tipo:kind,id:Number(id)}).catch(e=>{cache.delete(key);throw e;}));return cache.get(key);}
  async function display(kind,id){const r=await lookupRecord(kind,id);return r?nameOf(kind,r):'Não informado';}
  function selectTab(kind){type=kind;page=0;query='';search.value='';referenceFilter=null;for(const b of tabs.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.kind===kind));return load();}
  async function show(key,produtoId){epoch++;screen.hidden=true;active=key;if(!key)return;screen.hidden=false;productFilter=produtoId||null;referenceFilter=null;cache.clear();tabs.replaceChildren();
+  excelTools.hidden=key!=='fornecedores';
   heading.textContent=key==='fornecedores'?'Fornecedores':'Produtos por cliente e fornecedor';
   intro.textContent=key==='fornecedores'?'Cadastre fornecedores nacionais e estrangeiros e seus contatos.':'Cada código do cliente pode aceitar vários produtos AXE. Os produtos mantêm códigos, estoques e custos separados. A relação técnica não substitui o aceite do cliente.';
   const kinds=key==='fornecedores'?['fornecedor']:['referencia_cliente','opcao_cliente','produto_fornecedor','similar','documento'];
@@ -114,3 +117,4 @@ export function initCatalogo(api){
  document.addEventListener('axe-editar-catalogo',e=>edit(e.detail.tipo,e.detail.id));
  return {show,edit,reset(){epoch++;request++;active=null;screen.hidden=true;table.replaceChildren();cache.clear();if(dialog)dialog.remove();dialog=null;}};
 }
+

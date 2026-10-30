@@ -109,7 +109,7 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   else if(route.type==='gestao')gestao.show(key==='pedidos-gestao'?'pedidos':key);
   else if(route.type==='comercial')comercial.show(key);
   else if(key==='importacoes-internacionais')importacoesInternacionais.show(true);
-  else if(key==='importacao')importacao.show(true);
+  else if(key==='importacao')importacao.show(true,produtoId);
   else if(key==='fornecedores'||key==='equivalencias')catalogo.show(key,produtoId);
   else if(route.type==='live')cadastros.show(key);
   else if(route.type==='fiscal'){if(key==='simulador'&&typeof produtoId==='object')fiscal.openSimulation(produtoId);else if(produtoId)fiscal.openProduct(produtoId);else fiscal.show(key==='tributacao-produtos'?'produtos':key);}
@@ -133,6 +133,7 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
  navigate('inicio',undefined,false);
  return {navigate};
 }
+
 
 
 

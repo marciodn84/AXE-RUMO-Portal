@@ -2,12 +2,12 @@ import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261029-transporte10';
 import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-docauto17';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261029-menu22';
+import {initERP} from './erp.js?v=20261029-excel23';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';
-import {initCadastros} from './cadastros.js?v=20261029-clientes20';
-import {initCatalogo} from './catalogo.js?v=20261023-gestao1';
+import {initCadastros} from './cadastros.js?v=20261029-excel23';
+import {initCatalogo} from './catalogo.js?v=20261029-excel23';
 import {initComercial} from './comercial.js?v=20261023-gestao1';
-import {initImportacao} from './importacao.js?v=20261023-gestao1';
+import {initImportacao} from './importacao.js?v=20261029-excel23';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const SUPABASE_URL='https://ursezzcnbwlodmbzabmd.supabase.co', KEY='sb_publishable_SLeQ2rBGoGFB3jqMoqCcvw_lv7dAORr';
@@ -40,7 +40,7 @@ async function loadAccomp(){
  }catch(error){$('acompMsg').textContent='Não foi possível atualizar o acompanhamento. '+error.message}
 }
 
-const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'));
+const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'),payload=>call(payload,'axe-catalogo'));
 
 const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'));
 const catalogo=initCatalogo(payload=>call(payload,'axe-catalogo'));
@@ -66,4 +66,7 @@ const sessaoPortal=observarSessao(sb.auth,{
  erro(){msg('Não foi possível restaurar o acesso. Tente entrar novamente.');}
 });
 sessaoPortal.ready.finally(()=>{$('enter').disabled=false;});
+
+
+document.addEventListener('axe-importar-cadastro',event=>{if(['cliente','produto','fornecedor'].includes(event.detail?.tipo))erp.navigate('importacao',{tipo:event.detail.tipo});});
 

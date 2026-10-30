@@ -35,3 +35,6 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#142235}header{backgr
 
 /* Feedback acessível para campos obrigatórios após tentativa de salvar. */
 .campo-invalido{border:2px solid #b91c1c!important;outline:1px solid #b91c1c;outline-offset:1px;background:#fff5f5!important;color:#7f1d1d!important}.campo-invalido:focus{box-shadow:0 0 0 3px #fee2e2}.erro-campo{display:block;color:#b91c1c;font-size:12px;line-height:1.4;font-weight:600;margin-top:5px;white-space:normal}
+
+.planilha-actions{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}.planilha-actions[hidden]{display:none}.planilha-actions button{white-space:nowrap}
+
