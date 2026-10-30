@@ -11,7 +11,7 @@ export function initNotasImportacao(api,parent){
  const readings=new Map(),products=new Map(),declarations=new Map(),dialogs=new Set(),msg=el('p','','status'),body=el('div');msg.setAttribute('role','status');root.append(msg,body);
  const diReader=initLeituraDI(api,v=>busy=v);
  const guard=()=>diReader.canLeave()&&!busy&&(!dirty||confirm('Há alterações da nota não salvas. Deseja descartá-las?'));
- const changed=()=>{dirty=true;pending=null;};
+ const changed=()=>{dirty=true;pending=null;for(const row of data?.vinculos||[])delete row.origem_documental;};
  function button(label,action){const b=el('button',label);b.type='button';b.onclick=async()=>{if(busy)return;const e=epoch;try{b.disabled=true;await action();}catch(err){if(e===epoch){msg.textContent=err.message;msg.className='status error';}}finally{if(b.isConnected)b.disabled=false;}};return b;}
  function input(parent,label,value='',type='text'){const l=el('label',label),i=el(type==='textarea'?'textarea':'input');if(type!=='textarea')i.type=type;i.value=value??'';i.setAttribute('aria-label',label);if(type==='number'){i.min='0';i.step='any';}l.append(i);parent.append(l);return i;}
  function checkbox(parent,label,value,change){const l=el('label'),c=el('input');c.type='checkbox';c.checked=!!value;c.onchange=()=>{change(c.checked);changed();};l.append(c,document.createTextNode(' '+label));parent.append(l);return c;}
@@ -31,10 +31,10 @@ export function initNotasImportacao(api,parent){
   async function prepare(){const f=file.files[0];if(!f)throw Error('Selecione o arquivo');if(!f.size||f.size>(tipo==='XML'?2097152:8388608))throw Error('Arquivo acima do limite ou vazio');return {tipo,nome:f.name,conteudo:await fileBase64(f),...(tipo==='PDF'?{paginas:await lerPDFImportacao(f,t=>msg.textContent=t)}:{})};}
   if(tipo==='XML')box.append(button('Ler XML e conferir',async()=>{
    const payload=await prepare();const r=await locked(()=>api({acao:'nf_ler_xml',...payload}));preview={payload,xml:r};out.replaceChildren(el('p','NF-e '+r.numero+' · Série '+r.serie+' · '+r.itens.length+' item(ns) · '+brl(r.totais.vNF)),el('p','Chave: '+r.chave));r.avisos.forEach(x=>out.append(el('p',x,'status error')));
-   if(r.autorizada)out.append(button('Anexar este XML',async()=>{if(!preview)return;uploadPending??={acao:'nf_upload',...preview.payload,requisicao_id:crypto.randomUUID()};const saved=await locked(()=>api(uploadPending));uploadPending=null;await open(saved.id);msg.textContent='XML anexado. Selecione o embarque, vincule os produtos e anexe o PDF.';}));
+   if(r.autorizada)out.append(button('Anexar este XML',async()=>{if(!preview)return;uploadPending??={acao:'nf_upload',...preview.payload,requisicao_id:crypto.randomUUID()};const saved=await locked(()=>api(uploadPending));uploadPending=null;await open(saved.id);msg.textContent='XML anexado. Os vínculos identificados nos documentos foram preenchidos; complete somente as pendências e anexe o PDF.';}));
    else out.append(el('p','Use o XML emitido com protocolo de autorização. O espelho pode ser consultado aqui, mas não será anexado como nota emitida.'));
   }));
-  else box.append(button('Anexar PDF',async()=>{if(dirty&&!confirm('Salve primeiro os vínculos para mantê-los. Deseja descartar as alterações e anexar o PDF?'))return;const payload=await prepare();uploadPending??={acao:'nf_upload',...payload,id:note.id,versao:note.versao,requisicao_id:crypto.randomUUID()};const r=await locked(()=>api(uploadPending));uploadPending=null;dirty=false;await open(r.id);msg.textContent='PDF anexado. Confira se corresponde ao XML.';}));
+  else box.append(button('Anexar PDF',async()=>{if(dirty&&!confirm('Salve primeiro os vínculos para mantê-los. Deseja descartar as alterações e anexar o PDF?'))return;const payload=await prepare();uploadPending??={acao:'nf_upload',...payload,id:note.id,versao:note.versao,requisicao_id:crypto.randomUUID()};const r=await locked(()=>api(uploadPending));uploadPending=null;dirty=false;await open(r.id);msg.textContent='PDF anexado e chave comparada ao XML. A nota será conciliada automaticamente quando não houver pendências.';}));
   box.append(out);parent.append(box);
  }
  async function list(){
@@ -45,7 +45,7 @@ export function initNotasImportacao(api,parent){
   const prev=button('Anterior',async()=>{page--;await list();}),next=button('Próxima',async()=>{page++;await list();});prev.disabled=page===0;next.disabled=(page+1)*30>=r.total;out.append(prev,el('span',' Página '+(page+1)+' · '+r.total+' nota(s) '),next);msg.textContent='';
  }
  async function open(id){const g=epoch;const r=await api({acao:'nf_detalhe',id});if(g!==epoch||root.hidden)return;note=r;shipment=r.embarque;data=structuredClone(r.dados||{vinculos:[]});data.vinculos??=[];r.produtos?.forEach(p=>products.set(String(p.id),p));r.declaracoes?.forEach(d=>declarations.set(d.id,d));for(const row of data.vinculos)if(row.leitura_id&&!readings.has(row.leitura_id)){const reading=await api({acao:'nf_di_detalhe',leitura_id:row.leitura_id});if(g!==epoch||root.hidden)return;readings.set(reading.id,reading);}
- dirty=false;pending=null;render();}
+ dirty=false;pending=null;render();if(r.automatizacao){const a=r.automatizacao;msg.textContent=a.avisos?.length?a.avisos.join(' '):'Vínculos preenchidos pelos documentos. A conferência de valores, tributos e saldos continua automática.';}}
  const productLabel=id=>{const p=products.get(String(id));return p?(p.codigo_axe||'#'+p.id)+' · '+p.descricao_referencia:'Selecionar produto AXE';};
  const declarationLabel=id=>declarations.get(id)?.referencia||'Selecionar DI/DUIMP';
  async function chooseProduct(row){const source=shipment?.itens.find(x=>x.pedido_item_id===row.pedido_item_id);const cad=initCadastrosImportacao(api,root);await cad.escolher('produto',source?{descricao_referencia:source.descricao,unidade_referencia:source.unidade}:{},p=>{products.set(String(p.id),p);row.produto_id=String(p.id);changed();render();});}
@@ -101,7 +101,7 @@ export function initNotasImportacao(api,parent){
   const pdfcheck=checkbox(checks,'Conferi o PDF: corresponde à chave, aos produtos e aos valores deste XML',data.pdf_conferido,v=>data.pdf_conferido=v);pdfcheck.dataset.necessarioConciliar='true';if(data.pdf_fonte_automatica)pdfcheck.closest('label').hidden=true;
 
   if(note.xml.itens.some(i=>Number(i.outras||0)>0))checkbox(checks,'Conferi as outras despesas do XML nos documentos complementares',data.outras_conferidas,v=>data.outras_conferidas=v).dataset.necessarioConciliar='true';
-  const ref=input(checks,'Observações da conferência',data.referencia_conferencia||'','textarea');ref.oninput=()=>{data.referencia_conferencia=ref.value;changed();};if(readOnly)checks.querySelectorAll('input,textarea').forEach(x=>x.disabled=true);body.append(checks);
+  const exceptions=el('details');exceptions.append(el('summary','Complementar conferência em caso de divergência'));const ref=input(exceptions,'Referência documental complementar',data.referencia_conferencia||'','textarea');ref.oninput=()=>{data.referencia_conferencia=ref.value;changed();};checks.append(exceptions);if(readOnly)checks.querySelectorAll('input,textarea').forEach(x=>x.disabled=true);body.append(checks);
   const result=el('div');body.append(button('Conferir vínculos e saldos',async()=>{const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(result,r);}),result);
   if(note.resultado)showResult(result,note.resultado);
   if(!readOnly){
@@ -113,7 +113,7 @@ export function initNotasImportacao(api,parent){
  async function save(conciliar,target){
   for(const c of body.querySelectorAll('[data-necessario-conciliar]'))c.required=conciliar;let faltando=false;for(const row of data.vinculos){const c=controlesVinculos.get(row);if(c){if(conciliar&&!row.leitura_id&&c.leitura){marcarErro(c.leitura,'Selecione a leitura da DI / DUIMP.');faltando=true;}if(!row.produto_id){marcarErro(c.produto,'Selecione o produto do cadastro.');faltando=true;}if(!row.declaracao_id){marcarErro(c.declaracao,'Selecione a DI / DUIMP.');faltando=true;}}}const camposValidos=validarCampos(body);if(faltando&&camposValidos){const primeiro=body.querySelector('.campo-invalido');primeiro?.scrollIntoView({block:'center'});primeiro?.focus();}if(faltando||!camposValidos)throw Error('Preencha os campos destacados em vermelho.');
   for(const row of data.vinculos)if(!row.produto_id||!row.pedido_item_id||!row.declaracao_id||!Number(row.quantidade)||!Number(row.fator))throw Error('Complete ou remova os vínculos incompletos antes de salvar.');
-  if(conciliar){const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(target,r);if(!r.apto)throw Error('Resolva as pendências indicadas antes de conciliar.');if(!confirm('Confirmar a conciliação desta NF-e, com os produtos, quantidades e documentos conferidos?'))return;}
+  if(conciliar){const r=await locked(()=>api({acao:'nf_prever',id:note.id,embarque_id:shipment?.id||null,dados:data}));showResult(target,r);if(!r.apto)throw Error('Resolva as pendências indicadas antes de conciliar.');}
   if(!pending)pending={acao:'nf_salvar',id:note.id,versao:note.versao,embarque_id:shipment?.id||null,dados:structuredClone(data),conciliar,requisicao_id:crypto.randomUUID()};else if(pending.conciliar!==conciliar)throw Error('Repita a última operação de salvamento para confirmar seu resultado antes de mudar a ação.');
   const r=await locked(()=>api(pending));dirty=false;pending=null;await open(r.id);msg.textContent=conciliar?'Nota conciliada. Histórico preservado.':'Conferência salva como pendente.';msg.className='status';
  }

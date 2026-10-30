@@ -1,5 +1,5 @@
 import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
-import {initFechamentoDespachante} from './importacoes-fechamento.js?v=20261028-fech1';
+import {initFechamentoDespachante} from './importacoes-fechamento.js?v=20261029-docauto17';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const money=v=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
 export function csvCustos(r){
@@ -47,7 +47,7 @@ export function initCustosImportacao(api,parent){
  }
  function result(r,out,estado){
   out.replaceChildren(el('h3',(estado==='Final'?'Custo final':'Custo calculado — provisório')+': '+money(r.custo_total)));
-  if(r.transporte_fonte){const t=r.transporte_fonte;out.append(el('p','Frete documental: '+t.valor+' USD × taxa DUIMP '+(t.cambio||'pendente')+' = '+money(t.valor_brl)+' · DUIMP '+(t.duimp_numero||'pendente')+' · registro '+(t.data_registro_duimp||'pendente')+' · '+(t.fonte_taxa||'Taxa ainda não confirmada')+'.'));}
+  if(r.transporte_fonte){const t=r.transporte_fonte;if(t.aviso_taxa)out.append(el('p',t.aviso_taxa,'status error'));out.append(el('p','Frete documental: '+t.valor+' USD × taxa DUIMP '+(t.cambio||'pendente')+' = '+money(t.valor_brl)+' · DUIMP '+(t.duimp_numero||'pendente')+' · registro '+(t.data_registro_duimp||'pendente')+' · '+(t.fonte_taxa||'Taxa ainda não confirmada')+'.'));}
   if(r.pendencias.length){const ul=el('ul');r.pendencias.forEach(x=>ul.append(el('li',x)));out.append(el('p','Pendências para finalizar:'),ul);}else out.append(el('p','Conferências completas. Revise a memória antes de finalizar.'));
   const table=el('table'),head=el('tr');['Pedido / linha','Produto','Qtde','FOB pago BRL','FOB estimado','Frete','Demais','Multas','Tributos','Créditos considerados','Custo total','Custo unitário'].forEach(x=>head.append(el('th',x)));table.append(head);
   for(const x of r.itens){const tr=el('tr');[x.pedido+' / '+x.linha,x.descricao,x.quantidade,money(x.fob_brl),money(x.fob_estimado),money(x.frete),money(x.demais),money(x.multa),money(x.tributos),money(x.credito),money(x.custo_total),x.custo_unitario==null?'Pendente':Number(x.custo_unitario).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:8})].forEach(v=>tr.append(el('td',v)));table.append(tr);}
@@ -121,13 +121,13 @@ export function initCustosImportacao(api,parent){
   ],{credito:0,tratamento:'Pendente'});
   const confirms=grid(form,'Conferências para finalizar'),checks={};
   for(const [k,label] of [['despesas_conferidas','Todas as despesas foram conferidas, sem duplicar adiantamentos ou devoluções'],['tributos_conferidos','Tributos conferidos com os documentos aduaneiros'],['creditos_conferidos','Tratamento dos créditos conferido conforme regras aprovadas com a contabilidade']]){
-   const l=el('label'),c=el('input');c.type='checkbox';c.checked=d[k]===true;c.setAttribute('aria-label',label);l.append(c,el('span',label));confirms.append(l);checks[k]=c;
+   const l=el('label'),c=el('input');c.type='checkbox';const automatico=calc?.conferencias_automaticas?.[k]===true;c.checked=automatico||d[k]===true;c.disabled=automatico;c.dataset.automatico=String(automatico);if(automatico)l.append(el('span','Conferido automaticamente pelos documentos. '));c.setAttribute('aria-label',label);l.append(c,el('span',label));confirms.append(l);checks[k]=c;
   }
   form.append(el('p','Este módulo não movimenta estoque nem atualiza o Nomus. Os tributos e créditos são informados conforme os documentos e a régua da contabilidade; não há cálculo automático de incidência tributária.'));
   const out=el('section',undefined,'imp-custo-resultado');body.append(out);
   if(calc)result(calc,out,saved?.estado);
-  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{origem_pagamento_automatico:r.automatico,contrato_id:r.contrato_id,remessa_id:r.remessa_id,parcela_id:r.parcela_id,remessa_referencia:r.remessa_referencia,parcela_referencia:r.parcela_referencia}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.checked]))});
-  function syncRequired(finalizar=false){for(const row of groups.despesas){row.f.pedido_item_id.required=row.f.categoria.value==='Multa';row.f.data.required=finalizar&&row.f.situacao.value==='Confirmada';}for(const c of Object.values(checks))c.required=finalizar;}
+  const collect=()=>({...read(header),...Object.fromEntries(Object.entries(groups).map(([k,rows])=>[k,rows.map(r=>({id:r.id,...read(r.f),...(k==='pagamentos'?{origem_pagamento_automatico:r.automatico,contrato_id:r.contrato_id,remessa_id:r.remessa_id,parcela_id:r.parcela_id,remessa_referencia:r.remessa_referencia,parcela_referencia:r.parcela_referencia}:{} ),...(r.origem_fechamento?{origem_fechamento:r.origem_fechamento}:{}),...(r.origem_transporte?{origem_transporte:r.origem_transporte}:{}),...(r.adicional?{frete_adicional:r.adicional.checked}:{})}))])),...Object.fromEntries(Object.entries(checks).map(([k,c])=>[k,c.dataset.automatico==='true'?false:c.checked]))});
+  function syncRequired(finalizar=false){for(const row of groups.despesas){row.f.pedido_item_id.required=row.f.categoria.value==='Multa';row.f.data.required=finalizar&&row.f.situacao.value==='Confirmada';}for(const [k,c] of Object.entries(checks)){const auto=calc?.conferencias_automaticas?.[k]===true;if(auto){c.checked=true;c.disabled=true;c.dataset.automatico='true';}else if(c.dataset.automatico==='true'){c.checked=false;c.disabled=false;c.dataset.automatico='false';}c.required=false;}}
   async function preview(){
    syncRequired();if(!validarCampos(form))return null;
    const payload=collect(),s=++seq;busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')],states=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);let r;try{r=await api({acao:'custo_prever',embarque_id:e.id,dados:payload});}finally{busy=false;if(valid(g))controls.forEach((x,i)=>x.disabled=states[i]);}
