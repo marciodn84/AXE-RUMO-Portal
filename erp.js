@@ -32,9 +32,10 @@ const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefi
 export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais){
  const panel=document.getElementById('panel'), oldNav=panel.querySelector('.portal-nav'),originalExit=document.getElementById('logout');
  oldNav.remove();panel.querySelector('.portal-toolbar').remove();
- const sidebar=make('aside',undefined,'erp-sidebar');
+ const sidebar=make('aside',undefined,'erp-sidebar');sidebar.id='erp-menu';sidebar.setAttribute('aria-label','Navegação principal');
  const brand=make('div',undefined,'erp-brand');brand.append(make('span','A','brand-mark'),make('div','AXE','brand-name'));
  brand.lastChild.append(make('small','ENGENHARIA'));sidebar.append(brand,make('p','SISTEMA DE GESTÃO','sidebar-caption'));
+ const reveal=make('button','☰','sidebar-reveal');reveal.type='button';reveal.setAttribute('aria-label','Expandir ou recolher menu');reveal.setAttribute('aria-controls',sidebar.id);reveal.title='Menu';sidebar.append(reveal);
  const filter=make('input');filter.type='search';filter.placeholder='Encontrar menu';filter.setAttribute('aria-label','Filtrar menus');sidebar.append(filter);
  const nav=make('nav');nav.setAttribute('aria-label','Menu principal');
  const routes=new Map(),buttons=new Map();
@@ -46,18 +47,26 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
    if(subgroup){if(!subgroups.has(subgroup)){const nested=make('details',undefined,'connector-submenu');nested.open=true;nested.append(make('summary',subgroup));section.append(nested);subgroups.set(subgroup,nested);}target=subgroups.get(subgroup);}
    routes.set(key,{group,title,type,subgroup});const b=make('button');b.type='button';b.dataset.route=key;
    b.append(make('span',title));if(type==='planned')b.append(make('span','Em breve','menu-status'));
-   b.onclick=()=>navigate(key);buttons.set(key,b);target.append(b);
+   b.onclick=event=>{navigate(key);if(event.detail>0&&current===key)heading.querySelector('h1').focus({preventScroll:true});};buttons.set(key,b);target.append(b);
   }nav.append(section);
  }sidebar.append(nav,make('div','AXE Engenharia · ERP','sidebar-footer'));
  const workspace=make('div',undefined,'erp-workspace'),top=make('div',undefined,'erp-topbar');
  const toggle=make('button','☰','menu-toggle');toggle.type='button';toggle.setAttribute('aria-label','Abrir ou fechar menu');toggle.setAttribute('aria-expanded','false');
- toggle.onclick=()=>{const open=panel.classList.toggle('menu-open');toggle.setAttribute('aria-expanded',String(open));};
+ toggle.setAttribute('aria-controls',sidebar.id);
+ const desktop=window.matchMedia('(min-width:761px)');
+ function syncMenu(){const expanded=panel.classList.contains('menu-open')||(desktop.matches&&(sidebar.classList.contains('menu-hover')||sidebar.contains(document.activeElement)));for(const b of [toggle,reveal])b.setAttribute('aria-expanded',String(expanded));}
+ const toggleMenu=()=>{panel.classList.toggle('menu-open');syncMenu();};toggle.onclick=reveal.onclick=toggleMenu;
+ sidebar.addEventListener('pointerenter',event=>{if(desktop.matches&&event.pointerType==='mouse'){sidebar.classList.add('menu-hover');syncMenu();}});
+ sidebar.addEventListener('pointerleave',()=>{sidebar.classList.remove('menu-hover');syncMenu();});
+ sidebar.addEventListener('focusin',syncMenu);sidebar.addEventListener('focusout',()=>queueMicrotask(syncMenu));
+ panel.addEventListener('keydown',event=>{if(event.key==='Escape'&&(panel.classList.contains('menu-open')||sidebar.contains(document.activeElement))){panel.classList.remove('menu-open');sidebar.classList.remove('menu-hover');toggle.focus();syncMenu();event.preventDefault();}});
+ desktop.addEventListener('change',()=>{panel.classList.remove('menu-open');sidebar.classList.remove('menu-hover');syncMenu();});syncMenu();
  const breadcrumb=make('span','Gestão / Visão geral','breadcrumb');
  const exit=originalExit;exit.id='logout';
  // Preserve the original sign-out handler even after moving its button.
  top.append(toggle,breadcrumb,make('span','Ambiente AXE','environment'),exit);
  const heading=make('div',undefined,'erp-heading'),eyebrow=make('p','VISÃO GERAL','eyebrow'),title=make('h1','Visão geral'),subtitle=make('p','');
- heading.append(eyebrow,title,subtitle);
+ title.tabIndex=-1;heading.append(eyebrow,title,subtitle);
  const content=make('div',undefined,'erp-content'),home=make('section',undefined,'erp-home'),future=make('section',undefined,'erp-future');
  const hero=make('div',undefined,'welcome-card');hero.append(make('p','AXE ENGENHARIA','eyebrow'),make('h2','Toda a operação, uma visão.'),make('p','Acompanhe os controles disponíveis e a evolução do seu sistema de gestão.'));
  const quick=make('button','Abrir central de pendências','primary');quick.onclick=()=>navigate('resolver');hero.append(quick);home.append(hero);
@@ -116,11 +125,12 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
    const list=make('ul');(plans[key]||[]).forEach(item=>list.append(make('li',item)));card.append(list);
    const back=make('button','Voltar à visão geral','secondary');back.onclick=()=>navigate('inicio');card.append(back);future.append(card);
   }
-  panel.classList.remove('menu-open');toggle.setAttribute('aria-expanded','false');
+  panel.classList.remove('menu-open');syncMenu();
  }
  const observer=new MutationObserver(()=>{if(!panel.hidden){navigate('inicio');refreshStats();}else{epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
  observer.observe(panel,{attributes:true,attributeFilter:['hidden']});
  navigate('inicio');
  return {navigate};
 }
+
 
