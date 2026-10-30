@@ -40,11 +40,11 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
  const nav=make('nav');nav.setAttribute('aria-label','Menu principal');
  const routes=new Map(),buttons=new Map();
  for(const [group,items] of groups){
-  const section=make('details',undefined,'menu-group');section.open=true;section.append(make('summary',group));
+  const section=make('details',undefined,'menu-group');section.open=false;section.append(make('summary',group));
   const subgroups=new Map();
   for(const [key,title,type,subgroup] of items){
    let target=section;
-   if(subgroup){if(!subgroups.has(subgroup)){const nested=make('details',undefined,'connector-submenu');nested.open=true;nested.append(make('summary',subgroup));section.append(nested);subgroups.set(subgroup,nested);}target=subgroups.get(subgroup);}
+   if(subgroup){if(!subgroups.has(subgroup)){const nested=make('details',undefined,'connector-submenu');nested.open=false;nested.append(make('summary',subgroup));section.append(nested);subgroups.set(subgroup,nested);}target=subgroups.get(subgroup);}
    routes.set(key,{group,title,type,subgroup});const b=make('button');b.type='button';b.dataset.route=key;
    b.append(make('span',title));if(type==='planned')b.append(make('span','Em breve','menu-status'));
    b.onclick=event=>{navigate(key);if(event.detail>0&&current===key)heading.querySelector('h1').focus({preventScroll:true});};buttons.set(key,b);target.append(b);
@@ -98,10 +98,10 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   status.textContent=errors?'Alguns indicadores não puderam ser consultados. Tente atualizar.':'Atualizado em '+new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
   refresh.disabled=false;
  }
- function navigate(key,produtoId){
+ function navigate(key,produtoId,expandirMenu=true){
   const route=routes.get(key);if(!route)return;if(importacoesInternacionais&&!importacoesInternacionais.canLeave())return;current=key;if(!panel.hidden){try{sessionStorage.setItem('axe:erp:ultima-tela',key);}catch{}}
   cadastros.show(null);if(fiscal)fiscal.show(null);if(catalogo)catalogo.show(null);if(importacao)importacao.show(false);if(comercial)comercial.show(null);if(gestao)gestao.show(null);if(importacoesInternacionais)importacoesInternacionais.show(false);home.hidden=true;future.hidden=true;
-  for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key){let parent=b.parentElement;while(parent&&parent!==nav){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}}}
+  for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key&&expandirMenu){let parent=b.parentElement;while(parent&&parent!==nav){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}}}
   breadcrumb.textContent=[route.group,route.subgroup,route.title].filter(Boolean).join(' / ');eyebrow.textContent=(route.subgroup||route.group).toLocaleUpperCase('pt-BR');title.textContent=route.title;
   eyebrow.hidden=key==='clientes';subtitle.hidden=key==='clientes';
   subtitle.textContent=route.type==='planned'?'Estrutura prevista para a evolução do ERP.':'Controles da AXE Engenharia';
@@ -128,9 +128,9 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   }
   panel.classList.remove('menu-open');syncMenu();
  }
- const observer=new MutationObserver(()=>{if(!panel.hidden){let saved='inicio';try{const key=sessionStorage.getItem('axe:erp:ultima-tela');if(routes.has(key))saved=key;}catch{}navigate(saved);refreshStats();}else{epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
+ const observer=new MutationObserver(()=>{if(!panel.hidden){let saved='inicio';try{const key=sessionStorage.getItem('axe:erp:ultima-tela');if(routes.has(key))saved=key;}catch{}for(const group of nav.querySelectorAll('details'))group.open=false;navigate(saved,undefined,false);refreshStats();}else{epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
  observer.observe(panel,{attributes:true,attributeFilter:['hidden']});
- navigate('inicio');
+ navigate('inicio',undefined,false);
  return {navigate};
 }
 
