@@ -1,3 +1,4 @@
+import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261029-cnpj26';
 import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const labels={produto:'Produto',cliente:'Cliente',fornecedor:'Fornecedor',referencia_cliente:'Referência do cliente',opcao_cliente:'Produto aceito pelo cliente',produto_fornecedor:'Produto do fornecedor',similar:'Similar técnico',documento:'Documento do produto'};
@@ -9,7 +10,7 @@ const schemas={
  'Características técnicas',['descricao_tecnica','Descrição técnica','textarea'],['marca','Marca'],['fabricante','Fabricante'],['part_number','Part number'],['modelo','Modelo'],['composicao','Composição','textarea'],['aplicacao','Aplicação','textarea'],
  'Classificação fiscal',['ncm_referencia','NCM (8 números)'],['ex_tipi','Ex-TIPI'],['cest','CEST (7 números)'],['gtin','GTIN / código de barras'],['origem_fiscal_padrao','Origem fiscal','select',false,origins],['pais_origem','País de origem (duas letras)'],
  'Estoque e medidas',['controla_estoque','Controla estoque','bool'],['controle_lote','Controla lote','bool'],['controle_serie','Controla número de série','bool'],['estoque_minimo','Estoque mínimo','number'],['peso_liquido_kg','Peso líquido (kg)','number'],['peso_bruto_kg','Peso bruto (kg)','number'],['comprimento_mm','Comprimento (mm)','number'],['largura_mm','Largura (mm)','number'],['altura_mm','Altura (mm)','number'],['observacoes','Observações','textarea']],
- cliente:['Identificação',['nome','Razão social','text',true],['nome_fantasia','Nome fantasia'],['cnpj','CNPJ (14 números)','text',true],['inscricao_estadual','Inscrição estadual'],['grupo_comercial','Grupo comercial'],['ativo','Ativo','bool',true],
+ cliente:['Identificação',['cnpj','CNPJ (14 números)','text',true],['nome','Razão social','text',true],['nome_fantasia','Nome fantasia'],['inscricao_estadual','Inscrição estadual'],['grupo_comercial','Grupo comercial'],['ativo','Ativo','bool',true],
  'Contato',['contato','Responsável'],['email','E-mail','email'],['telefone','Telefone'],['observacoes','Observações','textarea']],
  fornecedor:['Identificação',['razao_social','Razão social / nome','text',true],['nome_fantasia','Nome fantasia'],['pais','País (BR, US, CN…)','text',true],['cnpj','CNPJ do fornecedor nacional'],['documento_fiscal','Identificação fiscal estrangeira'],['inscricao_estadual','Inscrição estadual'],['ativo','Ativo','bool',true],
  'Contato e endereço',['contato','Responsável'],['email','E-mail','email'],['telefone','Telefone'],['endereco','Endereço completo','textarea'],['observacoes','Observações','textarea']],
@@ -80,7 +81,7 @@ export function initCatalogo(api){
    if(typeof field==='string'){group=node('fieldset');group.append(node('legend',field));form.append(group);continue;}
    const [key,title,inputType='text',required=false,choices]=field;const label=node('label',title);let input;
    if(inputType==='textarea')input=node('textarea');else if(inputType==='select'||inputType==='bool'||inputType.startsWith('lookup:'))input=node('select');else{input=node('input');input.type=['positive','integer'].includes(inputType)?'number':inputType;}
-   input.name=key;input.required=required;
+   input.name=key;input.setAttribute('aria-label',title);input.required=required;
    if(input.tagName==='SELECT'){input.append(new Option('Selecione',''));for(const [value,text] of inputType==='bool'?bool:choices||[])input.append(new Option(text,value));}
    if(['number','positive','integer'].includes(inputType)){input.min=inputType==='positive'?'0.000001':'0';input.step=inputType==='integer'?'1':'0.000001';}
    if(input.tagName==='INPUT')input.maxLength=key==='cnpj'?14:1000;if(input.tagName==='TEXTAREA')input.maxLength=5000;
@@ -99,8 +100,9 @@ export function initCatalogo(api){
    label.append(input);group.append(label);inputs[key]={input,inputType};
    if(key==='ncm_referencia'){const hint=node('small');const update=()=>{const code=input.value.trim();hint.textContent=/^[0-9]{8}$/.test(code)?'Classificação pelo NCM: capítulo '+code.slice(0,2)+' · posição '+code.slice(0,4)+' · subposição '+code.slice(0,6):'Informe o NCM para identificar capítulo, posição e subposição.';};input.addEventListener('input',update);update();label.append(hint);}
   }
+  const consultaCNPJ=montarConsultaCNPJ(form,inputs,api,kind,{valido:()=>gen===epoch&&dialog===dlg});
   const error=node('p','','status error');error.setAttribute('role','alert');const actions=node('div',undefined,'form-actions'),save=node('button','Salvar');save.type='submit';actions.append(btn('Cancelar',()=>dlg.close()),save);form.append(error,actions);dlg.append(form);document.body.append(dlg);dlg.showModal();
-  let fingerprint='',req='';form.onsubmit=async e=>{e.preventDefault();if(!form.reportValidity())return;const data={};
+  let fingerprint='',req='';form.onsubmit=async e=>{e.preventDefault();if(consultaCNPJ?.pendente()){error.textContent='Aguarde a consulta do CNPJ terminar.';return;}if(!form.reportValidity())return;const data={};
    for(const [key,{input,inputType}] of Object.entries(inputs)){
     const value=input.value.trim();if(input.disabled)continue;
     if(inputType==='bool')data[key]=value===''?null:value==='true';else if(inputType.startsWith('lookup:')||['number','positive','integer'].includes(inputType))data[key]=value===''?null:Number(value);else data[key]=value||null;
@@ -111,7 +113,7 @@ export function initCatalogo(api){
    if(data.valido_desde&&data.valido_ate&&data.valido_ate<data.valido_desde){error.textContent='A validade final deve ser igual ou posterior à inicial.';return;}
    if(id){data.id=Number(id);data.atualizado_em=record.atualizado_em;}
    const fp=JSON.stringify(data);if(fp!==fingerprint){req=crypto.randomUUID();fingerprint=fp;}data.requisicao_id=req;save.disabled=true;error.textContent='Salvando…';
-   try{await api({acao:'salvar',tipo:kind,dados:data});if(gen!==epoch)return;cache.clear();dlg.close();document.dispatchEvent(new CustomEvent('axe-catalogo-salvo'));if(active)await load();}catch(e){error.textContent=e.message;}finally{save.disabled=false;}
+   try{await api({acao:'salvar',tipo:kind,dados:data,...(consultaCNPJ?.cnpj()?{consulta_cnpj:consultaCNPJ.cnpj()}:{})});if(gen!==epoch)return;cache.clear();dlg.close();document.dispatchEvent(new CustomEvent('axe-catalogo-salvo'));if(active)await load();}catch(e){error.textContent=e.message;}finally{save.disabled=false;}
   };
  }
  document.addEventListener('axe-editar-catalogo',e=>edit(e.detail.tipo,e.detail.id));

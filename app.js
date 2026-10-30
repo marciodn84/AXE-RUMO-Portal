@@ -5,7 +5,7 @@ import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261029-excel23';
 import {initFiscal} from './fiscal.js?v=20261023-gestao1';
 import {initCadastros} from './cadastros.js?v=20261029-cliente25';
-import {initCatalogo} from './catalogo.js?v=20261029-cliente25';
+import {initCatalogo} from './catalogo.js?v=20261029-cnpj26';
 import {initComercial} from './comercial.js?v=20261023-gestao1';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
@@ -69,6 +69,7 @@ sessaoPortal.ready.finally(()=>{$('enter').disabled=false;});
 
 
 document.addEventListener('axe-importar-cadastro',event=>{if(['cliente','produto','fornecedor'].includes(event.detail?.tipo))erp.navigate('importacao',{tipo:event.detail.tipo});});
+
 
 
 
