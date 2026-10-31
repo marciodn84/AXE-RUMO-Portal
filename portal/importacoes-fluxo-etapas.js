@@ -23,3 +23,14 @@ export function resumirFluxo(data){
  const next=data.processo?.estado==='Encerrado'?null:!ack?{nome:'Confirmar aceite do fornecedor',documento:'Arquivo, e-mail ou confirmação manual',acao:'ack'}:!ships.length?{nome:'Receber a mercadoria pronta',documento:'Invoice e packing list da parcial',acao:'carga'}:ships.find(x=>x.proxima)?.proxima|| (saldoFornecedor>0?{nome:'Aguardar próxima parcial',documento:'Invoice e packing list do saldo',acao:'carga'}:null);
  return {ships,ack,total,paid,saldoFornecedor,next,status:data.pedido.status_processo||(data.pedido.status==='Cancelado'?'Cancelado':!ack?'Aguardando aceite':data.pedido.status==='Recebido'||data.pedido.status==='Recebimento Parcial'?data.pedido.status:'Aguardando Entrega'), andamento:data.pedido.status==='Cancelado'?'Cancelado':!ack?'Aguardando ACK':!ships.length?'Aguardando disponibilização':ships.some(x=>x.proxima)?'Parciais em andamento':saldoFornecedor>0?'Aguardando saldo do fornecedor':'Concluído operacionalmente'};
 }
+
+export function textoProximaAcao(etapa,contexto){
+ if(!etapa)return 'Nenhuma ação operacional pendente';
+ const mensagens={cadastros:'Vincular produtos ao cadastro',carga:'Anexar invoice e packing list',transportador:'Selecionar transportador',transporte:'Anexar documentos de transporte',coleta:'Confirmar coleta e informar a data',aduana:'Anexar DI/DUIMP',nota:'Anexar nota de entrada e XML',recebimento:'Confirmar recebimento das mercadorias',estoque:'Confirmar entrada no estoque',fechamento:'Anexar fechamento do despachante',custo:'Concluir apuração de custos e créditos'};
+ if(etapa.key==='aduana'&&contexto?.declaracoes?.some(d=>d.status==='Ativo'&&d.documento_importado))return contexto.declaracoes.some(d=>d.status==='Ativo'&&d.documento_importado&&d.dados?.data_registro)?'Registrar desembaraço na DI/DUIMP':'Completar dados de registro da DI/DUIMP';
+ if(etapa.key==='nota'&&contexto?.notas?.length)return 'Conciliar nota de entrada com a DI/DUIMP';
+ if(etapa.key==='fechamento'&&contexto?.fechamentos?.some(f=>f.pronto))return 'Importar despesas do fechamento';
+ if(mensagens[etapa.key])return mensagens[etapa.key];
+ if(etapa.acao==='carga')return /saldo|próxima/i.test(etapa.nome||'')?'Aguardar disponibilização do saldo do pedido':'Anexar invoice e packing list';
+ return etapa.nome||'Consultar pendências do processo';
+}
