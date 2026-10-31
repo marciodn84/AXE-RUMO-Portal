@@ -21,11 +21,12 @@ export function parseInvoice(paginas:any[]){
  return {numero,data:unique(dates),moeda,valor,pedidos,itens,total_itens,condicao:unique([...text.matchAll(/Payment Terms\s*:\s*([^\n]+)/gi)].map(m=>m[1].trim())),avisos};
 }
 export async function parsePacking(bytes:Uint8Array,paginas:any[]){
- const text=paginas.map(p=>p.texto).join('\n'),itens:any[]=[];
+ const text=paginas.map(p=>p.texto).join('\n'),itens:any[]=[],pesosKg:any[]=[];
  const pedidos=[...new Set([...text.matchAll(/\bPO\s*\d{3,20}\b/gi)].map(m=>m[0].replace(/\s/g,'').toUpperCase()))];
  const pdf=await getDocumentProxy(bytes.slice(),{isEvalSupported:false,maxImageSize:16777216});
  try{for(let pg=1;pg<=pdf.numPages;pg++){
   const p=await pdf.getPage(pg),tc=await p.getTextContent(),ts=tc.items.filter((t:any)=>'str'in t&&t.str.trim()).map((t:any)=>({s:t.str.trim(),x:t.transform[4],y:t.transform[5]}));
+  for(const gross of ts.filter((t:any)=>/^Gross Weight$/i.test(t.s))){const kgHeads=ts.filter((v:any)=>/^Kgs$/i.test(v.s)&&v.x>=gross.x&&v.x<gross.x+80&&v.y<gross.y&&v.y>gross.y-20);if(kgHeads.length===1){const kh=kgHeads[0],values=ts.filter((v:any)=>Math.abs(v.x-kh.x)<12&&v.y<kh.y&&v.y>kh.y-20&&/^\d+(?:[.,]\d+)?$/.test(v.s));if(values.length===1)pesosKg.push(numeroDocumento(values[0].s));}}
   const hdr=ts.filter((t:any)=>/^Shipped$/i.test(t.s));
   const codes=ts.filter((t:any)=>/^NYK\s*:?/i.test(t.s)).map((t:any)=>{if(/^NYK\s*:/i.test(t.s))return t;const rest=ts.filter((v:any)=>Math.abs(v.y-t.y)<4&&v.x>t.x&&v.x<t.x+40&&/^\s*:/.test(v.s));return rest.length===1?{...t,s:t.s+rest[0].s}:t;});
   for(const code of codes){const h=hdr.find((h:any)=>h.y>code.y&&h.x>code.x);const vals=h?ts.filter((t:any)=>Math.abs(t.y-code.y)<4&&t.x>=h.x&&t.x<h.x+38&&/^\d+(?:[.,]\d+)?$/.test(t.s)):[];const line=ts.filter((t:any)=>Math.abs(t.y-code.y)<4&&t.x<code.x&&/^\d{1,6}$/.test(t.s));
@@ -34,7 +35,7 @@ export async function parsePacking(bytes:Uint8Array,paginas:any[]){
  }}finally{await pdf.loadingTask.destroy();}
  const kg=unique([...text.matchAll(/Gross Weight\s+Lbs\s+Kgs\s+([\d.,]+)\s+([\d.,]+)/gi)].map(m=>numeroDocumento(m[2])));
  const lbs=unique([...text.matchAll(/Gross\s+weight\s+([\d.,]+)\s*(?:lbs|lb)\b/gi)].map(m=>numeroDocumento(m[1])));
- return {pedidos,itens,peso_bruto_kg:kg?Number(kg):lbs?Number(lbs)*0.45359237:null,avisos:!itens.length?['Itens do packing list não reconhecidos; faça a conferência manual.']:[]};
+ return {pedidos,itens,peso_bruto_kg:unique(pesosKg)?Number(unique(pesosKg)):kg?Number(kg):lbs?Number(lbs)*0.45359237:null,avisos:!itens.length?['Itens do packing list não reconhecidos; faça a conferência manual.']:[]};
 }
 export function parsePesos(paginas:any[]){
  const text=paginas.map(p=>p.texto).join('\n'),itens:any[]=[];
@@ -49,7 +50,7 @@ export function combinarLiberacao(invoice:any,packing:any,pesos:any,pedido:any){
   if(pl.length===1&&key(pl[0].codigo_fornecedor)!==key(x.codigo_fornecedor))avisos.push('Linha '+x.linha+': código do packing '+pl[0].codigo_fornecedor+' difere da invoice '+x.codigo_fornecedor+'. Confira o original antes de importar.');
   if(pl.length!==1||pl[0].quantidade===null)avisos.push('Linha '+x.linha+': quantidade do packing list não confirmada automaticamente.');else if(Number(pl[0].quantidade)!==Number(x.quantidade))avisos.push('Linha '+x.linha+': quantidade da invoice difere do packing list.');
   if(!p)avisos.push('Linha '+x.linha+': selecione o produto do pedido.');else if(Number(p.valor_unitario)!==Number(x.valor_unitario))avisos.push('Linha '+x.linha+': preço da invoice '+x.valor_unitario+'; preço do pedido '+p.valor_unitario+'. Corrija a divergência antes de aprovar.');
-  return {...x,pedido_item_id:p?.id||'',packing_quantidade:pl.length===1?pl[0].quantidade:null,peso_bruto:w.length===1&&Number(w[0].quantidade)===Number(x.quantidade)?w[0].peso_bruto_kg:null};
+  return {...x,pedido_item_id:p?.id||'',packing_quantidade:pl.length===1?pl[0].quantidade:null,peso_bruto:w.length===1&&Number(w[0].quantidade)===Number(x.quantidade)?w[0].peso_bruto_kg:invoice.itens.length===1&&packing.itens.length===1&&Number(pl[0]?.quantidade)===Number(x.quantidade)?packing.peso_bruto_kg:null};
  });
  if(!invoice.pedidos.includes(pedido.referencia.toUpperCase())||!packing.pedidos.includes(pedido.referencia.toUpperCase()))avisos.push('Confira o número do pedido nos dois documentos; uma correção exige justificativa.');
  return {invoice,packing,pesos,itens,avisos};
