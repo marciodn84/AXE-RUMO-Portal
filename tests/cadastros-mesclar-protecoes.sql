@@ -14,7 +14,8 @@ update public.fornecedores set bloqueado_comercial=true,motivo_bloqueio='BLOQUEI
 p:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_previa','tipo','fornecedor','origem_id',a,'destino_id',b),uid);
 select coalesce(jsonb_object_agg(value->>'campo','destino'),'{}')into ch from jsonb_array_elements(p->'campos')where(value->>'conflito')::boolean;
 r:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_salvar','tipo','fornecedor','origem_id',a,'destino_id',b,'versao',p->>'versao','escolhas',ch),uid);
-if not(select bloqueado_comercial from public.fornecedores where id=b)then raise exception 'Mesclagem removeu bloqueio';end if;
+if (public.axe_imp_transportador_resolver('TESTE A')->>'estado')<>'Bloqueado' then raise exception 'Nome antigo da transportadora não resolve no cadastro mantido';end if;
+ if not(select bloqueado_comercial from public.fornecedores where id=b)then raise exception 'Mesclagem removeu bloqueio';end if;
 if exists(select 1 from public.portal_fornecedores where id=a)then raise exception 'Absorvido visível';end if;
 if not exists(select 1 from public.portal_fornecedores where id=b and termos_busca like '%TESTE A%')then raise exception 'Nome antigo não pesquisável';end if;
 err:=false;begin update public.fornecedores set razao_social='RETORNO'where id=a;exception when raise_exception then err:=true;end;if not err then raise exception 'Absorvido editável';end if;
