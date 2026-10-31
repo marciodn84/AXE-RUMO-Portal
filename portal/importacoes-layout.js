@@ -1,5 +1,5 @@
 import {organizarFormulario} from './importacoes-formulario.js?v=20261030-imp34';
-import {padronizarAcoes} from './acoes-icones.js?v=20261030-imp33';
+import {padronizarAcoes} from './acoes-icones.js?v=20261030-imp35';
 import {indicadorSituacao} from './cadastro-controle.js?v=20261030-padrao32';
 const cores={
  'Rascunho':'pending','Emitido':'pending','ACK recebido':'released','Cancelado':'inactive','Cancelada':'inactive',
