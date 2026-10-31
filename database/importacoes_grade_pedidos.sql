@@ -8,7 +8,8 @@ begin
  select m.papel into papel from public.gestao_membros m join public.axe_rumo_revisores rv on rv.usuario_id=m.usuario_id and rv.ativo where m.usuario_id=p_usuario and m.ativo;if papel is null then raise exception 'Sem acesso às importações';end if;
 
  if a='custo_fluxo_grade' then
-  return public.axe_imp_fluxo_base(jsonb_build_object('acao','custo_fluxo_listar','pagina',page,'busca',term),p_usuario)||jsonb_build_object('editar',papel in('ADMIN','EDITOR'));
+  r:=public.axe_imp_fluxo_base(jsonb_build_object('acao','custo_fluxo_listar','pagina',page,'busca',term),p_usuario);
+  return r||jsonb_build_object('editar',papel in('ADMIN','EDITOR'),'linhas',(select coalesce(jsonb_agg(xx||jsonb_build_object('status_processo',coalesce((select string_agg(distinct public.axe_imp_status_parcial(q.id),' / ') from public.imp_importacao_pedidos pp join public.imp_importacao_processos q on q.id=public.axe_imp_processo_raiz(pp.processo_id) where pp.pedido_id=(xx->>'id')::uuid and q.estado='Aberto'),xx->>'status_processo'))),'[]') from jsonb_array_elements(r->'linhas')xx));
  end if;
  if a='custo_fluxo_grade_detalhe' then
   oid:=(p_dados->>'pedido_id')::uuid;
