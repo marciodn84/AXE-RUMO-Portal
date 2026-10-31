@@ -1,0 +1,28 @@
+.erp-sidebar .menu-group{border-bottom:1px solid #253e51;padding-bottom:10px;margin-bottom:10px}
+.erp-sidebar .menu-group>summary{font-size:11px;font-weight:650;letter-spacing:1px;text-transform:uppercase;color:#a7bac9;padding:10px 12px;margin:0;cursor:pointer;border-radius:6px}
+.erp-sidebar .menu-group>summary:hover{background:#203b50;color:white}
+.erp-sidebar .menu-group>summary:focus-visible{outline:2px solid #13aa9c;outline-offset:2px}
+.erp-sidebar .menu-group>button{padding-left:24px}
+.erp-sidebar .connector-submenu{margin:6px 0 6px 12px;border-left:1px solid #3b5568;padding-left:4px}
+.erp-sidebar .connector-submenu>summary{color:#b8d5df;font-size:12px;padding:9px 8px;cursor:pointer}
+.erp-sidebar .connector-submenu>button{padding-left:18px}
+.erp-future>.planned-card+.planned-card{margin-top:18px}
+.sidebar-reveal{display:none}
+@media(min-width:761px){
+ #panel{grid-template-columns:76px minmax(0,1fr)}
+ .erp-sidebar{width:76px;padding:24px 12px 20px;overflow:hidden;z-index:40;transition:width .18s ease;box-shadow:none}
+ .erp-sidebar .erp-brand{padding:0 5px 18px;gap:12px;white-space:nowrap}
+ .erp-sidebar .brand-mark{flex:0 0 42px}
+ .erp-sidebar .brand-name,.erp-sidebar .sidebar-caption,.erp-sidebar>input,.erp-sidebar>nav,.erp-sidebar .sidebar-footer{visibility:hidden;opacity:0;pointer-events:none}
+ .sidebar-reveal{display:block;width:42px;height:42px;margin:0 5px 16px;padding:0;background:#203b50;color:white;border:1px solid #3b5568;border-radius:8px;font-size:22px}
+ .erp-sidebar.menu-hover,.erp-sidebar:focus-within,#panel.menu-open .erp-sidebar{width:254px;overflow-y:auto;box-shadow:10px 0 30px #12263822}
+ .erp-sidebar.menu-hover .brand-name,.erp-sidebar:focus-within .brand-name,#panel.menu-open .brand-name,
+ .erp-sidebar.menu-hover .sidebar-caption,.erp-sidebar:focus-within .sidebar-caption,#panel.menu-open .sidebar-caption,
+ .erp-sidebar.menu-hover>input,.erp-sidebar:focus-within>input,#panel.menu-open .erp-sidebar>input,
+ .erp-sidebar.menu-hover>nav,.erp-sidebar:focus-within>nav,#panel.menu-open .erp-sidebar>nav,
+ .erp-sidebar.menu-hover .sidebar-footer,.erp-sidebar:focus-within .sidebar-footer,#panel.menu-open .sidebar-footer{visibility:visible;opacity:1;pointer-events:auto}
+ .erp-topbar .menu-toggle{display:block;background:white;color:var(--ink);border:1px solid var(--line);margin:0;padding:7px 10px}
+}
+@media(prefers-reduced-motion:reduce){.erp-sidebar{transition:none}}
+.fiscal-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.fiscal-tabs button{margin:0;background:#edf5f4;color:#12685f;border:1px solid #d9e9e6}.fiscal-tabs button[aria-pressed=true]{background:#087f78;color:white}.fiscal-dialog{max-width:820px}.fiscal-dialog fieldset{border:0;padding:0;margin:0;min-width:0}.fiscal-dialog fieldset:disabled{opacity:.5}.fiscal-dialog input[type=checkbox]{width:auto;margin-right:10px}.fiscal-dialog label:has(input[type=checkbox]){display:block}.fiscal-screen .source-card h3{margin:12px 0}.fiscal-screen .source-card>button{background:#edf5f4;color:#12685f;border-color:#d9e9e6}.fiscal-screen select{max-width:100%}
+

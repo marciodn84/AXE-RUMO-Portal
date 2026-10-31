@@ -1,0 +1,44 @@
+.imp-internacional{min-width:0}.imp-internacional fieldset{border:1px solid #d6e1ea;border-radius:12px;padding:20px;margin:20px 0;min-width:0;background:#fff}.imp-internacional legend{font-weight:700;color:#155d86;padding:0 8px}.imp-internacional label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;margin:8px 0;min-width:0}.imp-internacional input,.imp-internacional select,.imp-internacional textarea{width:100%;box-sizing:border-box;min-width:0;margin:0;min-height:42px}.imp-internacional textarea{min-height:90px;resize:vertical}.imp-internacional input:disabled,.imp-internacional select:disabled,.imp-internacional textarea:disabled{color:#334155;background:#f1f5f9;opacity:1}.imp-internacional .cadastro-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.imp-internacional .cadastro-toolbar input{flex:1 1 260px}.imp-internacional .cadastro-toolbar select{width:auto;max-width:100%}.imp-internacional table{width:100%}.imp-internacional td label{min-width:145px;font-weight:400;font-size:11px}.imp-internacional pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}.imp-internacional details{margin:14px 0}.imp-internacional form>button{background:#155d86;color:white;padding:12px 22px}.imp-internacional .scroll{max-width:100%;overflow-x:auto}.imp-internacional .erp-stats{margin-bottom:24px}@media(max-width:650px){.imp-internacional fieldset{padding:12px}.imp-internacional .cadastro-toolbar>*{flex:1 1 100%}}
+
+#panel .imp-internacional form .scroll{max-height:none}
+
+.imp-line{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border:1px solid #d6e1ea;border-radius:10px;padding:18px;margin:16px 0;background:#fafcfe}.imp-line h3,.imp-line>p{grid-column:1/-1}.imp-line h3{margin:0}.imp-line>button{align-self:end}.imp-picker{width:min(1100px,95vw);max-height:85vh;overflow:auto;border:1px solid #c4d4e4;border-radius:12px}.imp-picker::backdrop{background:#10233788}.imp-estrutura .catalog-tabs{background:white;padding:8px 0}.imp-estrutura .planned-card{margin:20px 0}.imp-estrutura input[type=search]{max-width:100%}@media(max-width:700px){.imp-line{grid-template-columns:1fr;padding:12px}.imp-estrutura .catalog-tabs{position:static}.imp-picker{box-sizing:border-box;padding:12px}}
+
+.imp-cambio{min-width:0;width:100%;box-sizing:border-box}.imp-cambio .erp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.imp-cambio .stat-card{min-width:0}.imp-cambio .stat-card strong{font-size:24px;overflow-wrap:anywhere;white-space:normal}.imp-cambio table td{vertical-align:top}.imp-cambio .catalog-tabs{position:static}@media(max-width:600px){.imp-cambio .erp-stats{grid-template-columns:1fr}}
+
+.imp-custos{width:100%;min-width:0}.imp-custos .import-mapping input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}.imp-custos .imp-custo-resultado{border-top:1px solid #d6e1ea;margin-top:24px;padding-top:20px}.imp-custos .imp-custo-resultado .scroll{max-height:none}.imp-custos .imp-line>p{overflow-wrap:anywhere}.imp-custos .imp-custo-resultado li{line-height:1.7}.imp-custos .imp-custo-resultado th{white-space:normal;min-width:90px}.imp-custos .imp-custo-resultado td{white-space:normal;min-width:90px}
+
+.imp-notas fieldset{margin:1rem 0;min-width:0}.imp-notas button{max-width:100%;white-space:normal;overflow-wrap:anywhere}.imp-notas .nf-chave{overflow-wrap:anywhere}.imp-notas input[type=file]{max-width:100%}.imp-notas textarea{min-height:72px}.imp-notas pre{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.imp-notas input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}.imp-notas [type=checkbox]{accent-color:#155d86}
+
+.imp-di-review{max-width:1100px}.imp-di-review label{display:flex;flex-direction:column;gap:6px;margin:8px 0}.imp-di-review input,.imp-di-review textarea{box-sizing:border-box;max-width:100%}.imp-di-review .scroll{max-width:100%;overflow:auto}.imp-di-review pre{white-space:pre-wrap;overflow-wrap:anywhere}.imp-di-review input[type=checkbox]{width:22px;min-height:22px}.imp-di-review td input{width:130px}.imp-di-review th{white-space:normal}
+
+.imp-di-review fieldset{min-width:0;max-width:100%;box-sizing:border-box}.imp-di-review .import-mapping,.imp-di-review .import-mapping>label{min-width:0}.imp-di-review input{min-width:0;width:100%}.imp-di-review td input{width:130px}.imp-di-review input[type=checkbox]{width:22px;align-self:flex-start}
+
+.imp-estrutura input[type=checkbox]{width:22px;min-height:22px;align-self:flex-start}
+
+/* Keep control sizing independent of flex direction and neighbouring content. */
+.imp-internacional button,.imp-picker button{min-height:42px;height:auto;max-width:100%;padding:10px 16px;line-height:1.35;align-self:end;white-space:normal;overflow-wrap:anywhere}
+.imp-internacional input:not([type=checkbox]):not([type=radio]):not([type=file]),.imp-internacional select,.imp-picker input:not([type=checkbox]):not([type=radio]):not([type=file]),.imp-picker select{height:42px;min-height:42px;flex:none;padding:9px 12px;font:inherit;line-height:1.35}
+.imp-internacional textarea,.imp-picker textarea{min-height:96px;height:auto;font:inherit;padding:10px 12px;line-height:1.5}
+.imp-internacional .cadastro-toolbar{align-items:flex-end;gap:12px;min-height:0}
+.imp-internacional .cadastro-toolbar>label{flex:1 1 260px;max-width:420px;margin:0}
+.imp-internacional .cadastro-toolbar label input{flex:none;height:42px}
+.imp-internacional .cadastro-toolbar>input{flex:1 1 260px;max-width:420px}
+.imp-internacional .cadastro-toolbar>button{flex:0 1 auto;margin:0;align-self:flex-end}
+.imp-internacional .cadastro-toolbar>span{flex:0 1 auto;align-self:center}
+.imp-internacional .catalog-tabs{align-items:center;gap:8px}
+.imp-internacional .catalog-tabs>button{margin:0;min-height:42px;align-self:center}
+.imp-internacional .import-mapping,.imp-internacional .imp-line{align-items:start}
+.imp-internacional .status:empty{display:none}
+@media(max-width:650px){
+ .imp-internacional .cadastro-toolbar>label,.imp-internacional .cadastro-toolbar>input{flex:1 1 100%;max-width:none}
+ .imp-internacional .cadastro-toolbar>button{flex:0 1 auto}
+ .imp-internacional .cadastro-toolbar>span{flex:0 1 auto}
+ .imp-internacional .catalog-tabs>button{flex:1 1 calc(50% - 8px)}
+}
+
+
+.imp-ack{width:min(1100px,94vw);max-height:90vh;overflow:auto}.imp-ack pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.imp-ack .import-mapping{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px}.imp-ack label{display:flex;flex-direction:column;gap:6px;margin:12px 0}.imp-ack input[type=checkbox]{align-self:flex-start}.imp-ack fieldset{min-width:0}.imp-ack table{width:100%}.imp-ack td,.imp-ack th{padding:8px;text-align:left}.imp-ack button{margin:8px 8px 8px 0}.imp-ack textarea{width:100%;box-sizing:border-box}
+.imp-fluxo section,.imp-fluxo .fluxo-parcial{margin-top:20px}.imp-fluxo .fluxo-parcial{border:1px solid #dce5ed;border-radius:12px;padding:20px;background:#fff}.imp-fluxo .fluxo-proxima{background:#edf7f5;border-left:4px solid #00857b;padding:12px 16px;margin:16px 0;border-radius:6px}.imp-fluxo .fluxo-status{font-size:1.1rem;font-weight:700;color:#075b55}.imp-fluxo table td{vertical-align:top}.imp-fluxo .cadastro-toolbar{flex-wrap:wrap;gap:8px}.imp-fluxo details button{margin:4px}
