@@ -20,3 +20,9 @@ Não associar parcelas, pedidos ou invoices por coincidência de valor. SWIFT ut
 ## Evidências de verificação
 
 Testes de download controlado, origem HTTPS, integridade por hash, falha independente por anexo, preservação de bytes e bloqueio de proposta incompleta. Testes de aceite no banco usam transação com rollback: não constituem aceite operacional do usuário.
+
+## Transporte de arquivos maiores
+
+Em chamadas SQL por ferramentas com limite de tamanho de texto, usar `sql_arquivar_partes` em vez de enviar o JSON completo. Cada chamada envia no máximo 32 KiB de bytes; `axe_email_arquivar_parte` recompõe o único original e verifica o SHA-256 antes de chamar o arquivamento privado. Partes repetidas são idempotentes e partes conflitantes são rejeitadas. A confirmação final deve conter `completo=true` e `arquivo_id`. Partes temporárias são privadas e expiram em 24 horas; não representam documentos separados. Nenhuma consulta exige leitura de arquivo no servidor.
+
+A recuperação histórica de 30/10/2026 confirmou 72/72 anexos do inventário compartilhado, com SHA-256 e tamanho íntegros. Isso não equivale a cobertura integral da caixa postal: as mensagens ainda não inventariadas exigem a rotina incremental e sua reconciliação.

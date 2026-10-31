@@ -39,3 +39,16 @@ def sql_arquivar(mensagem_id,original,usuario):
     import uuid
     principal=str(uuid.UUID(usuario));payload=json.dumps(payload_arquivar(mensagem_id,original)).replace("'","''")
     return "select public.axe_email_arquivar_original('"+payload+"'::jsonb,'"+principal+"'::uuid) as resultado;"
+
+def sql_arquivar_partes(mensagem_id,original,usuario):
+    """Bounded SQL calls; the server reconstructs one byte-identical original.
+    Parts are a transport detail, not separate ERP documents.
+    """
+    import uuid
+    principal=str(uuid.UUID(usuario));data=original['conteudo'];partes=(len(data)+32767)//32768
+    for numero in range(partes):
+        d={k:original[k] for k in ('anexo_id','nome','sha256')}
+        d.update(mensagem_id=mensagem_id,parte=numero,partes=partes,
+                 conteudo_base64=base64.b64encode(data[numero*32768:(numero+1)*32768]).decode('ascii'))
+        payload=json.dumps(d).replace("'","''")
+        yield "select public.axe_email_arquivar_parte('"+payload+"'::jsonb,'"+principal+"'::uuid) as resultado;"
