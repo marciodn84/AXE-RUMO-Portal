@@ -1,4 +1,4 @@
-import {initEstoque}from './estoque.js?v=20261031-stock55';
+import {initEstoque}from './estoque.js?v=20261031-stock56';
 import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261031-carrier53';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
