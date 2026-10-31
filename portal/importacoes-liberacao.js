@@ -1,4 +1,4 @@
-import {classificarEmbarque} from './embarques-abrangencia.js?v=20261031-imp49';
+import {classificarEmbarque} from './embarques-abrangencia.js?v=20261031-grid50';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo15';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo15';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
