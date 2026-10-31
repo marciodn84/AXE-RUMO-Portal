@@ -59,6 +59,7 @@ export function initCustosImportacao(api,parent){
    const url=URL.createObjectURL(new Blob([csvCustos(r)],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=url;a.download=(estado==='Final'?'custo-final-':'custo-provisorio-')+current.embarque.referencia.replace(/[^a-zA-Z0-9_-]/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }));
  }
+ async function abrirFechamento(){if(dirty)throw Error('Salve a apuração provisória antes de anexar ou importar um fechamento.');const e=current.embarque;await fechamento.open(e,current.custo,!!opts.editar&&current.custo?.estado!=='Final',async()=>{dirty=false;pending=null;await open(e.id);msg.textContent='Fechamento importado no custo provisório. Revise a memória e o tratamento dos créditos antes de finalizar.';});}
  function render(editing){
   const g=epoch,e=current.embarque,saved=current.custo,base=saved?.dados||{pagamentos:[],despesas:[],tributos:[]},frete=current.transporte,d={...base,despesas:[...(base.despesas||[]).filter(x=>!x.origem_transporte),...(frete?[frete]:[])]};d.pagamentos=(base.pagamentos||[]).map(x=>({...x,valor_brl:saved?.resultado?.pagamentos?.find(z=>z.id===x.id)?.valor_brl??x.valor_brl}));body.replaceChildren();msg.textContent='';
   const toolbar=el('div',undefined,'cadastro-toolbar');toolbar.append(btn('Voltar aos embarques',async()=>{if(!guard())return;dirty=false;pending=null;current=null;await list();}));
@@ -66,7 +67,7 @@ export function initCustosImportacao(api,parent){
   if(opts.editar&&saved?.estado==='Final')toolbar.append(btn('Reabrir custo com justificativa',async()=>{
    const motivo=prompt('Qual o motivo da revisão deste custo final?');if(!motivo?.trim())return;await api({acao:'custo_reabrir',embarque_id:e.id,versao:saved.versao,motivo,requisicao_id:crypto.randomUUID()});await open(e.id);
   }));
-  toolbar.append(btn('Fechamentos do despachante',async()=>{if(dirty)throw Error('Salve a apuração provisória antes de anexar ou importar um fechamento.');await fechamento.open(e,saved,!!opts.editar&&saved?.estado!=='Final',async()=>{dirty=false;pending=null;await open(e.id);msg.textContent='Fechamento importado no custo provisório. Revise a memória e o tratamento dos créditos antes de finalizar.';});}));
+  toolbar.append(btn('Fechamentos do despachante',abrirFechamento));
   body.append(toolbar,el('h3',e.referencia+' · '+e.fornecedor),el('p','Moeda FOB: '+e.moeda+' · Embarque: '+e.status+' · Apuração: '+(saved?.estado||'Nova')));
   if(saved&&saved.resultado.embarque_fonte?.versao!==e.versao)body.append(el('p','O embarque foi alterado após esta apuração. Recalcule a prévia antes de finalizar.','status error'));
   if(frete)body.append(el('p','Frete documental: '+Number(frete.valor).toLocaleString('pt-BR')+' USD · '+money(frete.valor_brl)+' · taxa DUIMP '+(frete.cambio||'pendente')+'. Rateio pelo peso real bruto dos itens. Alterações devem ser feitas em Documentos de transporte, no embarque.'));
@@ -153,6 +154,6 @@ export function initCustosImportacao(api,parent){
   }
  }
  window.addEventListener('beforeunload',e=>{if(!root.hidden&&(dirty||busy)){e.preventDefault();e.returnValue='';}});
- return {canLeave:guard,async show(v,id){epoch++;seq++;closeDialogs();root.hidden=!v;dirty=false;pending=null;current=null;calc=null;if(!v)return;const g=epoch;try{opts=await api({acao:'custo_opcoes'});if(valid(g)){if(id)await open(id);else await list();}}catch(e){if(valid(g))msg.textContent=e.message;}},reset(){fechamento.reset();epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;calc=null;opts={editar:false};body.replaceChildren();}};
+ return {canLeave:guard,async show(v,id,anexarFechamento=false){epoch++;seq++;closeDialogs();root.hidden=!v;dirty=false;pending=null;current=null;calc=null;if(!v)return;const g=epoch;try{opts=await api({acao:'custo_opcoes'});if(valid(g)){if(id){await open(id);if(valid(g)&&anexarFechamento)await abrirFechamento();}else await list();}}catch(e){if(valid(g))msg.textContent=e.message;}},reset(){fechamento.reset();epoch++;seq++;closeDialogs();root.hidden=true;dirty=false;pending=null;current=null;calc=null;opts={editar:false};body.replaceChildren();}};
 }
 

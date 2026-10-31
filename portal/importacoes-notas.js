@@ -1,5 +1,5 @@
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-fluxo15';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-click52';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261030-imp34';
 import {initLeituraDI} from './importacoes-di.js?v=20261029-fluxo15';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
@@ -118,6 +118,6 @@ export function initNotasImportacao(api,parent){
   const r=await locked(()=>api(pending));dirty=false;pending=null;await open(r.id);msg.textContent=conciliar?'Nota conciliada. Histórico preservado.':'Conferência salva como pendente.';msg.className='status';
  }
  window.addEventListener('beforeunload',e=>{if(!root.hidden&&(dirty||busy)){e.preventDefault();e.returnValue='';}});
- return {canLeave:()=>root.hidden||guard(),async show(visible){epoch++;for(const d of dialogs)d.close();root.hidden=!visible;if(!visible)return;dirty=false;pending=null;page=0;query='';const g=epoch;try{const o=await api({acao:'nf_opcoes'});if(g!==epoch)return;editable=o.editar;await list();}catch(e){msg.textContent=e.message;}},reset(){diReader.reset();epoch++;for(const d of dialogs)d.close();root.hidden=true;body.replaceChildren();readings.clear();products.clear();declarations.clear();dirty=false;pending=null;uploadPending=null;note=null;data=null;}};
+ return {canLeave:()=>root.hidden||guard(),async show(visible,notaId){epoch++;for(const d of dialogs)d.close();root.hidden=!visible;if(!visible)return;dirty=false;pending=null;page=0;query='';const g=epoch;try{const o=await api({acao:'nf_opcoes'});if(g!==epoch)return;editable=o.editar;if(notaId)await open(notaId);else await list();}catch(e){msg.textContent=e.message;}},reset(){diReader.reset();epoch++;for(const d of dialogs)d.close();root.hidden=true;body.replaceChildren();readings.clear();products.clear();declarations.clear();dirty=false;pending=null;uploadPending=null;note=null;data=null;}};
 }
 

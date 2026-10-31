@@ -1,16 +1,16 @@
-import {initGradeImportacoes} from './importacoes-grade.js?v=20261031-next51';
-import {initNumerario} from './importacoes-numerario.js?v=20261031-next51';
-import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-next51';
+import {initGradeImportacoes} from './importacoes-grade.js?v=20261031-click52';
+import {initNumerario} from './importacoes-numerario.js?v=20261031-click52';
+import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-click52';
 import {initLeituraDI} from './importacoes-di.js?v=20261029-docauto17';
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-docauto17';
-import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261031-next51';
-import {initACKImportacao} from './importacoes-ack.js?v=20261031-next51';
-import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-next51';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-next51';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-click52';
+import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261031-click52';
+import {initACKImportacao} from './importacoes-ack.js?v=20261031-click52';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-click52';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-click52';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261030-imp34';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261030-imp34';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261031-click52';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261030-imp34';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261030-imp34';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261031-click52';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const date=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'Pendente';
 const money=(v,c='USD')=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:c}).format(Number(v));
@@ -25,7 +25,7 @@ export function initVisaoImportacao(api,parent,editCadastro){
  const ack=initACKImportacao(wrap,root,refresh),pay=initPagamentoDocumental(wrap,root,refresh),lib=initLiberacaoDocumental(wrap,root,refresh),trans=initTransporteDocumental(wrap,root,refresh);
  const cost=initCustosImportacao(wrap,work),fx=initConciliacaoCambio(wrap,work),notes=initNotasImportacao(wrap,work);
  const numerario=initNumerario(api);
- const grade=initGradeImportacoes(api,{abrir:async(ctx,tab='resumo',ship)=>{if(!guard())return;await open(ctx.pedido.id,ctx.processo?.id);abaProcesso=tab;parcialSelecionada=ship||'';render();},executar:async(ctx,kind,shipment)=>{if(!guard())return;if(['ack','pagamento','carga','transporte'].includes(kind)){current=ctx;await action(kind,shipment);}else{await open(ctx.pedido.id,ctx.processo?.id);if(kind==='numerario'){abaProcesso='numerario';render();return;}if(kind==='aduana'&&!current.editar){abaProcesso='aduana';render();return;}await action(kind,shipment);}},baixar:download,editar:pid=>editCadastro('pedidos',pid,pid),erro:message=>{status.textContent=message;status.className='status error';}});
+ const grade=initGradeImportacoes(api,{abrir:async(ctx,tab='resumo',ship)=>{if(!guard())return;await open(ctx.pedido.id,ctx.processo?.id);abaProcesso=tab;parcialSelecionada=ship||'';render();},executar:async(ctx,kind,shipment)=>{if(!guard())return;if(['ack','pagamento','carga','transporte','participantes','produtos'].includes(kind)){current=ctx;await action(kind,shipment);}else{await open(ctx.pedido.id,ctx.processo?.id);if(kind==='numerario'){abaProcesso='numerario';render();return;}if(kind==='aduana'&&!current.editar){abaProcesso='aduana';render();return;}await action(kind,shipment);}},baixar:download,editar:pid=>editCadastro('pedidos',pid,pid),erro:message=>{status.textContent=message;status.className='status error';}});
  const guard=()=>numerario.canLeave()&&!declarationBusy&&leitorDI.canLeave()&&cadastros.canLeave()&&ack.canLeave()&&pay.canLeave()&&lib.canLeave()&&trans.canLeave()&&cost.canLeave()&&fx.canLeave()&&notes.canLeave();
  function btn(t,fn){const b=el('button',t);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=e.message;status.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
  async function closeWork(){if(consolidacao){consolidacao.close();consolidacao.remove();consolidacao=null;}if(!guard())return false;await cost.show(false);await fx.show(false);await notes.show(false);work.hidden=true;return true;}
@@ -36,11 +36,12 @@ export function initVisaoImportacao(api,parent,editCadastro){
   if(kind==='transporte')return trans.show(shipment.id,current.editar);
   if(kind==='pedido'||kind==='embarque'){if(!await closeWork())return;return editCadastro(kind==='pedido'?'pedidos':'embarques',kind==='pedido'?p.id:shipment.id,p.id);}
   if(kind==='aduana')return aduana(shipment);
-  if(kind==='participantes')return cadastros.escolher('participante',{razao_social:shipment.dados?.transportador||''},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:'transportador',embarque_id:shipment.id,cadastro_id:pr.id});await refresh();});
+  if(kind==='produtos'){const missing=shipment?.itens?.find(i=>!i.produto_id),item=p.itens.find(i=>i.id===missing?.pedido_item_id);if(!item)throw Error('Confira os produtos vinculados aos itens deste embarque.');return cadastros.escolher('produto',{codigo_anterior:item.codigo_axe,part_number:item.codigo_fornecedor,descricao_referencia:item.descricao,unidade_referencia:item.unidade},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:'produto',item_id:item.id,cadastro_id:pr.id});await refresh();});}
+  if(kind==='participantes')return cadastros.escolher('participante',{razao_social:shipment.dados?.transportador||'',papel:'transportador'},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:'transportador',embarque_id:shipment.id,cadastro_id:pr.id});await refresh();});
   if(kind==='estoque')return stock(shipment);
   if(!await closeWork())return;work.hidden=false;work.querySelector('.fluxo-fechar')?.remove();const close=btn('Fechar cadastro e atualizar processo',async()=>{if(await closeWork())await refresh();});close.classList.add('fluxo-fechar');work.prepend(close);
-  if(kind==='custo')await cost.show(true,shipment.id);
-  else if(kind==='nota')await notes.show(true);
+  if(kind==='custo'||kind==='fechamento')await cost.show(true,shipment.id,kind==='fechamento');
+  else if(kind==='nota')await notes.show(true,current.embarques.find(s=>s.embarque.id===shipment?.id)?.notas?.find(n=>n.estado!=='Conciliada')?.id);
   else await fx.show(true);
   work.scrollIntoView({block:'start',behavior:'smooth'});
  }
