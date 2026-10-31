@@ -1,0 +1,22 @@
+begin;set local role service_role;
+do $$declare uid uuid:='f296afe4-eca8-48ad-a79a-388188988730';a bigint;b bigint;p jsonb;r jsonb;ch jsonb;err boolean:=false;begin
+insert into public.fornecedores(razao_social,cnpj)values('TESTE A','11111111000111')returning id into a;
+insert into public.fornecedores(razao_social,cnpj)values('TESTE B','22222222000122')returning id into b;
+p:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_previa','tipo','fornecedor','origem_id',a,'destino_id',b),uid);
+if jsonb_array_length(p->'impedimentos')=0 then raise exception 'CNPJs distintos não bloqueados';end if;
+begin perform public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_previa','tipo','fornecedor','origem_id',a,'destino_id',b),'00000000-0000-0000-0000-000000000000');exception when raise_exception then err:=true;end;if not err then raise exception 'Sem autorização aceitou';end if;
+update public.fornecedores set cnpj=null where id in(a,b);
+p:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_previa','tipo','fornecedor','origem_id',a,'destino_id',b),uid);
+select coalesce(jsonb_object_agg(value->>'campo','destino'),'{}')into ch from jsonb_array_elements(p->'campos')where(value->>'conflito')::boolean;
+update public.fornecedores set email='mudou@teste'where id=a;err:=false;
+begin perform public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_salvar','tipo','fornecedor','origem_id',a,'destino_id',b,'versao',p->>'versao','escolhas',ch),uid);exception when raise_exception then err:=true;end;if not err then raise exception 'Prévia desatualizada aceitou';end if;
+update public.fornecedores set bloqueado_comercial=true,motivo_bloqueio='BLOQUEIO TESTE'where id=a;
+p:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_previa','tipo','fornecedor','origem_id',a,'destino_id',b),uid);
+select coalesce(jsonb_object_agg(value->>'campo','destino'),'{}')into ch from jsonb_array_elements(p->'campos')where(value->>'conflito')::boolean;
+r:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_salvar','tipo','fornecedor','origem_id',a,'destino_id',b,'versao',p->>'versao','escolhas',ch),uid);
+if not(select bloqueado_comercial from public.fornecedores where id=b)then raise exception 'Mesclagem removeu bloqueio';end if;
+if exists(select 1 from public.portal_fornecedores where id=a)then raise exception 'Absorvido visível';end if;
+if not exists(select 1 from public.portal_fornecedores where id=b and termos_busca like '%TESTE A%')then raise exception 'Nome antigo não pesquisável';end if;
+err:=false;begin update public.fornecedores set razao_social='RETORNO'where id=a;exception when raise_exception then err:=true;end;if not err then raise exception 'Absorvido editável';end if;
+if public.axe_mesclagem_vinculo_permitido('imp_embarques','{"fornecedor_id":1,"frete":10}'::jsonb,'{"fornecedor_id":2,"frete":20}'::jsonb)then raise exception 'Guard autorizou alteração de valor';end if;
+end $$;set constraints all immediate;rollback;

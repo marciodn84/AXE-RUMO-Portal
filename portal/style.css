@@ -59,3 +59,5 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 .imp-fluxo .fluxo-parcial{min-width:0;max-width:100%;box-sizing:border-box}.imp-fluxo .scroll{display:block;width:100%;min-width:0;overflow-x:auto;box-sizing:border-box}.fluxo-etapa-panel{min-width:0;max-width:100%;box-sizing:border-box}
 
 .imp-fluxo .erp-stats{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.imp-fluxo .stat-card{min-width:0}.imp-fluxo .stat-card strong{white-space:normal;overflow-wrap:anywhere}@media(max-width:650px){.imp-fluxo .erp-stats{grid-template-columns:1fr}}
+
+.merge-tools{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px}.merge-tools[hidden]{display:none}.merge-tools span{font-size:.85rem;color:#536779}.merge-dialog{width:min(1100px,94vw);max-height:90vh;overflow:auto}.merge-dialog table{width:100%;margin:16px 0}.merge-dialog th,.merge-dialog td{padding:10px;max-width:300px;overflow-wrap:anywhere}.merge-dialog select{max-width:100%}.merge-dialog>button{margin:12px 8px 0 0}.merge-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere}[data-merge-id]{width:18px;height:18px;min-height:0;cursor:pointer}

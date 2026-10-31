@@ -36,6 +36,10 @@ Deno.serve(async(req:Request)=>{
    if(!res.ok){const messages:Record<string,string>={'23505':'Esse registro já existe. Atualize a lista antes de tentar novamente.','23503':'Um dos cadastros relacionados não foi encontrado.','23514':'Revise formatos, vigência, alíquotas e campos obrigatórios.','22P02':'Revise os números e os identificadores informados.','22007':'Revise as datas informadas.'};return reply({erro:messages[result.code]||(result.code==='P0001'?String(result.message).slice(0,240):'Não foi possível salvar. Atualize a tela e confira os dados.')},409);}return reply({ok:true,resultado:result});
   }
 
+  if(['cadastro_mesclar_previa','cadastro_mesclar_salvar','cadastro_mesclar_historico'].includes(b.acao)){
+   if(!['cliente','produto','fornecedor'].includes(b.tipo)||!positive(b.destino_id)||(b.acao!=='cadastro_mesclar_historico'&&!positive(b.origem_id)))return reply({erro:'Selecione dois cadastros válidos do mesmo tipo'},400);
+   return await rpc('axe_cadastro_mesclar',{p_dados:b,p_usuario:user.id});
+  }
   const tables:Record<string,string>={produto:'produtos_conciliacao',cliente:'clientes',fornecedor:'fornecedores',referencia_cliente:'produtos_clientes_referencias',opcao_cliente:'produtos_clientes_opcoes',produto_fornecedor:'produtos_fornecedores',similar:'produtos_similares',documento:'produtos_documentos'};
   const table=tables[b.tipo];
   if(!table)return reply({erro:'Cadastro inválido'},400);
@@ -81,7 +85,7 @@ Deno.serve(async(req:Request)=>{
     if(!positive(b[key])||!allowed[b.tipo]?.includes(key))return reply({erro:'Filtro inválido'},400);
     if(b.tipo==='similar'&&key==='produto_id')p.or='(produto_id.eq.'+b[key]+',similar_id.eq.'+b[key]+')';else p[key]='eq.'+b[key];
    }
-   return reply(await query(table,p));
+   if(['cliente','produto','fornecedor'].includes(b.tipo))p.mesclado_em_id='is.null';if(b.tipo==='fornecedor'&&q){delete p.or;p.termos_busca='ilike.*'+q+'*';}return reply(await query(b.tipo==='fornecedor'?'portal_fornecedores':table,p));
   }
   return reply({erro:'Operação não permitida'},400);
  }catch(e){return reply({erro:'Não foi possível concluir a consulta. Atualize a tela e confira os dados.'},400);}

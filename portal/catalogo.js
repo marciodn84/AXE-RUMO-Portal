@@ -1,3 +1,4 @@
+import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-merge54';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
 import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261030-clienttabs27';
@@ -31,19 +32,20 @@ const nameOf=(type,r)=>type==='produto'?[r.codigo_axe||r.codigo_anterior||'#'+r.
 export function initCatalogo(api){
  const root=document.getElementById('cadastrosRoot');const screen=node('section',undefined,'cadastro-screen');screen.hidden=true;root.append(screen);
  let epoch=0,request=0,active=null,type='fornecedor',page=0,query='',productFilter=null,referenceFilter=null,dialog=null;const controle=controleCadastro(api,()=>active==='fornecedores');
- const cache=new Map();
+ const cache=new Map();const mesclagem=selecaoMesclagem(api,'fornecedor',()=>{cache.clear();return load();});
  const btn=(text,fn)=>{const b=node('button',text);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=e.message;status.className='status error';}finally{b.disabled=false;}};return b;};
  const heading=node('h2'),intro=node('p',undefined,'intro'),tabs=node('div',undefined,'catalog-tabs'),tools=node('form',undefined,'searchbar'),search=node('input');search.type='search';search.placeholder='Buscar por nome, código ou descrição';search.setAttribute('aria-label','Buscar no catálogo');
  const status=node('p','','status');status.setAttribute('role','status');const tableWrap=node('div',undefined,'scroll'),table=node('table');tableWrap.append(table);
  const count=node('span'),previous=btn('Anterior',()=>{page--;return load();}),next=btn('Próxima',()=>{page++;return load();});const paging=node('div',undefined,'paging');paging.append(previous,count,next);
  tools.append(search,btn('Buscar',()=>{query=search.value.trim();page=0;return load();}),btn('Novo cadastro',()=>edit(type,null,productFilter?{produto_id:productFilter}:{})));
  const excelTools=botoesPlanilha('fornecedor',api,{ativo:()=>active==='fornecedores'&&!screen.hidden,versao:()=>epoch,status:(text,error)=>{status.textContent=text;status.className=error?'status error':'status';}});excelTools.hidden=true;tools.append(excelTools);
+ tools.append(mesclagem.tools);
  tools.onsubmit=e=>{e.preventDefault();query=search.value.trim();page=0;load();};screen.append(heading,intro,tabs,tools,status,tableWrap,paging);
  async function lookupRecord(kind,id){if(!id)return null;const key=kind+':'+id;if(!cache.has(key))cache.set(key,api({acao:'detalhe',tipo:kind,id:Number(id)}).catch(e=>{cache.delete(key);throw e;}));return cache.get(key);}
  async function display(kind,id){const r=await lookupRecord(kind,id);return r?nameOf(kind,r):'Não informado';}
  function selectTab(kind){type=kind;page=0;query='';search.value='';referenceFilter=null;for(const b of tabs.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.kind===kind));return load();}
  async function show(key,produtoId){epoch++;screen.hidden=true;active=key;if(!key)return;screen.hidden=false;productFilter=produtoId||null;referenceFilter=null;cache.clear();tabs.replaceChildren();
-  excelTools.hidden=key!=='fornecedores';
+  excelTools.hidden=key!=='fornecedores';mesclagem.tools.hidden=key!=='fornecedores';
   heading.textContent=key==='fornecedores'?'Fornecedores':'Produtos por cliente e fornecedor';
   intro.textContent=key==='fornecedores'?'Cadastre fornecedores nacionais e estrangeiros e seus contatos.':'Cada código do cliente pode aceitar vários produtos AXE. Os produtos mantêm códigos, estoques e custos separados. A relação técnica não substitui o aceite do cliente.';
   const kinds=key==='fornecedores'?['fornecedor']:['referencia_cliente','opcao_cliente','produto_fornecedor','similar','documento'];
@@ -68,7 +70,7 @@ export function initCatalogo(api){
    for(const {r,cells} of rows){if(kind==='fornecedor')cells[cells.length-1]=indicadorCadastro(r);if(kind==='referencia_cliente')cells[cells.length-1]=indicadorSituacao(r.ativo?'ATIVO':'INATIVO');if(kind==='opcao_cliente')cells[3]=indicadorSituacao(r.situacao);if(kind==='produto_fornecedor'){const sit=node('span');sit.append(indicadorSituacao(r.situacao),document.createTextNode(r.preferencial?' · Preferencial':''));cells[5]=sit;}const tr=node('tr');for(const value of cells){const td=node('td');if(value instanceof Node)td.append(value);else td.textContent=value??'—';tr.append(td);}const actions=node('td');actions.append(btn('Editar',()=>edit(kind,r.id)));
     if(kind==='referencia_cliente')actions.append(btn('Produtos aceitos',()=>{type='opcao_cliente';page=0;query='';search.value='';referenceFilter=r.id;return load();}),btn('Vincular produto AXE',()=>edit('opcao_cliente',null,{referencia_cliente_id:r.id})));
     if(kind==='fornecedor')actions.append(btn('Vincular produto',()=>edit('produto_fornecedor',null,{fornecedor_id:r.id})),btn(r.bloqueado_comercial?'Desbloquear fornecedor':'Bloquear fornecedor',()=>controle.alterar('fornecedor',r,load)),btn('Histórico de bloqueios',()=>controle.historico('fornecedor',r)));
-    tr.append(actions);body.append(tr);
+    if(kind==='fornecedor')tr.firstElementChild.prepend(mesclagem.checkbox(r),document.createTextNode(' '));tr.append(actions);body.append(tr);
    }padronizarAcoes(body);table.append(body);count.textContent=result.total?`${page*50+1}–${page*50+rows.length} de ${result.total}`:'Nenhum registro';previous.disabled=page===0;next.disabled=(page+1)*50>=result.total;status.textContent=rows.length?'Consulta atualizada.':'Nenhum cadastro nesta consulta. Use “Novo cadastro” para começar.';
   }catch(e){if(gen===epoch&&run===request){status.textContent=e.message;status.className='status error';previous.disabled=page===0;}}
  }
@@ -126,7 +128,7 @@ export function initCatalogo(api){
   };
  }
  document.addEventListener('axe-editar-catalogo',e=>edit(e.detail.tipo,e.detail.id));
- return {show,edit,reset(){controle.reset();epoch++;request++;active=null;screen.hidden=true;table.replaceChildren();cache.clear();if(dialog)dialog.remove();dialog=null;}};
+ return {show,edit,reset(){mesclagem.reset();controle.reset();epoch++;request++;active=null;screen.hidden=true;table.replaceChildren();cache.clear();if(dialog)dialog.remove();dialog=null;}};
 }
 
 

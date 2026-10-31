@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+let handler:any,mode='ok',calls:any[]=[];
+(globalThis as any).Deno={env:{get:(k:string)=>k==='SUPABASE_URL'?'https://test.invalid':k},serve:(fn:any)=>handler=fn};
+(globalThis as any).fetch=async(url:any,opts:any={})=>{const u=String(url);calls.push({u,opts});if(u.endsWith('/auth/v1/user'))return Response.json({id:'f296afe4-eca8-48ad-a79a-388188988730'});if(u.includes('axe_rumo_revisores'))return Response.json(mode==='unauthorized'?[]:[{usuario_id:'f296afe4-eca8-48ad-a79a-388188988730'}]);if(u.endsWith('/rpc/axe_cadastro_mesclar'))return mode==='conflict'?Response.json({code:'P0001',message:'Os cadastros ou vínculos mudaram. Gere uma nova prévia'},{status:400}):Response.json({versao:'test',campos:[]});if(u.includes('/portal_fornecedores?'))return Response.json([]);throw Error(u);};
+await import('../backend/axe-catalogo-padrao.ts');
+const run=(body:any,auth=true)=>handler(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',...(auth?{authorization:'Bearer test'}:{})},body:JSON.stringify(body)}));
+let r=await run({acao:'cadastro_mesclar_previa',tipo:'fornecedor',origem_id:1,destino_id:2,p_usuario:'FAKE'});assert.equal(r.status,200);const rpc=calls.find(c=>c.u.endsWith('/rpc/axe_cadastro_mesclar'));assert.equal(JSON.parse(rpc.opts.body).p_usuario,'f296afe4-eca8-48ad-a79a-388188988730');assert.equal(JSON.parse(rpc.opts.body).p_dados.acao,'cadastro_mesclar_previa');
+mode='conflict';r=await run({acao:'cadastro_mesclar_salvar',tipo:'produto',origem_id:1,destino_id:2});assert.equal(r.status,409);assert.match((await r.json()).erro,/nova prévia/);
+r=await run({acao:'cadastro_mesclar_previa',tipo:'pedido',origem_id:1,destino_id:2});assert.equal(r.status,400);
+mode='unauthorized';calls=[];r=await run({acao:'cadastro_mesclar_previa',tipo:'cliente',origem_id:1,destino_id:2});assert.equal(r.status,403);assert(!calls.some(c=>c.u.includes('/rpc/')));
+r=await run({},false);assert.equal(r.status,401);
+mode='ok';r=await run({acao:'listar',tipo:'fornecedor',busca:'DHL'});assert.equal(r.status,200);const lookup=calls.find(c=>c.u.includes('/portal_fornecedores?'));assert(lookup);const params=new URL(lookup.u).searchParams;assert.equal(params.get('mesclado_em_id'),'is.null');assert.equal(params.get('termos_busca'),'ilike.*DHL*');
+console.log('PASS: JWT, revisor, usuário do servidor, allowlist de tipo, conflito preservado e fornecedores sem absorvidos.');
