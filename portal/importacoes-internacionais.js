@@ -1,0 +1,65 @@
+import {initEstruturaImportacao} from './importacoes-estrutura.js?v=20261030-imp33';
+export const etapas=['Planejamento','Pedido emitido','Aguardando embarque','Em trânsito','Em desembaraço','Recebida parcialmente','Recebida','Encerrada','Cancelada'];
+const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
+const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
+const dataBR=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'—';
+export function calcularTotais(d){
+ const mercadorias=(d.itens||[]).reduce((s,i)=>s+Number(i.quantidade||0)*Number(i.valor_unitario||0),0);
+ const despesas={};let reais=0,semCambio=0;
+ for(const x of d.despesas||[]){const v=Number(x.valor||0);despesas[x.moeda]=(despesas[x.moeda]||0)+v;if(x.moeda==='BRL')reais+=v;else if(Number(x.cambio)>0)reais+=v*Number(x.cambio);else semCambio++;}
+ return {mercadorias,despesas,reais,semCambio};
+}
+function initRegistrosAnteriores(api){
+ const root=el('section',undefined,'cadastro-screen imp-internacional');root.hidden=true;document.getElementById('cadastrosRoot').append(root);
+ let epoch=0,request=0,page=0,options={fornecedores:[],editar:false},current=null,dirty=false,pending=null;
+ const message=el('p','','status');message.setAttribute('role','status');
+ const list=el('section'),detail=el('section');detail.hidden=true;
+ const guard=()=>!dirty||confirm('Há alterações não salvas. Deseja descartá-las?');
+ function button(text,fn){const b=el('button',text);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){message.textContent=e.message;message.className='status error';}finally{b.disabled=false;}};return b;}
+ function field(parent,key,label,value='',type='text',choices){const wrap=el('label',label),input=el(choices?'select':type==='textarea'?'textarea':'input');if(choices){for(const x of choices){const [v,t]=Array.isArray(x)?x:[x,x];input.append(new Option(t,v));}}else if(type!=='textarea')input.type=type;input.value=value??'';input.name=key;input.setAttribute('aria-label',label);if(type==='number'){input.step='any';input.min=0;}wrap.append(input);parent.append(wrap);return input;}
+ const toolbar=el('div',undefined,'cadastro-toolbar'),search=el('input'),status=el('select');search.type='search';search.placeholder='Referência ou número do processo';search.setAttribute('aria-label','Buscar importações');status.setAttribute('aria-label','Filtrar situação');status.append(new Option('Todas as situações',''));etapas.forEach(x=>status.append(new Option(x,x)));
+ const create=button('Nova importação',()=>edit(null));toolbar.append(search,status,button('Buscar',()=>{page=0;return load();}),create);list.append(toolbar);
+ const cards=el('div',undefined,'erp-stats'),rows=el('div',undefined,'scroll'),pos=el('span');
+ const prev=button('Anterior',()=>{page--;return load();}),next=button('Próxima',()=>{page++;return load();});list.append(cards,rows,prev,pos,next);
+ root.append(el('p','Acompanhe pedidos internacionais, embarques, despesas e recebimentos.','intro'),message,list,detail);
+ async function load(){const gen=epoch,seq=++request;message.textContent='Consultando importações…';const r=await api({acao:'listar',pagina:page,busca:search.value,status:status.value});if(gen!==epoch||seq!==request||root.hidden)return;rows.replaceChildren();cards.replaceChildren();
+  for(const [k,l] of [['abertos','Processos abertos'],['atrasados','Chegadas atrasadas'],['sem_previsao','Sem previsão de chegada']]){const c=el('div',undefined,'stat-card');c.append(el('span',l),el('strong',r.painel[k]));cards.append(c);}
+  const table=el('table'),head=el('tr');['Processo','Referência / fornecedor','Situação','Responsável','Chegada prevista','Ação'].forEach(x=>head.append(el('th',x)));table.append(head);
+  for(const i of r.linhas){const tr=el('tr');for(const x of ['IMP-'+String(i.numero).padStart(5,'0'),i.dados.referencia+' · '+(i.fornecedor||'Fornecedor não definido'),i.dados.status,i.dados.responsavel||'Não definido',dataBR(i.dados.previsao_chegada)])tr.append(el('td',x));const a=el('td');a.append(button('Abrir',()=>open(i.id)));tr.append(a);table.append(tr);}rows.append(table);if(!r.total)rows.append(el('p','Nenhum processo encontrado. Cadastre a primeira importação.'));pos.textContent=' Página '+(page+1)+' · '+r.total+' processo(s) ';prev.disabled=page===0;next.disabled=(page+1)*30>=r.total;message.textContent='';create.hidden=!options.editar;
+ }
+ async function open(id){if(!guard())return;const gen=epoch;const r=await api({acao:'detalhe',id});if(gen!==epoch||root.hidden)return;current=r;dirty=false;pending=null;render(false);}
+ function edit(item){if(!guard())return;current=item;dirty=false;pending=null;render(true);}
+ function render(editing){const gen=epoch;const d=current?.dados||{status:'Planejamento',moeda:'USD',itens:[],despesas:[],documentos:[]};list.hidden=true;detail.hidden=false;detail.replaceChildren();
+  const top=el('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;current=null;detail.hidden=true;list.hidden=false;await load();}));if(!editing&&options.editar)top.append(button('Editar processo',()=>edit(current)));detail.append(top,el('h2',current?'IMP-'+String(current.numero).padStart(5,'0')+' · '+d.referencia:'Nova importação'));
+  const form=el('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',()=>{dirty=true;pending=null;});form.addEventListener('change',()=>{dirty=true;pending=null;});const inputs={};
+  const general=el('fieldset');general.append(el('legend','Processo e fornecedor'));const grid=el('div',undefined,'import-mapping');general.append(grid);form.append(general);
+  const supplier=field(grid,'fornecedor_id','Fornecedor',current?.fornecedor_id||'','text',[['','Selecionar fornecedor'],...options.fornecedores.map(f=>[String(f.id),f.nome+(f.pais?' · '+f.pais:'')])]);
+  for(const [key,label,type,choices] of [['referencia','Referência da importação'],['status','Situação','text',etapas],['responsavel','Responsável'],['pais','País de origem'],['pedido_compra','Pedido de compra Nomus / AXE'],['moeda','Moeda dos itens','text',moedas],['incoterm','Incoterm informado'],['modal','Modal','text',['','Aéreo','Marítimo','Rodoviário','Courier','Outro']],['origem','Local de origem'],['destino','Destino'],['transportador','Transportador / agente'],['rastreio','AWB / BL / rastreamento'],['invoice','Commercial invoice'],['di_duimp','DI / DUIMP']])inputs[key]=field(grid,key,label,d[key],type||'text',choices);
+  const timeline=el('fieldset');timeline.append(el('legend','Datas e execução'));const dates=el('div',undefined,'import-mapping');timeline.append(dates);form.append(timeline);
+  for(const [k,l] of [['data_pedido','Data do pedido'],['previsao_embarque','Embarque previsto'],['data_embarque','Embarque realizado'],['previsao_chegada','Chegada prevista'],['data_chegada','Chegada realizada'],['data_desembaraco','Data do desembaraço'],['data_encerramento','Data de encerramento / cancelamento']])inputs[k]=field(dates,k,l,d[k],'date');
+  for(const [k,l] of [['proxima_acao','Próxima ação'],['motivo_encerramento','Resultado / motivo do encerramento'],['observacoes','Observações']])inputs[k]=field(timeline,k,l,d[k],'textarea');
+  const groups={};
+  function collection(key,title,fields,defaults){const box=el('fieldset');box.append(el('legend',title));const wrap=el('div',undefined,'scroll'),table=el('table'),head=el('tr');fields.forEach(f=>head.append(el('th',f[1])));head.append(el('th',''));table.append(head);wrap.append(table);box.append(wrap);groups[key]=[];
+   function add(values={}){const tr=el('tr'),row={};for(const [k,label,type,choices] of fields){const td=el('td');row[k]=field(td,k,label,values[k]??defaults[k]??'',type||'text',choices);tr.append(td);}const td=el('td');td.append(button('Remover',()=>{tr.remove();groups[key]=groups[key].filter(x=>x!==row);dirty=true;pending=null;summary();}));tr.append(td);table.append(tr);groups[key].push(row);if(!editing)for(const x of tr.querySelectorAll('input,select,textarea,button'))x.disabled=true;}
+   (d[key]||[]).forEach(add);if(editing)box.append(button('Adicionar '+title.toLowerCase(),()=>{if(groups[key].length>=100)throw Error('Limite de 100 registros por seção.');add();dirty=true;pending=null;const last=groups[key].at(-1);Object.values(last)[0].focus();}));form.append(box);
+  }
+  collection('itens','Itens',[['codigo','Código / part number'],['descricao','Descrição'],['unidade','Unidade'],['quantidade','Quantidade pedida','number'],['valor_unitario','Valor unitário','number'],['recebida','Quantidade recebida','number'],['data_recebimento','Data do recebimento','date']],{quantidade:1,valor_unitario:0,recebida:0});
+  collection('despesas','Despesas',[['descricao','Descrição'],['categoria','Categoria','text',['Mercadoria','Frete','Seguro','Tributos informados','Despachante','Armazenagem','Taxas bancárias','Outros']],['valor','Valor','number'],['moeda','Moeda','text',moedas],['cambio','Câmbio para BRL','number'],['data','Data','date'],['comprovante','Referência do comprovante']],{valor:0,moeda:'BRL',categoria:'Outros'});
+  collection('documentos','Documentos',[['nome','Nome / tipo'],['url','Link HTTPS','url'],['observacao','Observação']],{});
+  form.append(el('p','Registre aqui os links dos documentos já armazenados. Os recebimentos são controles deste processo; não geram entrada automática no estoque.','intro'));
+  const totals=el('div',undefined,'planned-card');form.append(totals);
+  function collect(){const value={};for(const [k,x] of Object.entries(inputs))value[k]=x.value.trim();for(const [k,array] of Object.entries(groups))value[k]=array.map(row=>Object.fromEntries(Object.entries(row).map(([k,x])=>[k,x.value.trim()])));return value;}
+  const money=(v,c)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:c||'BRL'}).format(v);
+  function summary(){const value=collect(),t=calcularTotais(value);totals.replaceChildren(el('h3','Valores informados'),el('p','Itens do pedido: '+money(t.mercadorias,value.moeda)));for(const [c,v] of Object.entries(t.despesas))totals.append(el('p','Despesas em '+c+': '+money(v,c)));totals.append(el('p','Despesas convertidas com câmbio informado: '+money(t.reais,'BRL')),el('p',t.semCambio?t.semCambio+' despesa(s) sem câmbio: total em reais incompleto.':'Câmbios registrados para as despesas em moeda estrangeira.'),el('p','Itens e despesas são apresentados separadamente para evitar somar mercadorias duas vezes. Não há cálculo automático de tributos ou rateio de custo por item.','intro'));}
+  form.addEventListener('input',summary);form.addEventListener('change',summary);summary();
+  if(!editing){for(const x of form.querySelectorAll('input,select,textarea'))x.disabled=true;}else{
+   const save=button('Salvar importação',async()=>{if(!form.reportValidity())return;const value=collect();if(!value.referencia)throw Error('Informe a referência da importação.');const payload={acao:'salvar',id:current?.id||null,versao:current?.versao||null,fornecedor_id:supplier.value||null,dados:value};if(!pending)pending={...payload,requisicao_id:crypto.randomUUID()};const controls=[...form.querySelectorAll('input,select,textarea,button')];controls.forEach(x=>x.disabled=true);let result;try{result=await api(pending);}finally{controls.forEach(x=>x.disabled=false);}if(gen!==epoch||root.hidden)return;dirty=false;pending=null;await open(result.id);message.className='status';message.textContent='Importação salva. Histórico registrado.';});form.append(save);
+  }
+  detail.append(form);
+  if(current&&!editing){const history=el('details');history.append(el('summary','Histórico de alterações'));const container=el('div');history.append(button('Consultar histórico',async()=>{const id=current.id;const r=await api({acao:'historico',id});if(gen!==epoch||root.hidden||current?.id!==id)return;container.replaceChildren();for(const e of r.linhas){const entry=el('details');entry.append(el('summary',new Date(e.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+' · '+(e.anterior?'Alteração':'Criação')),el('pre',JSON.stringify({usuario:e.usuario_id,anterior:e.anterior,atual:e.atual},null,2)));container.append(entry);}}),container);detail.append(history);}
+ }
+ window.addEventListener('beforeunload',e=>{if(dirty&&!root.hidden){e.preventDefault();e.returnValue='';}}); return {canLeave(){return root.hidden||guard();},async show(show){if(!show){epoch++;root.hidden=true;return;}root.hidden=false;list.hidden=false;detail.hidden=true;dirty=false;current=null;pending=null;const gen=++epoch;try{options=await api({acao:'opcoes'});if(gen!==epoch||root.hidden)return;await load();}catch(e){if(gen===epoch)message.textContent=e.message;}},reset(){epoch++;root.hidden=true;detail.replaceChildren();rows.replaceChildren();cards.replaceChildren();options={fornecedores:[],editar:false};current=null;dirty=false;pending=null;page=0;search.value='';status.value='';}};
+}
+
+export function initImportacoesInternacionais(api){return initEstruturaImportacao(api,initRegistrosAnteriores(api));}
+
