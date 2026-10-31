@@ -52,7 +52,7 @@ export async function handleEntrada(req:Request){
    return reply(await trpc({acao:'transp_salvar',embarque_id:d.embarque_id,versao_embarque:d.versao_embarque,base_revisao_id:d.base_revisao_id||null,requisicao_id:d.requisicao_id,confirmado:true,conferiu_duimp:d.conferiu_duimp===true,dados:reviewed,extraido,arquivos:metadata}));
   }
   if(['pagdoc_contexto','pagdoc_ler','pagdoc_aprovar'].includes(d.acao)){
-   async function payRPC(data:any){const r=await sb.rpc('axe_pagamento_documental',{p_dados:data,p_usuario:user.id});if(r.error)throw Error(r.error.code==='P0001'?r.error.message:'Confira o comprovante, os vínculos e os saldos.');return r.data;}
+   async function payRPC(data:any){const r=await sb.rpc(data.acao==='pagdoc_aprovar'?'axe_pagamento_processos':'axe_pagamento_documental',{p_dados:data,p_usuario:user.id});if(r.error)throw Error(r.error.code==='P0001'?r.error.message:'Confira o comprovante, os vínculos e os saldos.');return r.data;}
    const ctx=await payRPC({acao:'pagdoc_contexto',pedido_id:d.pedido_id});if(d.acao==='pagdoc_contexto')return reply(ctx);if(!ctx.editar)throw Error('Sem permissão para registrar pagamento');
    const contract=d.contrato_id?ctx.contratos.find((c:any)=>c.id===d.contrato_id):null;if(d.contrato_id&&!contract)throw Error('Selecione contrato do mesmo fornecedor e moeda');
    let uploadedBytes=0;
@@ -63,7 +63,7 @@ export async function handleEntrada(req:Request){
    const contractFile=contract?null:await readFile(d.contrato_arquivo),contractParsed=contractFile?parseCambio(contractFile.paginas):null;
    const swiftFile=await readFile(d.swift_arquivo,d.swift_arquivo_id),swiftParsed=parseSwift(swiftFile.paginas);
    const previous=ctx.remessas.find((r:any)=>r.sha256===swiftFile.sha256||(swiftParsed.uetr&&r.uetr===swiftParsed.uetr)),used=Number(previous?.utilizado||0);
-   if(d.acao==='pagdoc_ler')return reply({...ctx,contrato:contract,contrato_extraido:contractParsed,swift:swiftParsed,comprovante_utilizado:used,comprovante_disponivel:swiftParsed.valor?Number(swiftParsed.valor)-used:null});
+   if(d.acao==='pagdoc_ler'){const saldo=await sb.rpc('axe_imp_pagamento_saldo_processos',{arquivo_sha:swiftFile.sha256,p_usuario:user.id});if(saldo.error)throw Error('Não foi possível conferir o saldo por processo');return reply({...ctx,saldo_processos:saldo.data?.saldo??null,contrato:contract,contrato_extraido:contractParsed,swift:swiftParsed,comprovante_utilizado:used,comprovante_disponivel:swiftParsed.valor?Number(swiftParsed.valor)-used:null});}
    if(d.confirmado!==true||d.nao_duplicado!==true)throw Error('Confirme a conferência do pagamento e a ausência de duplicidade');
    if(!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(d.requisicao_id||''))throw Error('Identificador obrigatório');
    const proof=d.swift_revisado;if(!proof||!/^\d+(?:\.\d{1,2})?$/.test(String(proof.valor||''))||Number(proof.valor)<=0||!/^\d{4}-\d{2}-\d{2}$/.test(proof.data||'')||new Date(proof.data+'T12:00:00Z').toISOString().slice(0,10)!==proof.data||!['USD','EUR','GBP','CAD','CNY','JPY','CHF','BRL'].includes(proof.moeda))throw Error('Confira valor, moeda e data do comprovante');
@@ -72,7 +72,7 @@ export async function handleEntrada(req:Request){
    if(!contract){
     if(!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(d.contrato_requisicao_id||''))throw Error('Identificador do novo contrato obrigatório');const reviewed=d.contrato_revisado;if(!reviewed)throw Error('Confira os dados do contrato');
     await guardarPrivado('axe-cambio-arquivos','entrada/'+user.id+'/'+d.contrato_requisicao_id+'.pdf',contractFile.bytes);
-    newContract={requisicao_id:d.contrato_requisicao_id,nome:contractFile.nome,sha256:contractFile.sha256,tamanho:contractFile.tamanho,extraido:contractParsed,dados:{...reviewed,fornecedor_id:ctx.pedido.fornecedor_id,status:'Ativo',pedidos:[{pedido_id:ctx.pedido.id,valor:d.dados.valor}]}};
+    newContract={requisicao_id:d.contrato_requisicao_id,nome:contractFile.nome,sha256:contractFile.sha256,tamanho:contractFile.tamanho,extraido:contractParsed,dados:{...reviewed,fornecedor_id:ctx.pedido.fornecedor_id,status:'Ativo',pedidos:d.dados?.processos?.length?[]:[{pedido_id:ctx.pedido.id,valor:d.dados.valor}]}};
    }
    const path='entrada/'+user.id+'/'+d.requisicao_id+'/SWIFT.pdf';if(!d.swift_arquivo_id)await guardarPrivado('axe-cambio-arquivos',path,swiftFile.bytes);
    return reply(await payRPC({acao:'pagdoc_aprovar',pedido_id:d.pedido_id,versao_pedido:d.versao_pedido,contrato_id:d.contrato_id||null,versao_contrato:d.versao_contrato,novo_contrato:newContract,swift_arquivo_id:d.swift_arquivo_id||null,arquivo:{nome:swiftFile.nome,sha256:swiftFile.sha256,tamanho:swiftFile.tamanho,caminho:d.swift_arquivo_id?swiftFile.caminho:path},swift:proof,extraido:{contrato:contractParsed,swift:swiftParsed},dados:d.dados,requisicao_id:d.requisicao_id,confirmado:true,nao_duplicado:true}));
@@ -81,7 +81,7 @@ export async function handleEntrada(req:Request){
    async function libRPC(data:any){const r=await sb.rpc('axe_liberacao_documental',{p_dados:data,p_usuario:user.id});if(r.error)throw Error(r.error.code==='P0001'?r.error.message:'Confira os documentos, os itens e os saldos da parcial.');return r.data;}
    const libBucket='axe-importacoes-parciais';
    if(d.acao==='lib_baixar')return await download(await libRPC({acao:'lib_arquivo',id:d.id}),libBucket);
-   const ctx=await libRPC({acao:'lib_contexto',pedido_id:d.pedido_id});if(d.acao==='lib_contexto')return reply(ctx);if(!ctx.editar)throw Error('Sem permissão para preparar a parcial');
+   let ctx=await libRPC({acao:'lib_contexto',pedido_id:d.pedido_id});if(d.acao==='lib_contexto')return reply(ctx);if(!ctx.editar)throw Error('Sem permissão para preparar a parcial');
    if(!Array.isArray(d.arquivos)||d.arquivos.length<2||d.arquivos.length>3||new Set(d.arquivos.map((x:any)=>x.categoria)).size!==d.arquivos.length||!d.arquivos.some((x:any)=>x.categoria==='INVOICE')||!d.arquivos.some((x:any)=>x.categoria==='PACKING'))throw Error('Selecione a invoice e o packing list; pesos e dimensões são opcionais');
    const files:any[]=[];let totalBytes=0;
    for(const f of d.arquivos){
@@ -91,7 +91,7 @@ export async function handleEntrada(req:Request){
    }
    const inv=files.find(f=>f.categoria==='INVOICE'),pack=files.find(f=>f.categoria==='PACKING'),pesos=files.find(f=>f.categoria==='PESOS');
    if(!/pack(?:ing|ina)\s*list/i.test(pack.paginas.map((p:any)=>p.texto).join(' ')))throw Error('O documento selecionado como packing list não foi reconhecido');
-   const parsed=combinarLiberacao(parseInvoice(inv.paginas),await parsePacking(pack.bytes,pack.paginas),pesos?parsePesos(pesos.paginas):null,ctx.pedido);
+   const invoiceData=parseInvoice(inv.paginas);if(invoiceData.pedidos.length!==1)throw Error('Cada invoice deve identificar um único PO. Confira o documento.');const routed=await sb.rpc('axe_imp_pedido_da_invoice',{p_referencia:invoiceData.pedidos[0],p_usuario:user.id});if(routed.error)throw Error(routed.error.code==='P0001'?routed.error.message:'Confira o PO da invoice');if(routed.data.id!==ctx.pedido.id){if(d.acao!=='lib_ler')throw Error('O PO identificado mudou. Releia os documentos.');ctx=await libRPC({acao:'lib_contexto',pedido_id:routed.data.id});}const parsed=combinarLiberacao(invoiceData,await parsePacking(pack.bytes,pack.paginas),pesos?parsePesos(pesos.paginas):null,ctx.pedido);
    if(files.some(f=>f.paginas.some((p:any)=>p.metodo==='OCR')))parsed.avisos.push('Há páginas com OCR. Confira todos os campos e os itens reconhecidos.');
    if(d.acao==='lib_ler')return reply({...ctx,extraido:parsed});
    if(d.confirmado!==true)throw Error('Confirme os documentos, a disponibilidade da mercadoria e os vínculos de parcelas');

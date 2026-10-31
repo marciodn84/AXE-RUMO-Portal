@@ -1,21 +1,23 @@
-import {padronizarImportacao} from './importacoes-layout.js?v=20261031-pedido38';
+import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-po44';
+import {padronizarImportacao} from './importacoes-layout.js?v=20261031-po44';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-docauto17';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-pedido38';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-po44';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261030-email36';
-import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261030-email36';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261030-email36';
-import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261030-email36';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-po44';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-po44';
+import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261031-po44';
 import {validarCampos} from './validacao-campos.js?v=20261030-email36';
 import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261030-email36';
-import {initACKImportacao} from './importacoes-ack.js?v=20261031-pedido38';
+import {initACKImportacao} from './importacoes-ack.js?v=20261031-po44';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261030-email36';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261030-email36';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261030-email36';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
-const etapasPedido=['Elaboração','Enviado','Aceito -ACK','Aguardando Recebimento','Recebimento Parcial','Recebido','Cancelado'];
+export function sugerirFormaPagamento(termos){const t=String(termos||'').toLowerCase();if(/parcelad|installment|entrada.*saldo|advance.*balance|%.*%/.test(t))return 'PARCELADO';if(/antecipad|prepay|payment in advance|advance payment/.test(t))return 'ANTECIPADO';if(/contra.*embarque|pront.*coleta|pront.*embarque|cash on delivery|against shipment|on shipment/.test(t))return 'NA_ENTREGA';if(/a prazo|net\s*\d+|\d+\s*(due|dias|days)/.test(t))return 'A_PRAZO';return ''; }
+const etapasPedido=['Elaboração','Enviado','Aceito -ACK','Aguardando Entrega','Recebimento Parcial','Recebido','Cancelado'];
 const etapasEmbarque=['Planejamento','Aguardando consolidação','Aguardando coleta','Em trânsito','Em desembaraço','Recebido','Cancelado'];
 const money=(v,c)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:c||'USD'}).format(Number(v||0));
 const dt=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'Sem data';
@@ -87,7 +89,7 @@ export function initEstruturaImportacao(api,legacy){
   const prev=button('Anterior',async()=>{page--;await list();}),next=button('Próxima',async()=>{page++;await list();});prev.disabled=page===0;next.disabled=(page+1)*30>=r.total;
   pagination.append(prev,node('span','Página '+(page+1)+' · '+r.total+' registro(s)'),next);msg.textContent='';
  }
- function situacaoParcela(x){if(x.status==='Cancelada')return 'Cancelada';if(Number(x.valor_pago)>=Number(x.valor))return 'Paga';if(Number(x.valor_pago)>0)return 'Paga parcialmente';if(!x.vencimento)return 'Aguardando data-base';return x.vencimento<new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})?'Vencida':'A pagar';}
+ const situacaoParcela=situacaoPagamentoParcela;
  async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
  function closeDialogs(){transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
@@ -123,7 +125,7 @@ export function initEstruturaImportacao(api,legacy){
   if(tipo==='pedidos'){
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
     ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
-    ['data_pedido','Data do pedido','date'],['condicao_pagamento','Condição de pagamento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
+    ['data_pedido','Data do pedido','date'],['forma_pagamento','Forma de pagamento','text',[['','Selecionar forma de pagamento'],...(opts.formas_pagamento||[]).map(x=>[x.codigo,x.nome])]],['condicao_pagamento','Condição de pagamento do documento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
    ],item||{status:'Elaboração',moeda:'USD'});
    if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));general.fornecedor_id.value=String(pr.id);changed();})));
    const section=node('fieldset');section.append(node('legend','Itens do pedido'));const cards=node('div');section.append(cards);form.append(section);
@@ -172,6 +174,7 @@ export function initEstruturaImportacao(api,legacy){
        const match=opts.fornecedores.filter(f=>normalize(f.nome)===normalize(parsed.fornecedor));if(match.length===1&&parsed.fornecedor)general.fornecedor_id.value=String(match[0].id);else general.fornecedor_id.value='';
        for(const x of parsed.itens)add({...x,quantidade:x.quantidade??'',valor_unitario:x.valor_unitario??'',peso_bruto_unitario:'',disponibilizada:0,data_disponibilidade:''});
        general.condicao_pagamento.value=(parsed.condicoes_comerciais||[]).filter(x=>/^(Payment|Pagamento)\s*:/i.test(x)).map(x=>x.replace(/^[^:]+:\s*/, '')).join('; ');
+       general.forma_pagamento.value=sugerirFormaPagamento(general.condicao_pagamento.value);
        const entrega=parsed.itens.filter(x=>x.entrega_documento).map(x=>'Linha '+x.linha+': entrega prevista no PDF '+x.entrega_documento).join('\n');
        general.observacoes.value=[general.observacoes.value,'Origem: PDF Nomus '+arquivo.nome+' · SHA-256 '+arquivo.hash,'Fornecedor no PDF: '+(parsed.fornecedor||'Não identificado'),entrega,...(parsed.condicoes_comerciais||[]),...parsed.avisos].filter(Boolean).join('\n');
        changed();summary();status.textContent='Formulário preenchido. Confirme o fornecedor e os códigos do cadastro AXE; depois clique em Salvar pedido. Nenhum registro foi criado pela leitura.';
@@ -196,17 +199,17 @@ export function initEstruturaImportacao(api,legacy){
    const f=fields(grid(form,'Condição da parcela'),[
     ['referencia','Identificação da parcela'],['modo','Definição do valor','text',['Valor','Percentual']],['valor','Valor da parcela','number'],['percentual','Percentual do pedido','number'],
     ['marco','Marco para vencimento','text',['Pedido','Disponibilização / invoice','Coleta','Manual']],['proforma','Proforma / invoice de pagamento'],
-    ['data_base','Data-base informada','date'],['dias','Dias corridos após a data-base','number'],['vencimento','Vencimento manual','date'],['status','Situação','text',['Prevista','Cancelada']]
+    ['data_base','Data-base informada','date'],['dias','Dias corridos após a data-base','number'],['vencimento','Vencimento manual','date'],['status','Situação','text',[['Prevista',Number(item?.valor_pago||0)>=Number(item?.valor||Infinity)?'Pagamento efetivado':'Aguardando pagamento'],['Cancelada','Cancelada']]]
    ],item||{modo:'Valor',marco:'Disponibilização / invoice',dias:0,status:'Prevista'});
    f.valor.required=true;f.valor.min='0.01';f.percentual.required=true;f.percentual.min='0.000001';f.percentual.max='100';f.dias.step='1';f.dias.max='3650';
    const pay=fields(grid(form,'Registro manual do pagamento'),[
-    ['valor_pago','Valor pago acumulado na moeda do pedido','number'],['data_pagamento','Data do pagamento mais recente','date'],['cambio','Taxa efetiva para BRL','number'],['contrato_cambio','Referência do contrato de câmbio'],['observacoes','Observações','textarea']
+    ['meio_pagamento','Meio do pagamento manual','text',[['','Selecionar PIX ou cartão'],...(opts.meios_pagamento||[]).filter(x=>x.codigo!=='REMESSA_BANCARIA').map(x=>[x.codigo,x.nome])]],['valor_pago','Valor pago acumulado na moeda do pedido','number'],['data_pagamento','Data do pagamento mais recente','date'],['cambio','Taxa efetiva para BRL','number'],['contrato_cambio','Referência do contrato de câmbio'],['observacoes','Observações','textarea']
    ],item||{valor_pago:0});
    collect=()=>({...read(f),...read(pay),pedido_id:item?.pedido_id||order?.id});
-   summary=()=>{const d=collect(),date=d.marco==='Manual'?d.vencimento:vencimentoParcela(d.data_base,d.dias);f.vencimento.disabled=!editing||d.marco!=='Manual';f.valor.disabled=!editing||d.modo==='Percentual';f.percentual.disabled=!editing||d.modo!=='Percentual';
+   summary=()=>{pay.data_pagamento.required=Number(pay.valor_pago.value||0)>0;pay.meio_pagamento.required=Number(pay.valor_pago.value||0)>Number(item?.valor_pago||0);const d=collect(),date=d.marco==='Manual'?d.vencimento:vencimentoParcela(d.data_base,d.dias);f.vencimento.disabled=!editing||d.marco!=='Manual';f.valor.disabled=!editing||d.modo==='Percentual';f.percentual.disabled=!editing||d.modo!=='Percentual';
     info.replaceChildren(node('h3','Vencimento: '+dt(date)),node('p','30 DUE: selecione Disponibilização / invoice, informe a data da invoice e 30 dias corridos.'));
     if(d.modo==='Percentual')info.append(node('p',order?'Valor calculado: '+money(Number(order.total)*Number(d.percentual||0)/100,order.moeda):'O percentual será recalculado sobre o total atual do pedido ao salvar.'));
-    info.append(node('p','Este formulário registra pagamentos já realizados. Não executa pagamentos. O contrato de câmbio é uma referência; a conciliação com DI/DUIMP será implementada separadamente.'));
+    info.append(node('p','PIX e cartão: informe o valor e a data do pagamento realizado. Remessa bancária: importe os documentos no botão Contrato e SWIFT. O sistema registra a confirmação e não executa pagamentos.'));
    };
   }else{
    const f=fields(grid(form,'Lote de embarque'),[
@@ -279,7 +282,7 @@ export function initEstruturaImportacao(api,legacy){
   async show(visible,contexto={}){
    epoch++;seq++;closeDialogs();entrada.show(false);fx.show(false);custos.show(false);notas.show(false);visao.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
    area=contexto?.area==='compras'?'compras':'importacoes';root.hidden=false;body.replaceChildren();msg.textContent='';dirty=false;pending=null;current=null;tipo=area==='compras'?'pedidos':'visao';voltarFluxo=null;page=0;searchValue='';nav.hidden=area==='compras';intro.textContent=area==='compras'?'Pedidos de compra nacionais e internacionais.':'Condições de pagamento e embarques parciais ou consolidados.';renderNav();const g=epoch;
-   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else await visao.show(true,contexto?.pedidoId);}}catch(e){if(check(g))msg.textContent=e.message;}
+   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else await visao.show(true,contexto?.pedidoId,contexto?.processoId);}}catch(e){if(check(g))msg.textContent=e.message;}
   },
   reset(){cadastros.reset();visao.reset();voltarFluxo=null;transporte.reset();pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };

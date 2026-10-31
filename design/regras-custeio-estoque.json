@@ -1,0 +1,28 @@
+{
+  "origem": "Definições do usuário em 31/10/2026",
+  "numerario": {
+    "natureza": "Adiantamento ao despachante, separado das despesas efetivas",
+    "conciliacao": "Adiantamentos e complementos menos devoluções, confrontados com comprovantes do fechamento",
+    "despesas": ["Guias de impostos", "Taxas", "Nota fiscal dos serviços do despachante"],
+    "evitar_dupla_contagem": true
+  },
+  "custo_entrada": {
+    "nivel": "Produto por entrada/processo",
+    "fob": "Câmbio efetivo do pagamento",
+    "frete": "Rateio pelo peso real bruto; USD convertido pela taxa da DUIMP, conforme definido pelo usuário",
+    "demais_despesas": "Rateio proporcional ao FOB em BRL",
+    "multas": "Somente o produto penalizado",
+    "creditos": "Regras validadas pela contabilidade, revisadas conforme utilização"
+  },
+  "estoque": {
+    "avaliacao": "Custo médio ponderado",
+    "detalhamento": "Cada entrada do produto mantém quantidade, processo e custo unitário real",
+    "formacao_venda": ["Custo médio", "Custo de reposição"],
+    "reposicao": "Custo unitário real da última entrada do produto",
+    "troca_base_venda_nao_altera_avaliacao_estoque": true,
+    "estado_implementacao": "Regras definidas; módulo completo de movimentos/saldo inicial de estoque ainda não implementado"
+  },
+  "financeiro_numerario": {
+    "estado_implementacao": "Regras definidas; integração com lançamentos bancários do financeiro ainda não implementada"
+  }
+}

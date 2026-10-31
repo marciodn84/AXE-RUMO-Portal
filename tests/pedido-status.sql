@@ -11,7 +11,7 @@ begin
  update public.imp_pedidos set status='Aceito -ACK',ack_numero='TESTE',ack_data=current_date where id=pid;
  insert into public.imp_embarques(id,referencia,fornecedor_id,moeda,status,atualizado_por)values(eid,'TESTE-'||eid,f,'USD','Em trânsito',u);
  insert into public.imp_embarque_itens(embarque_id,pedido_item_id,quantidade)values(eid,i1,1);
- select status into s from public.imp_pedidos where id=pid;if s<>'Aguardando Recebimento' then raise exception 'Esperado aguardando, obtido %',s;end if;
+ select status into s from public.imp_pedidos where id=pid;if s<>'Aguardando Entrega' then raise exception 'Esperado aguardando, obtido %',s;end if;
  update public.imp_embarque_itens set recebida=1,data_recebimento=current_date where embarque_id=eid;
  select status into s from public.imp_pedidos where id=pid;if s<>'Recebimento Parcial' then raise exception 'Embarque completo não completa pedido: %',s;end if;
  insert into public.imp_embarque_itens(embarque_id,pedido_item_id,quantidade,recebida,data_recebimento)values(eid,i2,1,1,current_date);

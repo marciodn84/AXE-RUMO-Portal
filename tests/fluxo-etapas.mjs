@@ -7,6 +7,6 @@ const data={pedido:{total:1000,status:'Aceito -ACK',itens:[{id:'i',quantidade:10
 let f=resumirFluxo(data);assert.equal(f.paid,500);assert.equal(f.saldoFornecedor,500);assert.equal(f.ships[0].proxima.key,'coleta');
 ship.embarque.dados.data_coleta='2026-10-29';ship.declaracoes[0].dados.data_desembaraco='2026-10-29';ship.declaracoes[0].documento_importado=true;ship.notas=[{estado:'Conciliada'}];ship.embarque.status='Recebido';ship.embarque.itens[0].recebida=5;ship.fechamentos=[{pronto:true,importado:true}];ship.custo={estado:'Final'};
 assert(!etapasEmbarque(ship).every(x=>x.feito),'custo final não prova estoque');ship.estoque={data_entrada:'2026-10-29'};
-f=resumirFluxo(data);assert.equal(f.andamento,'Aguardando saldo do fornecedor');assert.equal(f.status,'Aceito -ACK');data.pedido.itens[0].quantidade=5;
+f=resumirFluxo(data);assert.equal(f.andamento,'Aguardando saldo do fornecedor');assert.equal(f.status,'Aguardando Entrega');data.pedido.itens[0].quantidade=5;
 f=resumirFluxo(data);assert.equal(f.andamento,'Concluído operacionalmente','pendência cambial não bloqueia operação');
 console.log('Etapas: documentos fecham somente fatos comprovados; parciais e financeiro independentes.');
