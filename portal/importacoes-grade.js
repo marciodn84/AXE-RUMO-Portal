@@ -1,5 +1,5 @@
-import {classificarEmbarque} from './embarques-abrangencia.js?v=20261031-click52';
-import {resumirFluxo,etapasEmbarque,textoProximaAcao} from './importacoes-fluxo-etapas.js?v=20261031-click52';
+import {classificarEmbarque} from './embarques-abrangencia.js?v=20261031-carrier53';
+import {resumirFluxo,etapasEmbarque,textoProximaAcao} from './importacoes-fluxo-etapas.js?v=20261031-carrier53';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
 const money=(v,c)=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:c||'USD'}).format(Number(v));
 const paths={more:['M12 4h.01M12 12h.01M12 20h.01'],clip:['M21 11l-9 9a6 6 0 0 1-8-8L15 1a4 4 0 0 1 6 6L10 18a2 2 0 0 1-3-3L17 5'],eye:['M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12','M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],down:['M6 9l6 6 6-6'],right:['M9 6l6 6-6 6'],file:['M14 2H5v20h14V7Z','M14 2v5h5','M8 12h8M8 16h8'],edit:['M12 20h9M16 3l5 5-12 12-5 1 1-5Z'],history:['M3 3v5h5','M3 8a9 9 0 1 1 0 8M12 7v5l3 2'],cost:['M5 2h14v20H5ZM8 6h8M8 11h1M15 11h1M8 15h1M15 15h1M8 19h1M15 19h1']};

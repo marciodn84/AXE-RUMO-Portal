@@ -1,5 +1,5 @@
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-click52';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-carrier53';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261030-imp34';
 import {initLeituraDI} from './importacoes-di.js?v=20261029-fluxo15';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};

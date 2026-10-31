@@ -1,0 +1,23 @@
+begin;
+set local role service_role;
+do $$declare uid uuid;eid uuid:=gen_random_uuid();sid bigint;carrier bigint;duplicate bigint;req uuid:=gen_random_uuid();payload jsonb;r jsonb;expected jsonb;begin
+ select m.usuario_id into uid from public.gestao_membros m join public.axe_rumo_revisores rv on rv.usuario_id=m.usuario_id and rv.ativo where m.ativo and m.papel in('ADMIN','EDITOR') limit 1;
+ select fornecedor_id into sid from public.imp_pedidos limit 1;
+ expected:=public.axe_imp_transportador_resolver('DHL',null);carrier:=(expected->>'id')::bigint;
+ if expected->>'estado'<>'Automático' then raise exception 'Fixture DHL deve ser única';end if;
+ insert into public.imp_embarques(id,referencia,fornecedor_id,moeda,status,atualizado_por)values(eid,'TEST-AWB-'||eid,sid,'USD','Planejamento',uid);
+ payload:=jsonb_build_object('acao','transp_salvar','embarque_id',eid,'versao_embarque',1,'requisicao_id',req,'confirmado',true,'extraido',jsonb_build_object('dados',jsonb_build_object('transportador','DHL')),'dados',jsonb_build_object('awb','123-12345678','transportador','DHL','servico','Express','volumes',1,'data_documento','2026-10-31','peso_real_kg',1,'peso_cubado_kg',2,'peso_faturavel_kg',2,'frete_usd',10),'arquivos',jsonb_build_array(jsonb_build_object('categoria','ETIQUETA','nome','TEST.pdf','sha256',repeat('b',64),'tamanho',100,'caminho','entrada/'||uid||'/'||req||'/ETIQUETA.pdf')));
+ perform public.axe_transporte_documental(payload,uid);
+ if not exists(select 1 from public.imp_embarque_participantes where embarque_id=eid and papel='transportador' and fornecedor_id=carrier)then raise exception 'Vínculo automático não salvo';end if;
+ if not exists(select 1 from public.imp_transporte_revisoes where embarque_id=eid and dados->'transportador_identificacao'->>'origem'='Marca do documento no nome do cadastro')then raise exception 'Origem da identificação não preservada';end if;
+ perform public.axe_transporte_documental(payload,uid);
+ if (select count(*) from public.imp_transporte_revisoes where embarque_id=eid)<>1 then raise exception 'Envio repetido duplicou transporte';end if;
+ insert into public.fornecedores(razao_social,pais,ativo)values('DHL OUTRO TESTE','BR',true)returning id into duplicate;
+ if public.axe_imp_transportador_resolver('DHL',null)->>'estado'<>'Ambíguo' then raise exception 'Correspondência ambígua escolhida automaticamente';end if;
+ update public.fornecedores set ativo=false where id=duplicate;
+ update public.fornecedores set bloqueado_comercial=true,motivo_bloqueio='Teste' where id=carrier;
+ if public.axe_imp_transportador_resolver('DHL',null)->>'estado'<>'Bloqueado' then raise exception 'Bloqueio ignorado';end if;
+ if public.axe_imp_transportador_resolver('SEM TRANSPORTADOR CADASTRADO TESTE',null)->>'estado'<>'Não encontrado' then raise exception 'Falso vínculo';end if;
+end $$;
+set constraints all immediate;
+rollback;

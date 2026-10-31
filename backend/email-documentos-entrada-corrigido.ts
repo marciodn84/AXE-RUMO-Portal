@@ -39,16 +39,22 @@ export async function handleEntrada(req:Request){
   if(['transp_contexto','transp_ler','transp_salvar','transp_baixar'].includes(d.acao)){
    async function trpc(data:any){const r=await sb.rpc('axe_transporte_documental',{p_dados:data,p_usuario:user.id});if(r.error)throw Error(r.error.code==='P0001'?r.error.message:'Confira os documentos, a DUIMP e os valores do transporte.');return r.data;}
    const bucketName='axe-importacoes-transporte';if(d.acao==='transp_baixar')return await download(await trpc({acao:'transp_arquivo',id:d.id}),bucketName);
-   const ctx=await trpc({acao:'transp_contexto',embarque_id:d.embarque_id});if(d.acao==='transp_contexto')return reply(ctx);if(!ctx.editar)throw Error('Sem permissão para anexar transporte');if(ctx.custo_final)throw Error('Reabra o custo final com justificativa antes de alterar o transporte');
+   async function resolveCarrier(dados:any){const r=await trpc({acao:'transp_resolver_transportador',nome:dados?.transportador,documento:dados?.transportador_documento});return dados?.transportador_conflito?{...r,estado:'Conflito documental',id:null}:r;}
+   const ctx=await trpc({acao:'transp_contexto',embarque_id:d.embarque_id});if(d.acao==='transp_contexto')return reply({...ctx,transportador_resolucao:await resolveCarrier(ctx.atual?.extraido?.dados||ctx.atual?.dados||{})});if(!ctx.editar)throw Error('Sem permissão para anexar transporte');if(ctx.custo_final)throw Error('Reabra o custo final com justificativa antes de alterar o transporte');
    if(!Array.isArray(d.arquivos)||d.arquivos.length>3||new Set(d.arquivos.map((f:any)=>f.categoria)).size!==d.arquivos.length||(!d.arquivos.length&&!ctx.atual))throw Error('Selecione os documentos de transporte');
    const files:any[]=[],parsed:any[]=[];let total=0;
    for(const f of d.arquivos){if(!['RECIBO','ETIQUETA','AJUSTE'].includes(f.categoria)||typeof f.nome!=='string'||!f.nome.trim()||f.nome.length>250||typeof f.conteudo!=='string'||f.conteudo.length>11184812||!/^[A-Za-z0-9+/]+={0,2}$/.test(f.conteudo))throw Error('Arquivo PDF inválido');const bytes=Uint8Array.from(atob(f.conteudo),c=>c.charCodeAt(0));total+=bytes.length;if(total>8388608||new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Até 8 MB no total dos PDFs');const paginas=await extrairPaginasPDF(bytes,f.paginas);files.push({...f,bytes,sha256:await hash(bytes)});parsed.push({...await parseTransporte(bytes,paginas,f.categoria),arquivo_nome:f.nome,sha256:files.at(-1).sha256});}
    const extraido=parsed.length?combinarTransporte(parsed,ctx.atual?.extraido):ctx.atual.extraido;
-   if(d.acao==='transp_ler')return reply({...ctx,extraido});
+   const transportador_resolucao=await resolveCarrier(extraido.dados);
+   if(d.acao==='transp_ler')return reply({...ctx,extraido,transportador_resolucao});
    if(d.confirmado!==true)throw Error('Confirme os dados e os documentos antes de gravar');if(!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(d.requisicao_id||''))throw Error('Identificador obrigatório');
    const reviewed=d.dados;if(!reviewed)throw Error('Confira os dados do transporte');
    const changed=String(reviewed.awb||'')!==String(extraido.dados.awb||'')||Number(reviewed.frete_usd)!==Number(extraido.dados.frete_usd)||['real','cubado','faturavel'].some(k=>extraido.dados['peso_'+k]?.kg==null||Math.abs(Number(reviewed['peso_'+k+'_kg'])-Number(extraido.dados['peso_'+k]?.kg))>0.00001);
    if(changed&&!String(reviewed.motivo||'').trim())throw Error('Justifique as correções dos campos reconhecidos no documento');
+   const boundCarrier=ctx.embarque?.participantes?.find((x:any)=>x.papel==='transportador');const manualCarrier=reviewed.transportador_escolha_manual===true;
+   if(!reviewed.transportador_id&&transportador_resolucao.estado==='Automático'&&(!boundCarrier||String(boundCarrier.id)===String(transportador_resolucao.id)))reviewed.transportador_id=transportador_resolucao.id;
+   if(!reviewed.transportador_id)throw Error('Escolha o transportador no cadastro existente ou cadastre o transportador ausente.');
+   if(!manualCarrier&&(transportador_resolucao.estado!=='Automático'||String(reviewed.transportador_id)!==String(transportador_resolucao.id)||(boundCarrier&&String(boundCarrier.id)!==String(reviewed.transportador_id))))throw Error('Confira a identificação do transportador e escolha explicitamente o cadastro correto.');
    const metadata=[];for(const f of files){const path='entrada/'+user.id+'/'+d.requisicao_id+'/'+f.categoria+'.pdf';await guardarPrivado(bucketName,path,f.bytes);metadata.push({categoria:f.categoria,nome:f.nome,sha256:f.sha256,tamanho:f.bytes.length,caminho:path});}
    return reply(await trpc({acao:'transp_salvar',embarque_id:d.embarque_id,versao_embarque:d.versao_embarque,base_revisao_id:d.base_revisao_id||null,requisicao_id:d.requisicao_id,confirmado:true,conferiu_duimp:d.conferiu_duimp===true,dados:reviewed,extraido,arquivos:metadata}));
   }
