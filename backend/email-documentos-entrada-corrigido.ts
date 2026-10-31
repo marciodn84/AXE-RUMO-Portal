@@ -1,3 +1,4 @@
+import {classificarEmbarque} from './embarques-abrangencia.js';
 import {createClient} from 'npm:@supabase/supabase-js@2.99.2';
 import {extrairPaginasPDF} from './di-documento.ts';
 import {parseTransporte,combinarTransporte} from './transporte-parser.ts';
@@ -99,6 +100,7 @@ export async function handleEntrada(req:Request){
    const v=d.dados;if(!v||!Array.isArray(v.itens))throw Error('Confira os itens da parcial');
    const edited=String(v.invoice||'')!==String(parsed.invoice.numero||'')||String(v.data_invoice||'')!==String(parsed.invoice.data||'')||String(v.moeda||'')!==String(parsed.invoice.moeda||'')||Number(v.valor)!==Number(parsed.invoice.valor)||v.itens.length!==parsed.itens.length||v.itens.some((x:any)=>{const o=parsed.itens.find((i:any)=>i.pedido_item_id&&i.pedido_item_id===x.pedido_item_id);return !o||Number(o.quantidade)!==Number(x.quantidade)||Number(o.valor_unitario)!==Number(x.valor_unitario);})||parsed.avisos.some((a:string)=>/difere|não confirmada|número do pedido/i.test(a));
    if(edited&&!String(v.motivo||'').trim())throw Error('Informe a justificativa das correções ou divergências documentais');
+   v.abrangencia=classificarEmbarque(ctx.pedido.itens,v.itens);
    const metadata=[];for(const f of files){const path='entrada/'+user.id+'/'+d.requisicao_id+'/'+f.categoria+'.pdf';await guardarPrivado(libBucket,path,f.bytes);metadata.push({categoria:f.categoria,nome:f.nome,sha256:f.sha256,tamanho:f.bytes.length,caminho:path});}
    return reply(await libRPC({acao:'lib_aprovar',pedido_id:d.pedido_id,versao:d.versao,requisicao_id:d.requisicao_id,confirmado:true,conferiu_parcelas:d.conferiu_parcelas===true,dados:v,extraido:parsed,arquivos:metadata}));
   }
