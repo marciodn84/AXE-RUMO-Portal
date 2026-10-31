@@ -12,9 +12,9 @@ CNPJs/documentos fiscais incompatíveis, unidades diferentes e colisões em subc
 
 ## Estoque
 
-Em 31/10/2026 o módulo Estoque e movimentações está previsto no menu, sem livro de entradas/saídas ou tabela de saldo. Existem apenas confirmações de entrada de importação por embarque. Estas continuam acessíveis através dos itens, notas e custos vinculados ao produto mantido. A prévia informa essa limitação; não inventa ou soma um saldo inexistente.
+O módulo de estoque agora usa o livro estoque_movimentos e a posição derivada estoque_saldos. Após aplicar estoque_movimentacoes.sql e estoque_mesclagem.sql, a mesclagem transfere o produto_id dos movimentos, mantendo IDs, datas, quantidades, custos registrados e documentos. O saldo e o valor são reunidos; o custo médio consolidado é aplicado somente às próximas saídas. A prévia mostra a posição antes/depois. Não são criadas entradas artificiais para unir estoques.
 
-Quando o módulo de estoque for implementado, entradas/saídas devem manter os IDs de movimentos e sua rastreabilidade documental, com produto_id como FK para produtos_conciliacao. A mesclagem deve transferir as FKs de todos os movimentos e reunir posições por produto/local/lote/série, sem lançar entrada artificial, somar movimentos e saldos simultaneamente ou apagar transações. Recalcular quantidade e custo médio pelo livro, preservando custos de cada entrada. Se houver tabela materializada de saldos, sua consolidação precisa de rotina específica auditada antes de habilitar mesclagem com esse livro; colisões devem bloquear a operação até o tratamento correto. Não foi implementado um módulo de estoque nesta alteração.
+Detalhes e limitações operacionais em README-estoque.md. Novas tabelas de movimentação devem declarar FKs e instalar o guard de identidade. Não criar tabelas de saldo manual que somem novamente valores já existentes no livro.
 
 ## Verificação
 

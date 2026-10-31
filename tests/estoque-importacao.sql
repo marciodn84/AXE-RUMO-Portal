@@ -1,0 +1,25 @@
+begin;set local role service_role;
+do $$declare uid uuid:='f296afe4-eca8-48ad-a79a-388188988730';fid bigint;pid uuid:=gen_random_uuid();iid uuid:=gen_random_uuid();eid uuid:=gen_random_uuid();nid uuid:=gen_random_uuid();did uuid:=gen_random_uuid();prid bigint;pre jsonb;r jsonb;rid uuid;err boolean;s record;
+begin
+select id into fid from public.fornecedores where ativo and not bloqueado_comercial and mesclado_em_id is null limit 1;
+insert into public.produtos_conciliacao(descricao_referencia,unidade_referencia)values('TESTE ESTOQUE IMPORTADO','UN')returning id into prid;
+insert into public.imp_pedidos(id,referencia,fornecedor_id,moeda,status,atualizado_por)values(pid,'ESTOQUE TESTE '||pid,fid,'USD','Elaboração',uid);
+insert into public.imp_pedido_itens(id,pedido_id,linha,descricao,unidade,quantidade,valor_unitario,produto_id)values(iid,pid,'10','Teste','CAIXA',2,100,prid);
+insert into public.imp_embarques(id,referencia,fornecedor_id,moeda,status,atualizado_por)values(eid,'ESTOQUE EMB TESTE',fid,'USD','Recebido',uid);
+insert into public.imp_embarque_itens(embarque_id,pedido_item_id,quantidade,recebida,data_recebimento)values(eid,iid,2,2,'2026-10-31');
+insert into public.imp_fin_documentos(id,tipo,referencia,fornecedor_id,moeda,valor,atualizado_por)values(did,'declaracoes','TESTE DUIMP '||did,fid,'USD',200,uid);
+insert into public.imp_notas(id,chave,xml,xml_sha256,embarque_id,estado,atualizado_por)values(nid,repeat('1',44),'{}',repeat('1',64),eid,'Conciliada',uid);
+insert into public.imp_nota_vinculos(nota_id,sequencia,linha,produto_id,pedido_item_id,declaracao_id,quantidade_nota,fator,quantidade_axe)values(nid,1,1,prid,iid,did,2,5,10);
+insert into public.imp_custos(embarque_id,estado,dados,resultado,atualizado_por)values(eid,'Final','{}',jsonb_build_object('custo_total',1500,'itens',jsonb_build_array(jsonb_build_object('pedido_item_id',iid,'quantidade',2,'custo_total',1500,'custo_unitario',750))),uid);
+if exists(select 1 from public.estoque_movimentos where produto_id=prid)then raise exception 'Lançou sem confirmação de entrada';end if;
+pre:=public.axe_estoque(jsonb_build_object('acao','stock_importacao_previa','embarque_id',eid),uid);
+if not(pre->>'apto')::boolean then raise exception 'Prévia não apta %',pre;end if;
+r:=public.axe_estoque(jsonb_build_object('acao','stock_importar','embarque_id',eid,'versao',pre->>'versao','nota_id',nid,'data_movimento','2026-10-31','requisicao_id',gen_random_uuid()),uid);
+select * into s from public.estoque_saldos where produto_id=prid;if s.quantidade<>10 or s.valor_estoque<>1500 or s.custo_medio<>150 then raise exception 'Conversão ou custo incorreto %',to_jsonb(s);end if;
+perform public.axe_estoque_importacao_integrar(eid,uid);
+if(select count(*)from public.estoque_movimentos where produto_id=prid)<>1 then raise exception 'Duplicou entrada de importação';end if;
+err:=false;begin update public.imp_custos set estado='Provisório'where embarque_id=eid;exception when raise_exception then err:=true;end;if not err then raise exception 'Permitiu mudar custo contabilizado no estoque';end if;
+r:=public.axe_estoque(jsonb_build_object('acao','stock_estornar_importacao','embarque_id',eid,'referencia','Correção teste','requisicao_id',gen_random_uuid()),uid);
+select * into s from public.estoque_saldos where produto_id=prid;if s.quantidade<>0 or s.valor_estoque<>0 then raise exception 'Estorno de importação incorreto';end if;
+if(select count(*)from public.estoque_movimentos where produto_id=prid)<>2 then raise exception 'Histórico de estorno perdido';end if;
+end $$;set constraints all immediate;rollback;

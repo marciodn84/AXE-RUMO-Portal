@@ -1,0 +1,31 @@
+begin;set local role service_role;
+do $$declare uid uuid:='f296afe4-eca8-48ad-a79a-388188988730';p1 bigint;p2 bigint;d jsonb;r jsonb;s record;m1 uuid;m2 uuid;pre jsonb;ch jsonb;err boolean;qty numeric;val numeric;begin
+insert into public.produtos_conciliacao(descricao_referencia,unidade_referencia)values('TESTE ESTOQUE A','UN')returning id into p1;
+insert into public.produtos_conciliacao(descricao_referencia,unidade_referencia)values('TESTE ESTOQUE B','UN')returning id into p2;
+d:=jsonb_build_object('acao','stock_movimentar','produto_id',p1,'tipo','ENTRADA','quantidade',10,'custo_unitario',10,'data_movimento','2026-10-31','motivo','SALDO_INICIAL','referencia','Teste','requisicao_id',gen_random_uuid());r:=public.axe_estoque(d,uid);m1:=(r->>'movimento_id')::uuid;
+if public.axe_estoque(d,uid)<>r then raise exception 'Repetição não idempotente';end if;
+r:=public.axe_estoque(jsonb_build_object('acao','stock_movimentar','produto_id',p1,'tipo','ENTRADA','quantidade',10,'custo_unitario',20,'data_movimento','2026-10-31','motivo','COMPRA_NACIONAL','referencia','Teste 2','requisicao_id',gen_random_uuid()),uid);
+r:=public.axe_estoque(jsonb_build_object('acao','stock_movimentar','produto_id',p1,'tipo','SAIDA','quantidade',5,'custo_unitario',999,'data_movimento','2026-10-31','motivo','CONSUMO','referencia','OP TESTE','requisicao_id',gen_random_uuid()),uid);m2:=(r->>'movimento_id')::uuid;
+if(r->>'valor_total')::numeric<>75 then raise exception 'Custo médio de saída incorreto %',r;end if;
+select * into s from public.estoque_saldos where produto_id=p1;if s.quantidade<>15 or s.valor_estoque<>225 or s.custo_medio<>15 then raise exception 'Saldo incorreto %',to_jsonb(s);end if;
+err:=false;begin perform public.axe_estoque(jsonb_build_object('acao','stock_movimentar','produto_id',p1,'tipo','SAIDA','quantidade',100,'data_movimento','2026-10-31','motivo','VENDA','referencia','NF','requisicao_id',gen_random_uuid()),uid);exception when raise_exception then err:=true;end;if not err then raise exception 'Permitiu saldo negativo';end if;
+err:=false;begin update public.estoque_movimentos set quantidade=20 where id=m1;exception when raise_exception then err:=true;end;if not err then raise exception 'Permitiu edição histórica';end if;
+perform public.axe_estoque(jsonb_build_object('acao','stock_movimentar','produto_id',p2,'tipo','ENTRADA','quantidade',5,'custo_unitario',30,'data_movimento','2026-10-31','motivo','SALDO_INICIAL','referencia','Teste outro produto','requisicao_id',gen_random_uuid()),uid);
+pre:=public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_previa','tipo','produto','origem_id',p1,'destino_id',p2),uid);
+if(pre#>>'{estoque,unificado,custo_medio}')::numeric<>18.75 then raise exception 'Prévia de estoque incorreta %',pre->'estoque';end if;
+if jsonb_array_length(pre->'impedimentos')>0 then raise exception 'Mesclagem bloqueada %',pre;end if;
+select coalesce(jsonb_object_agg(value->>'campo','destino'),'{}')into ch from jsonb_array_elements(pre->'campos')where(value->>'conflito')::boolean;
+begin
+ perform public.axe_estoque(jsonb_build_object('acao','stock_movimentar','produto_id',p2,'tipo','ENTRADA','quantidade',1,'custo_unitario',30,'data_movimento','2026-10-31','motivo','AJUSTE_ENTRADA','referencia','Concorrência teste','requisicao_id',gen_random_uuid()),uid);
+ err:=false;begin perform public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_salvar','tipo','produto','origem_id',p1,'destino_id',p2,'versao',pre->>'versao','escolhas',ch),uid);exception when raise_exception then err:=true;end;if not err then raise exception 'Aceitou mesclagem com saldo alterado após prévia';end if;
+ raise exception using errcode='Z0002',message='Rollback da movimentação concorrente simulada';
+ exception when sqlstate 'Z0002'then null;end;
+perform public.axe_cadastro_mesclar(jsonb_build_object('acao','cadastro_mesclar_salvar','tipo','produto','origem_id',p1,'destino_id',p2,'versao',pre->>'versao','escolhas',ch),uid);
+select * into s from public.estoque_saldos where produto_id=p2;if s.quantidade<>20 or s.valor_estoque<>375 or s.custo_medio<>18.75 then raise exception 'Mesclagem não reuniu saldo %',to_jsonb(s);end if;
+if s.custo_reposicao<>30 then raise exception 'Custo de reposição não usa última entrada';end if;
+if not exists(select 1 from public.estoque_movimentos where id=m2 and produto_id=p2 and valor_total=75 and cadastro_original->>'id'=p1::text)then raise exception 'Histórico alterado na mesclagem';end if;
+r:=public.axe_estoque(jsonb_build_object('acao','stock_movimentar','produto_id',p1,'tipo','SAIDA','quantidade',4,'data_movimento','2026-10-31','motivo','VENDA','referencia','ID antigo','requisicao_id',gen_random_uuid()),uid);
+if(r->>'produto_id')::bigint<>p2 or(r->>'valor_total')::numeric<>75 then raise exception 'ID antigo ou custo médio após mesclagem inválido';end if;
+r:=public.axe_estoque(jsonb_build_object('acao','stock_estornar','movimento_id',r->>'movimento_id','referencia','Correção teste','requisicao_id',gen_random_uuid()),uid);
+select * into s from public.estoque_saldos where produto_id=p2;if s.quantidade<>20 or s.valor_estoque<>375 then raise exception 'Estorno não restaurou saldo';end if;
+end $$;set constraints all immediate;rollback;

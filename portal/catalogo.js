@@ -1,8 +1,8 @@
-import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-merge54';
+import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
 import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261030-clienttabs27';
-import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
+import {botoesPlanilha} from './planilha-cadastros.js?v=20261031-stock55';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const labels={produto:'Produto',cliente:'Cliente',fornecedor:'Fornecedor',referencia_cliente:'Referência do cliente',opcao_cliente:'Produto aceito pelo cliente',produto_fornecedor:'Produto do fornecedor',similar:'Similar técnico',documento:'Documento do produto'};
 const situations=[['EM_AVALIACAO','Em avaliação'],['APROVADO','Aprovado'],['BLOQUEADO','Bloqueado'],['INATIVO','Inativo']];

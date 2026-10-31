@@ -1,7 +1,7 @@
-import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-merge54';
+import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
-import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
+import {botoesPlanilha} from './planilha-cadastros.js?v=20261031-stock55';
 const labels={AGUARDANDO_ACEITE:'Aguardando aceite',ACEITO:'Aceito',CORRECAO_SOLICITADA:'Correção solicitada',CANCELADO:'Cancelado',RECUSADO:'Recusado',ENTREGUE:'Entregue',PENDENTE:'Pendente de validação',VALIDADO:'Validado',RASCUNHO:'Rascunho',ATIVA:'Ativa',INATIVA:'Inativa',CLIENTE:'Cliente',AXE_NOMUS:'AXE / Nomus',FORNECEDOR:'Fornecedor',FATURAMENTO:'Faturamento',COBRANCA:'Cobrança',ENTREGA:'Entrega',CANDIDATO_DOCUMENTAL:'Equivalência a validar',IDENTIFICADOR_VALIDADO:'Identificador validado',DIVERGENTE:'Divergente',CONFORME:'Conforme',NAO_CONFIGURADO:'Não configurado',CONFERENCIA_PENDENTE:'Dados fiscais incompletos',DIVERGENCIA_COM_REGRA:'Divergência com a regra',CONFORME_NOS_CAMPOS_CONFIGURADOS:'Conforme nos campos configurados',VINCULO_PRODUTO_A_VALIDAR:'Valide a equivalência do produto',SEM_REGRA_APLICAVEL_OU_CONTEXTO_INSUFICIENTE:'Sem regra aprovada aplicável ou contexto insuficiente',REGRAS_SOBREPOSTAS_REVISAR:'Regras sobrepostas: revisar',DATA_NEGOCIO_AUSENTE:'Data do negócio não informada'};
 Object.assign(labels,{'Sem resposta':'Aguardando aceite','Aceito Fornecedor':'Aceito','Devolucao Portal':'Correção solicitada',CANCELADO_PDF_SEM_PRODUTOS:'Cancelado',ITEM_EXCLUIDO_PDF:'Cancelado',STATUS_AUSENTE:'Não informado'});
 const label=x=>labels[x]||x||'Não informado';
