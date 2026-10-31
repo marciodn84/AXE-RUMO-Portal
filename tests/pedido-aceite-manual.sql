@@ -1,0 +1,4 @@
+begin;
+do $test$ declare d jsonb;r jsonb;u uuid;begin select public.axe_imp_estrutura_detalhe('pedidos',id),atualizado_por into d,u from public.imp_pedidos limit 1;d:=d||jsonb_build_object('referencia','TESTE-ACEITE-'||gen_random_uuid(),'status','Aceito -ACK','ack_numero',null,'ack_data',null,'itens',(select jsonb_agg(value||jsonb_build_object('id',gen_random_uuid(),'disponibilizada',0,'data_disponibilidade',null)) from jsonb_array_elements(d->'itens')));r:=public.axe_imp_estrutura(jsonb_build_object('acao','v2_salvar','tipo','pedidos','requisicao_id',gen_random_uuid(),'dados',d),u);d:=public.axe_imp_estrutura_detalhe('pedidos',(r->>'id')::uuid);if d->>'status'<>'Aceito -ACK' or d->>'aceite_confirmado'<>'true' or d->>'ack_data' is not null or d->>'ack_numero' is not null then raise exception 'Aceite manual não registrado corretamente';end if;end $test$;
+set constraints all immediate;
+rollback;

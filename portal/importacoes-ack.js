@@ -15,7 +15,7 @@ export function initACKImportacao(api,root,onSaved){
  async function show(pedido,editar){
   if(!guard())return;close();dialog=el('dialog',undefined,'imp-picker imp-ack');dialog.setAttribute('aria-label','ACK do pedido');const local=dialog;
   const status=el('p','','status');status.setAttribute('role','status');const list=el('div'),review=el('div');
-  dialog.append(el('h2','ACK do pedido '+pedido.referencia),el('p','Anexe a confirmação do fornecedor. Após a revisão, o pedido passa para Aceito -ACK. Preços, quantidades, disponibilidade e parcelas permanecem conforme o cadastro.'),btn('Fechar',()=>{if(guard())close();}),status,list);
+  dialog.append(el('h2','ACK do pedido '+pedido.referencia),el('p','O aceite pode ser confirmado por arquivo, e-mail ou manualmente. Para confirmação por e-mail ou manual, altere a situação do pedido para Aceito -ACK. Para ler um arquivo, use a opção abaixo. Preços, quantidades, disponibilidade e parcelas permanecem conforme o cadastro.'),btn('Fechar',()=>{if(guard())close();}),status,list);
   dialog.addEventListener('cancel',e=>{e.preventDefault();if(guard())close();});root.append(dialog);dialog.showModal();
   async function download(id){const r=await api({acao:'ack_baixar',id});if(dialog!==local)return;const a=el('a','Baixar ACK');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';a.click();}
   async function apply(id,requisicao_id){return api({acao:'ack_aplicar',id,versao:pedido.versao,requisicao_id,confirmado:true});}

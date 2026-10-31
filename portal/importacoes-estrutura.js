@@ -1,14 +1,14 @@
-import {padronizarImportacao} from './importacoes-layout.js?v=20261031-pedido37';
+import {padronizarImportacao} from './importacoes-layout.js?v=20261031-pedido38';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-docauto17';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-pedido37';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-pedido38';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261030-email36';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261030-email36';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261030-email36';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261030-email36';
 import {validarCampos} from './validacao-campos.js?v=20261030-email36';
 import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261030-email36';
-import {initACKImportacao} from './importacoes-ack.js?v=20261031-pedido37';
+import {initACKImportacao} from './importacoes-ack.js?v=20261031-pedido38';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261030-email36';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261030-email36';
@@ -121,7 +121,7 @@ export function initEstruturaImportacao(api,legacy){
   if(tipo==='pedidos'){
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
     ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
-    ['data_pedido','Data do pedido','date'],['condicao_pagamento','Condição de pagamento','textarea'],['ack_numero','Número do ACK'],['ack_data','Data do ACK','date'],['observacoes','Observações','textarea']
+    ['data_pedido','Data do pedido','date'],['condicao_pagamento','Condição de pagamento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
    ],item||{status:'Elaboração',moeda:'USD'});
    if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));general.fornecedor_id.value=String(pr.id);changed();})));
    const section=node('fieldset');section.append(node('legend','Itens do pedido'));const cards=node('div');section.append(cards);form.append(section);
@@ -178,7 +178,7 @@ export function initEstruturaImportacao(api,legacy){
     }),status,preview);form.prepend(box);
    }
    collect=()=>({...read(general),itens:lines.map(l=>({id:l.id,produto_id:l.produto_id,...read(l.inputs)}))});
-   summary=()=>{general.ack_numero.required=general.status.value==='Aceito -ACK';general.ack_data.required=general.status.value==='Aceito -ACK';const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
+   summary=()=>{const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
     info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(total-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
    if(item&&!editing){
