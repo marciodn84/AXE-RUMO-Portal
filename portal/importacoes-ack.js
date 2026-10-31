@@ -15,7 +15,7 @@ export function initACKImportacao(api,root,onSaved){
  async function show(pedido,editar){
   if(!guard())return;close();dialog=el('dialog',undefined,'imp-picker imp-ack');dialog.setAttribute('aria-label','ACK do pedido');const local=dialog;
   const status=el('p','','status');status.setAttribute('role','status');const list=el('div'),review=el('div');
-  dialog.append(el('h2','ACK do pedido '+pedido.referencia),el('p','Anexe a confirmação do fornecedor. Após a revisão, o pedido passa para ACK recebido. Preços, quantidades, disponibilidade e parcelas permanecem conforme o cadastro.'),btn('Fechar',()=>{if(guard())close();}),status,list);
+  dialog.append(el('h2','ACK do pedido '+pedido.referencia),el('p','Anexe a confirmação do fornecedor. Após a revisão, o pedido passa para Aceito -ACK. Preços, quantidades, disponibilidade e parcelas permanecem conforme o cadastro.'),btn('Fechar',()=>{if(guard())close();}),status,list);
   dialog.addEventListener('cancel',e=>{e.preventDefault();if(guard())close();});root.append(dialog);dialog.showModal();
   async function download(id){const r=await api({acao:'ack_baixar',id});if(dialog!==local)return;const a=el('a','Baixar ACK');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';a.click();}
   async function apply(id,requisicao_id){return api({acao:'ack_aplicar',id,versao:pedido.versao,requisicao_id,confirmado:true});}
@@ -23,7 +23,7 @@ export function initACKImportacao(api,root,onSaved){
   async function load(){const r=await api({acao:'ack_listar',pedido_id:pedido.id});if(dialog!==local)return;list.replaceChildren(el('h3','Documentos anexados'));if(!r.linhas.length)list.append(el('p','Nenhum ACK anexado.'));
    for(const x of r.linhas){const card=el('article',undefined,'planned-card');card.append(el('p',x.nome+' · ACK '+x.revisado.ack_numero+' · '+dt(x.revisado.ack_data)),el('p',x.aplicado_em?'Recebimento confirmado em '+new Date(x.aplicado_em).toLocaleString('pt-BR'):'Anexado; confirmação do recebimento pendente'),btn('Baixar ACK',()=>download(x.id)));
     if(editar&&!x.aplicado_em&&pedido.status!=='Cancelado'){const check=input(card,'Conferi este ACK e confirmo a atualização abaixo','checkbox');check.checked=false;
-     card.append(el('p','Situação: '+pedido.status+' → ACK recebido; número do ACK: '+(pedido.ack_numero||'vazio')+' → '+x.revisado.ack_numero+'; data do ACK: '+dt(pedido.ack_data)+' → '+dt(x.revisado.ack_data)));
+     card.append(el('p','Situação: '+pedido.status+' → Aceito -ACK; número do ACK: '+(pedido.ack_numero||'vazio')+' → '+x.revisado.ack_numero+'; data do ACK: '+dt(pedido.ack_data)+' → '+dt(x.revisado.ack_data)));
      const req=crypto.randomUUID();card.append(btn('Confirmar recebimento deste ACK',async()=>{if(!check.checked)throw Error('Confirme a conferência deste ACK.');await locked(()=>apply(x.id,req));await done();}));}
     list.append(card);
    }
@@ -48,7 +48,7 @@ export function initACKImportacao(api,root,onSaved){
     if(parsed.condicoes.length)review.append(el('p','Condições no documento: '+parsed.condicoes.join('; ')));
     const details=el('details');details.append(el('summary','Texto e páginas do documento'));for(const p of parsed.paginas)details.append(el('h4','Página '+p.pagina+' · '+p.metodo),el('pre',p.texto));review.append(details);
     const preview=el('p'),check=input(review,'Conferi o documento, o fornecedor e as diferenças; confirmo o recebimento do ACK','checkbox');
-    const update=()=>{preview.textContent='Pedido '+pedido.referencia+' | Situação: '+pedido.status+' → ACK recebido | Número do ACK: '+(pedido.ack_numero||'vazio')+' → '+num.value+' | Data do ACK: '+dt(pedido.ack_data)+' → '+dt(date.value);reason.closest('label').hidden=po.value.trim()===parsed.pedido&&num.value.trim()===parsed.ack_numero&&date.value===parsed.ack_data;upload=null;applyReq=null;check.checked=false;aceiteDocumentoOficial(check,conflitoItens||temConflitoDocumental(parsed.avisos)||po.value.trim()!==parsed.pedido||num.value.trim()!==parsed.ack_numero||date.value!==parsed.ack_data);};
+    const update=()=>{preview.textContent='Pedido '+pedido.referencia+' | Situação: '+pedido.status+' → Aceito -ACK | Número do ACK: '+(pedido.ack_numero||'vazio')+' → '+num.value+' | Data do ACK: '+dt(pedido.ack_data)+' → '+dt(date.value);reason.closest('label').hidden=po.value.trim()===parsed.pedido&&num.value.trim()===parsed.ack_numero&&date.value===parsed.ack_data;upload=null;applyReq=null;check.checked=false;aceiteDocumentoOficial(check,conflitoItens||temConflitoDocumental(parsed.avisos)||po.value.trim()!==parsed.pedido||num.value.trim()!==parsed.ack_numero||date.value!==parsed.ack_data);};
     for(const f of [po,num,date,reason])f.addEventListener('input',update);update();review.append(preview);
     review.append(btn('Importar ACK e atualizar processo',async()=>{
      reason.required=po.value.trim()!==(parsed.pedido||'')||num.value.trim()!==(parsed.ack_numero||'')||date.value!==(parsed.ack_data||'');if(!validarCampos(review))return;if(!check.checked)throw Error('Confirme a revisão do ACK.');if(po.value.trim()!==pedido.referencia)throw Error('O número do pedido precisa corresponder ao cadastro aberto.');

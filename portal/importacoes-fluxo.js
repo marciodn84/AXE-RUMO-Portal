@@ -1,7 +1,7 @@
 import {initLeituraDI} from './importacoes-di.js?v=20261029-docauto17';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-docauto17';
-import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261029-docauto17';
-import {initACKImportacao} from './importacoes-ack.js?v=20261030-imp34';
+import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261031-pedido37';
+import {initACKImportacao} from './importacoes-ack.js?v=20261031-pedido37';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261030-imp34';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261030-imp34';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261030-imp34';
@@ -50,7 +50,7 @@ export function initVisaoImportacao(api,parent,editCadastro){
  function render(){
   root.closest('.imp-estrutura')?.classList.add('processo-aberto');
   const r=current,p=r.pedido,f=resumirFluxo(r);summary.replaceChildren();status.textContent=avisosImportacao.length?avisosImportacao.join(' '):'Andamento calculado pelos documentos e registros do processo.';
-  const bar=el('div',null,'cadastro-toolbar');bar.append(btn('Todos os processos',async()=>{if(!await closeWork())return;id=null;await list();}),btn('Atualizar andamento',refresh));summary.append(bar,el('h3',p.referencia+' · '+p.fornecedor),el('p',f.status,'fluxo-status'));
+  const bar=el('div',null,'cadastro-toolbar');bar.append(btn('Todos os processos',async()=>{if(!await closeWork())return;id=null;await list();}),btn('Atualizar andamento',refresh));summary.append(bar,el('h3',p.referencia+' · '+p.fornecedor),el('p',f.status,'fluxo-status'),el('p',f.andamento));
   const cards=el('div',null,'erp-stats');for(const [label,value] of [['Pedido',money(f.total,p.moeda)],['Pago',money(f.paid,p.moeda)],['Saldo financeiro',money(f.total-f.paid,p.moeda)],['Saldo do fornecedor',money(f.saldoFornecedor,p.moeda)]]){const c=el('div',null,'stat-card');c.append(el('span',label),el('strong',value));cards.append(c);}summary.append(cards);
   const next=el('article',null,'fluxo-proxima');next.append(el('h3',f.next?'Próxima etapa: '+f.next.nome:'Processo operacional concluído'),el('p',f.next?'Necessário: '+f.next.documento:'As pendências de comprovação cambial permanecem no financeiro.'));if(f.next&&r.editar)next.append(btn('Resolver próxima etapa',()=>action(f.next.acao,f.ships.find(s=>s.proxima===f.next)?.embarque)));summary.append(next);
   const definitions=[['resumo','Visão geral',[]],['pedido','Pedido e ACK',['cadastros']],['pagamentos','Pagamentos',[]],['carga','Invoice e packing',['carga']],['transporte','Transporte',['transportador','transporte','coleta']],['aduana','DI / DUIMP',['aduana']],['notas','Nota de entrada',['nota']],['custos','Custos e créditos',['fechamento','custo']],['estoque','Recebimento e estoque',['recebimento','estoque']],['documentos','Documentos e histórico',[]]];

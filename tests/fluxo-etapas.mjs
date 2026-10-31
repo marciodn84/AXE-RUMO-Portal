@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {etapasEmbarque,resumirFluxo} from '../portal/importacoes-fluxo-etapas.js';
+const ship={embarque:{id:'e',status:'Planejamento',participantes:[{papel:'transportador',id:1}],dados:{},itens:[{pedido_item_id:'i',produto_id:1,quantidade:5,recebida:0}]},liberacoes:[{}],arquivos_carga:[{categoria:'INVOICE'},{categoria:'PACKING'}],transporte:{dados:{awb:'123'}},declaracoes:[],notas:[],fechamentos:[]};
+assert(etapasEmbarque(ship).find(x=>x.key==='carga').feito);assert(etapasEmbarque(ship).find(x=>x.key==='transporte').feito);assert(!etapasEmbarque(ship).find(x=>x.key==='coleta').feito,'AWB não prova coleta');
+ship.declaracoes=[{status:'Ativo',dados:{data_registro:'2026-10-29'}}];assert(!etapasEmbarque(ship).find(x=>x.key==='aduana').feito,'registro não prova desembaraço');
+const data={pedido:{total:1000,status:'Aceito -ACK',itens:[{id:'i',quantidade:10,valor_unitario:100}]},acks:[{pronto:true,aplicado_em:'2026-10-29'}],parcelas:[{valor_pago:500,status:'Prevista'}],embarques:[ship]};
+let f=resumirFluxo(data);assert.equal(f.paid,500);assert.equal(f.saldoFornecedor,500);assert.equal(f.ships[0].proxima.key,'coleta');
+ship.embarque.dados.data_coleta='2026-10-29';ship.declaracoes[0].dados.data_desembaraco='2026-10-29';ship.declaracoes[0].documento_importado=true;ship.notas=[{estado:'Conciliada'}];ship.embarque.status='Recebido';ship.embarque.itens[0].recebida=5;ship.fechamentos=[{pronto:true,importado:true}];ship.custo={estado:'Final'};
+assert(!etapasEmbarque(ship).every(x=>x.feito),'custo final não prova estoque');ship.estoque={data_entrada:'2026-10-29'};
+f=resumirFluxo(data);assert.equal(f.andamento,'Aguardando saldo do fornecedor');assert.equal(f.status,'Aceito -ACK');data.pedido.itens[0].quantidade=5;
+f=resumirFluxo(data);assert.equal(f.andamento,'Concluído operacionalmente','pendência cambial não bloqueia operação');
+console.log('Etapas: documentos fecham somente fatos comprovados; parciais e financeiro independentes.');
