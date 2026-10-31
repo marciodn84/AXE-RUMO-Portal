@@ -3,9 +3,9 @@ import './validacao-campos.js?v=20261029-transporte10';
 import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261029-docauto17';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261029-excel23';
-import {initFiscal} from './fiscal.js?v=20261023-gestao1';
-import {initCadastros} from './cadastros.js?v=20261030-bloqueio31';
-import {initCatalogo} from './catalogo.js?v=20261030-bloqueio31';
+import {initFiscal} from './fiscal.js?v=20261030-padrao32';
+import {initCadastros} from './cadastros.js?v=20261030-padrao32';
+import {initCatalogo} from './catalogo.js?v=20261030-padrao32';
 import {initComercial} from './comercial.js?v=20261023-gestao1';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 

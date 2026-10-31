@@ -1,4 +1,5 @@
-import {padronizarAcoes} from './acoes-icones.js?v=20261030-bloqueio31';
+import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
+import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
 import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261030-clienttabs27';
 import {botoesPlanilha} from './planilha-cadastros.js?v=20261029-cliente25';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -29,7 +30,7 @@ const schemas={
 const nameOf=(type,r)=>type==='produto'?[r.codigo_axe||r.codigo_anterior||'#'+r.id,r.descricao_referencia].join(' · '):type==='cliente'?['ID '+r.id,r.nome,r.cnpj].filter(Boolean).join(' · '):type==='fornecedor'?[r.razao_social,r.cnpj||r.documento_fiscal].filter(Boolean).join(' · '):['Cliente #'+r.cliente_id,r.codigo_cliente,r.descricao_cliente].join(' · ');
 export function initCatalogo(api){
  const root=document.getElementById('cadastrosRoot');const screen=node('section',undefined,'cadastro-screen');screen.hidden=true;root.append(screen);
- let epoch=0,request=0,active=null,type='fornecedor',page=0,query='',productFilter=null,referenceFilter=null,dialog=null;
+ let epoch=0,request=0,active=null,type='fornecedor',page=0,query='',productFilter=null,referenceFilter=null,dialog=null;const controle=controleCadastro(api,()=>active==='fornecedores');
  const cache=new Map();
  const btn=(text,fn)=>{const b=node('button',text);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=e.message;status.className='status error';}finally{b.disabled=false;}};return b;};
  const heading=node('h2'),intro=node('p',undefined,'intro'),tabs=node('div',undefined,'catalog-tabs'),tools=node('form',undefined,'searchbar'),search=node('input');search.type='search';search.placeholder='Buscar por nome, código ou descrição';search.setAttribute('aria-label','Buscar no catálogo');
@@ -64,9 +65,9 @@ export function initCatalogo(api){
    }));if(gen!==epoch||run!==request)return;
    table.replaceChildren();const heads={fornecedor:['Fornecedor','Documento','País','Contato','Situação'],referencia_cliente:['Cliente','Código do cliente','Descrição do cliente','Unidade','Situação'],opcao_cliente:['Referência do cliente','Produto AXE','Vínculo','Situação','Unidades AXE / unidade cliente','Evidência'],produto_fornecedor:['Produto AXE','Fornecedor','Código do fornecedor','Descrição do fornecedor','Unidade / conversão','Situação'],similar:['Produto AXE','Similar técnico','Justificativa'],documento:['Produto','Tipo','Título','Referência','Revisão']};
    const h=node('tr');for(const title of [...heads[kind],'Ações'])h.append(node('th',title));const th=node('thead');th.append(h);table.append(th);const body=node('tbody');
-   for(const {r,cells} of rows){const tr=node('tr');for(const value of cells)tr.append(node('td',value??'—'));const actions=node('td');actions.append(btn('Editar',()=>edit(kind,r.id)));
+   for(const {r,cells} of rows){if(kind==='fornecedor')cells[cells.length-1]=indicadorCadastro(r);if(kind==='referencia_cliente')cells[cells.length-1]=indicadorSituacao(r.ativo?'ATIVO':'INATIVO');if(kind==='opcao_cliente')cells[3]=indicadorSituacao(r.situacao);if(kind==='produto_fornecedor'){const sit=node('span');sit.append(indicadorSituacao(r.situacao),document.createTextNode(r.preferencial?' · Preferencial':''));cells[5]=sit;}const tr=node('tr');for(const value of cells){const td=node('td');if(value instanceof Node)td.append(value);else td.textContent=value??'—';tr.append(td);}const actions=node('td');actions.append(btn('Editar',()=>edit(kind,r.id)));
     if(kind==='referencia_cliente')actions.append(btn('Produtos aceitos',()=>{type='opcao_cliente';page=0;query='';search.value='';referenceFilter=r.id;return load();}),btn('Vincular produto AXE',()=>edit('opcao_cliente',null,{referencia_cliente_id:r.id})));
-    if(kind==='fornecedor')actions.append(btn('Vincular produto',()=>edit('produto_fornecedor',null,{fornecedor_id:r.id})));
+    if(kind==='fornecedor')actions.append(btn('Vincular produto',()=>edit('produto_fornecedor',null,{fornecedor_id:r.id})),btn(r.bloqueado_comercial?'Desbloquear fornecedor':'Bloquear fornecedor',()=>controle.alterar('fornecedor',r,load)),btn('Histórico de bloqueios',()=>controle.historico('fornecedor',r)));
     tr.append(actions);body.append(tr);
    }padronizarAcoes(body);table.append(body);count.textContent=result.total?`${page*50+1}–${page*50+rows.length} de ${result.total}`:'Nenhum registro';previous.disabled=page===0;next.disabled=(page+1)*50>=result.total;status.textContent=rows.length?'Consulta atualizada.':'Nenhum cadastro nesta consulta. Use “Novo cadastro” para começar.';
   }catch(e){if(gen===epoch&&run===request){status.textContent=e.message;status.className='status error';previous.disabled=page===0;}}
@@ -125,7 +126,7 @@ export function initCatalogo(api){
   };
  }
  document.addEventListener('axe-editar-catalogo',e=>edit(e.detail.tipo,e.detail.id));
- return {show,edit,reset(){epoch++;request++;active=null;screen.hidden=true;table.replaceChildren();cache.clear();if(dialog)dialog.remove();dialog=null;}};
+ return {show,edit,reset(){controle.reset();epoch++;request++;active=null;screen.hidden=true;table.replaceChildren();cache.clear();if(dialog)dialog.remove();dialog=null;}};
 }
 
 
