@@ -1,9 +1,9 @@
-import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261031-num47';
+import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261031-imp48';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261031-num47';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261031-imp48';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261031-num47';
+import {initERP} from './erp.js?v=20261031-imp48';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
 import {initCadastros} from './cadastros.js?v=20261030-email36';
 import {initCatalogo} from './catalogo.js?v=20261030-email36';
