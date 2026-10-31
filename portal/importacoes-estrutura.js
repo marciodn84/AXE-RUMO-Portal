@@ -24,7 +24,7 @@ export function initEstruturaImportacao(api,legacy){
  const root=node('section',undefined,'cadastro-screen imp-internacional imp-estrutura');root.hidden=true;
  document.getElementById('cadastrosRoot').append(root);
  padronizarImportacao(root);
- let voltarFluxo=null;
+ let voltarFluxo=null,area='importacoes',navigateERP=null;
  let tipo='visao',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
@@ -43,10 +43,11 @@ export function initEstruturaImportacao(api,legacy){
  const fields=(parent,defs,data={})=>Object.fromEntries(defs.map(([k,l,t,c])=>[k,field(parent,k,l,data[k],t||'text',c)]));
  const read=inputs=>Object.fromEntries(Object.entries(inputs).map(([k,e])=>[k,e.value.trim()]));
  function grid(parent,title){const box=node('fieldset');box.append(node('legend',title));const g=node('div',undefined,'import-mapping');box.append(g);parent.append(box);return g;}
- function renderNav(){nav.replaceChildren();for(const [key,label] of [['visao','Visão única'],['pedidos','Pedidos de compra'],['entrada','Pré-cadastros de e-mail'],['parcelas','Parcelas'],['embarques','Embarques'],['cambio','Conciliação cambial'],['custos','Custo real'],['notas','Notas Nomus'],['anteriores','Registros anteriores']]){
+ function renderNav(){nav.replaceChildren();for(const [key,label] of [['visao','Visão única'],['entrada','Pré-cadastros de e-mail'],['parcelas','Parcelas'],['embarques','Embarques'],['cambio','Conciliação cambial'],['custos','Custo real'],['notas','Notas Nomus'],['anteriores','Registros anteriores']]){
   const b=button(label,async()=>{if(!guard()||!legacy.canLeave())return;dirty=false;pending=null;current=null;closeDialogs();await visao.show(false);await legacy.show(false);await entrada.show(false);await fx.show(false);await custos.show(false);await notas.show(false);tipo=key;voltarFluxo=null;page=0;epoch++;renderNav();if(key==='visao'){body.replaceChildren();msg.textContent='';await visao.show(true);}else if(key==='entrada'){body.replaceChildren();msg.textContent='';await entrada.show(true,opts.editar);}else if(key==='notas'){body.replaceChildren();msg.textContent='';await notas.show(true);}else if(key==='custos'){body.replaceChildren();msg.textContent='';await custos.show(true);}else if(key==='cambio'){body.replaceChildren();msg.textContent='';await fx.show(true);}else if(key==='anteriores'){body.replaceChildren(node('p','Registros da primeira versão, preservados com seu histórico. Eles não reservam quantidades na nova estrutura.'));await legacy.show(true);}else await list();});b.setAttribute('aria-pressed',String(tipo===key));nav.append(b);
  }}
- root.append(node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro'),nav,msg,body);
+ const intro=node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro');
+ root.append(intro,nav,msg,body);
  const cadastros=initCadastrosImportacao(api,root);
  const entrada=initEntradaEmail(api,root);
  const transporte=initTransporteDocumental(api,root,async id=>{await open(id);});
@@ -58,7 +59,7 @@ export function initEstruturaImportacao(api,legacy){
  const custos=initCustosImportacao(api,root);
  const notas=initNotasImportacao(api,root);
  const visao=initVisaoImportacao(api,root,async(t,id,pedidoId)=>{
-  if(!guard())return;await visao.show(false);voltarFluxo=pedidoId||'novo';tipo=t;body.replaceChildren();
+  if(!guard())return;if(t==='pedidos'&&navigateERP){navigateERP('pedidos-compra',{pedidoId:id,novo:!id,editar:Boolean(id)});return;}await visao.show(false);voltarFluxo=pedidoId||'novo';tipo=t;body.replaceChildren();
   if(id){const d=await api({acao:'v2_detalhe',tipo:t,id});current=d;edit(d,null,true);}else edit(null);
  });
 
@@ -111,6 +112,7 @@ export function initEstruturaImportacao(api,legacy){
   current=item;body.replaceChildren();msg.textContent='';const g=epoch,t=tipo;
   const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);return;}await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
+  if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
   if(!editing&&item&&opts.editar&&tipo==='pedidos')top.append(pagamento.button(item.id));
   if(!editing&&item&&opts.editar&&tipo==='parcelas')top.append(pagamento.button(item.pedido_id,item.id)); 
@@ -273,10 +275,11 @@ export function initEstruturaImportacao(api,legacy){
  window.addEventListener('beforeunload',e=>{if((dirty||busy)&&!root.hidden){e.preventDefault();e.returnValue='';}});
  return {
   canLeave:()=>root.hidden||(guard()&&legacy.canLeave()),
-  async show(visible){
+  setNavigate(fn){navigateERP=fn;},
+  async show(visible,contexto={}){
    epoch++;seq++;closeDialogs();entrada.show(false);fx.show(false);custos.show(false);notas.show(false);visao.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
-   root.hidden=false;dirty=false;pending=null;current=null;tipo='visao';voltarFluxo=null;page=0;searchValue='';renderNav();const g=epoch;
-   try{opts=await api({acao:'v2_opcoes'});if(check(g))await visao.show(true);}catch(e){if(check(g))msg.textContent=e.message;}
+   area=contexto?.area==='compras'?'compras':'importacoes';root.hidden=false;body.replaceChildren();msg.textContent='';dirty=false;pending=null;current=null;tipo=area==='compras'?'pedidos':'visao';voltarFluxo=null;page=0;searchValue='';nav.hidden=area==='compras';intro.textContent=area==='compras'?'Pedidos de compra nacionais e internacionais.':'Condições de pagamento e embarques parciais ou consolidados.';renderNav();const g=epoch;
+   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else await visao.show(true,contexto?.pedidoId);}}catch(e){if(check(g))msg.textContent=e.message;}
   },
   reset(){cadastros.reset();visao.reset();voltarFluxo=null;transporte.reset();pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };
