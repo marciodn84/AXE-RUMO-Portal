@@ -1,18 +1,18 @@
-import {padronizarImportacao} from './importacoes-layout.js?v=20261030-imp33';
+import {padronizarImportacao} from './importacoes-layout.js?v=20261030-imp34';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261029-docauto17';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261029-docauto17';
-import {initTransporteDocumental} from './importacoes-transporte.js?v=20261029-docauto17';
-import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261029-docauto17';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261029-docauto17';
-import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261029-transporte10';
-import {validarCampos} from './validacao-campos.js?v=20261029-aceite2';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261030-imp34';
+import {initTransporteDocumental} from './importacoes-transporte.js?v=20261030-imp34';
+import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261030-imp34';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261030-imp34';
+import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261030-imp34';
+import {validarCampos} from './validacao-campos.js?v=20261030-imp34';
 import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261029-transporte10';
-import {initACKImportacao} from './importacoes-ack.js?v=20261029-docauto17';
+import {initACKImportacao} from './importacoes-ack.js?v=20261030-imp34';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261029-docauto17';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261029-docauto17';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261029-docauto17';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261030-imp34';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261030-imp34';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261030-imp34';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const etapasPedido=['Rascunho','Emitido','ACK recebido','Cancelado'];
@@ -256,8 +256,8 @@ export function initEstruturaImportacao(api,legacy){
     if(!pending)pending={acao:'v2_salvar',tipo:t,id:item?.id||null,versao:item?.versao||null,requisicao_id:crypto.randomUUID(),dados};
     busy=true;const controls=[...root.querySelectorAll('input,select,textarea,button')];controls.forEach(e=>e.disabled=true);
     let r;try{r=await api(pending);}finally{busy=false;if(check(g)){controls.forEach(e=>e.disabled=false);summary();}}
-    if(!check(g))return;if(t==='embarques')for(const [role,id]of Object.entries(participantes))if(id)await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:r.id,cadastro_id:id});dirty=false;pending=null;await open(r.id);msg.textContent='Registro salvo. Histórico preservado.';msg.className='status';
-   });form.append(save);
+    if(!check(g))return;if(t==='embarques')for(const [role,id]of Object.entries(participantes))if(id)await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:r.id,cadastro_id:id});dirty=false;pending=null;if(voltarFluxo){await open(r.id);}else{current=null;await list();}msg.textContent='Registro salvo. Histórico preservado.';msg.className='status';
+   });const actions=node('div',undefined,'form-actions');actions.append(button('Cancelar',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);}else await list();}),save);form.append(actions);
   }else if(item){
    if(tipo==='embarques'){const documentos=node('section');body.append(documentos);void transporte.render(item,documentos,opts.editar);}
    if(tipo==='embarques'){

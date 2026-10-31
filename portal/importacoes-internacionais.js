@@ -1,4 +1,4 @@
-import {initEstruturaImportacao} from './importacoes-estrutura.js?v=20261030-imp33';
+import {initEstruturaImportacao} from './importacoes-estrutura.js?v=20261030-imp34';
 export const etapas=['Planejamento','Pedido emitido','Aguardando embarque','Em trânsito','Em desembaraço','Recebida parcialmente','Recebida','Encerrada','Cancelada'];
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
