@@ -1,19 +1,19 @@
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
 import {padronizarImportacao} from './importacoes-layout.js?v=20261031-carrier53';
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-stock55';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-stock55';
-import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-carrier53';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-fornecedor58';
+import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-carrier53';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-fornecedor58';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261031-carrier53';
 import {validarCampos} from './validacao-campos.js?v=20261030-email36';
 import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261030-email36';
-import {initACKImportacao} from './importacoes-ack.js?v=20261031-carrier53';
+import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261031-carrier53';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261031-fornecedor58';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261031-carrier53';
-import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261030-email36';
+import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
 export function sugerirFormaPagamento(termos){const t=String(termos||'').toLowerCase();if(/parcelad|installment|entrada.*saldo|advance.*balance|%.*%/.test(t))return 'PARCELADO';if(/antecipad|prepay|payment in advance|advance payment/.test(t))return 'ANTECIPADO';if(/contra.*embarque|pront.*coleta|pront.*embarque|cash on delivery|against shipment|on shipment/.test(t))return 'NA_ENTREGA';if(/a prazo|net\s*\d+|\d+\s*(due|dias|days)/.test(t))return 'A_PRAZO';return ''; }

@@ -1,5 +1,5 @@
 import {classificarEmbarque} from './embarques-abrangencia.js?v=20261031-carrier53';
-import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-carrier53';
+import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-fluxo15';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {validarCampos} from './validacao-campos.js?v=20261030-imp34';
