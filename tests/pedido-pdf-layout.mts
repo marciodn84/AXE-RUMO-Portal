@@ -1,0 +1,13 @@
+import fs from'node:fs/promises';import os from'node:os';import path from'node:path';import assert from'node:assert/strict';import{pathToFileURL}from'node:url';
+// Synthetic PDF text coordinates exercise native-column recognition without storing customer documents.
+const item=(str:string,x:number,y:number,width=25)=>({str,transform:[1,0,0,1,x,y],width});
+const dir=await fs.mkdtemp(path.join(os.tmpdir(),'axe-po-layout-'));
+try{
+ let source=await fs.readFile(new URL('../backend/pedido-pdf.ts',import.meta.url),'utf8');source=source.replace("import {getDocumentProxy} from 'npm:unpdf@1.9.1';","const getDocumentProxy=async()=>globalThis.__pdfFixture;").replace("import {extrairPaginasPDF} from './di-documento.ts';",()=>"const extrairPaginasPDF=async()=>[{texto:'PEDIDO DE COMPRA: PO999999 R$',metodo:'PDF'}];");await fs.writeFile(path.join(dir,'parser.ts'),source);const{lerPedidoPDF}=await import(pathToFileURL(path.join(dir,'parser.ts')).href);
+ for(const qtyHeader of ['Qtde','Qtd.','Quantidade','Quantity']){
+ const data=[item('PEDIDO DE COMPRA: PO999999',420,815),item('01/10/2026',547,802),item('Dados do fornecedor',33,763),item('FORNECEDOR TESTE',33,744),item('Produto:',33,657),item('R$ 30,00',83,657),item('Total:',151,629),item('R$ 33,00',201,629),item('IPI:',435,643),item('R$ 3,00',485,643),item('Item',22,582,16),item('Produto',48,582,30),item('Unidade',302,582),item(qtyHeader,347,582),item('Preço un.',389,587),item('(R$)',400,578),item('SubTotal (R$)',446,582),item('entrega',526,578),item('00010',22,564),item('ABC123',47,568),item('45',59,559),item('PRODUTO TESTE',84,564),item('PRODUTO TESTE - REFERENCIA',84,568),item('UN',312,564),item('3,000',346,564),item('R$ 10,000',387,564),item('R$ 30,00',451,564),item('01/12/2026',523,564)];
+ (globalThis as any).__pdfFixture={numPages:1,getPage:async()=>({getTextContent:async()=>({items:data}),cleanup(){}}),loadingTask:{destroy:async()=>{}}};
+ const r=await lerPedidoPDF(new Uint8Array(),undefined);assert.equal(r.itens.length,1,qtyHeader);assert.equal(r.itens[0].codigo_axe,'ABC12345');assert.equal(Number(r.itens[0].quantidade),3);assert.equal(Number(r.itens[0].valor_unitario),10);assert.equal(Number(r.total_documento),30);assert.equal(Number(r.total_pedido_documento),33);assert.equal(Number(r.tributos_documento.IPI),3);assert.equal(r.moeda,'BRL');assert.equal(r.itens[0].descricao,'PRODUTO TESTE - REFERENCIA');assert.deepEqual(r.avisos,[]);
+ }
+ console.log('PASS: Qtde/Qtd./Quantidade/Quantity, código quebrado em linhas, descrição sobreposta e totais/tributos separados.');
+}finally{await fs.rm(dir,{recursive:true,force:true});delete(globalThis as any).__pdfFixture;}
