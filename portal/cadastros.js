@@ -18,7 +18,7 @@ export function initCadastros(api,planilhaApi){
  const root=document.getElementById('cadastrosRoot');const mesclagens={clientes:selecaoMesclagem(planilhaApi,'cliente',()=>load('clientes')),produtos:selecaoMesclagem(planilhaApi,'produto',()=>load('produtos'))};
  for(const [key,[title,description]] of Object.entries(sections)){
   const section=el('section',undefined,'cadastro-screen');section.id='screen-'+key;section.hidden=true;
-  if(key!=='clientes')section.append(el('h2',title),el('p',description,'intro'));
+  if(!['clientes','pedidos'].includes(key))section.append(el('h2',title),el('p',description,'intro'));
   const tools=el('form',undefined,'searchbar');const search=el('input');search.type='search';search.placeholder=key==='clientes'?'Buscar por ID, nome ou CNPJ':'Buscar por nome, código, pedido ou descrição';search.setAttribute('aria-label',key==='clientes'?'Buscar clientes':'Buscar em '+title);tools.append(search);
   const submit=el('button','Buscar');submit.type='submit';tools.append(submit,button('Atualizar',()=>load(key)));
   if(key==='clientes')tools.append(button('Novo cliente',()=>clientForm()));if(key==='produtos')tools.append(button('Novo produto',()=>productForm()));if(key==='regras')tools.append(button('Nova regra',()=>ruleForm()));
