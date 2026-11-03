@@ -63,3 +63,18 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 .merge-tools{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px}.merge-tools[hidden]{display:none}.merge-tools span{font-size:.85rem;color:#536779}.merge-dialog{width:min(1100px,94vw);max-height:90vh;overflow:auto}.merge-dialog table{width:100%;margin:16px 0}.merge-dialog th,.merge-dialog td{padding:10px;max-width:300px;overflow-wrap:anywhere}.merge-dialog select{max-width:100%}.merge-dialog>button{margin:12px 8px 0 0}.merge-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere}[data-merge-id]{width:18px;height:18px;min-height:0;cursor:pointer}
 
 .estoque-panel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.estoque-panel strong{display:block;font-size:1.35rem;margin-top:8px}.stock-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:850px}.stock-form label{display:grid;gap:6px}.stock-form p{grid-column:1/-1}.stock-actions{display:flex;gap:6px;white-space:nowrap}.estoque-screen .record-details{margin-top:24px;padding:20px;background:#fff;border:1px solid #dbe3ec;border-radius:8px}.estoque-screen td small{display:block;color:#536779}.estoque-screen .paging{margin-top:18px}@media(max-width:760px){.estoque-panel,.stock-form{grid-template-columns:1fr}}
+
+
+/* Consulta RUMO: busca e ações na primeira linha; filtros alinhados abaixo. */
+#screen-pedidos .orders-searchbar{display:flex;flex-direction:column;gap:16px;margin:20px 0}
+#screen-pedidos .orders-search-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}
+#screen-pedidos .orders-filter-line{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,1fr) minmax(240px,1.4fr) auto;gap:14px;align-items:end}
+#screen-pedidos .orders-search-line input,#screen-pedidos .orders-search-line button{height:42px;margin:0;min-width:0}
+#screen-pedidos .orders-search-line input{width:100%;padding:10px 12px}
+#screen-pedidos .orders-search-line button{padding:10px 20px;white-space:nowrap}
+#screen-pedidos .orders-filter-line .order-status-filter{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0;font-size:13px;font-weight:600;min-width:0}
+#screen-pedidos .orders-filter-line select{width:100%;height:42px;min-width:0;margin:0;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;font-weight:400;background:#fff}
+#screen-pedidos .orders-filter-line .versions-filter{height:42px;margin:0;gap:8px;font-size:13px;cursor:pointer}
+#screen-pedidos .orders-filter-line input[type=checkbox]{width:17px;height:17px;min-width:17px;accent-color:#087f78}
+@media(max-width:1100px){#screen-pedidos .orders-filter-line{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){#screen-pedidos .orders-search-line{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-pedidos .orders-search-line input{grid-column:1/-1}#screen-pedidos .orders-filter-line{grid-template-columns:minmax(0,1fr)}}
