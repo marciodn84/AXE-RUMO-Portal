@@ -67,7 +67,7 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 
 /* Consulta RUMO: busca e ações na primeira linha; filtros alinhados abaixo. */
 #screen-pedidos .orders-searchbar{display:flex;flex-direction:column;gap:16px;margin:20px 0}
-#screen-pedidos .orders-search-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}
+#screen-pedidos .orders-search-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;align-items:center}
 #screen-pedidos .orders-filter-line{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,1fr) minmax(240px,1.4fr) auto;gap:14px;align-items:end}
 #screen-pedidos .orders-search-line input,#screen-pedidos .orders-search-line button{height:42px;margin:0;min-width:0}
 #screen-pedidos .orders-search-line input{width:100%;padding:10px 12px}

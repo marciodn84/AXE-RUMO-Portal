@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';
+import {exportarPedidosExcel} from '../portal/pedidos-excel.js';
+const filter={status:'ACEITO',ordenacao:'data_remessa_asc',incluir_cancelados:false,situacao_prazo:'ate_10_dias',data_campo:'data_remessa',data_inicio:'2026-11-01',data_fim:'2026-11-10',busca:'4502'};
+const rows=Array.from({length:120},(_,id)=>({id:id+1,numero_pedido:'4502000001',numero_item:'00010',cnpj_faturamento:'00123456000100',codigo_material:'00123',data_pedido:'2026-10-01',data_remessa:'2026-11-05',quantidade_original:'12.50',valor_unitario:'15.2',descricao_material:'=HYPERLINK("test")',fase_status_sap:'ACEITO'}));let calls=[];
+const api=async p=>{calls.push(p);return{total:120,linhas:rows.slice(p.pagina*50,(p.pagina+1)*50)};};
+const r=await exportarPedidosExcel(api,filter);assert.equal(r.total,120);assert.deepEqual(calls.map(x=>x.pagina),[0,1,2]);for(const p of calls)for(const[k,v]of Object.entries(filter))assert.equal(p[k],v);
+fs.writeFileSync(new URL('./pedidos-exportacao.xlsx',import.meta.url),Buffer.from(await r.blob.arrayBuffer()));
+const empty=await exportarPedidosExcel(async()=>({total:0,linhas:[]}),filter);assert.equal(empty.total,0);
+let step=0;await assert.rejects(()=>exportarPedidosExcel(async()=>({total:++step===1?120:121,linhas:rows.slice(0,50)}),filter),/mudaram/);
+await assert.rejects(()=>exportarPedidosExcel(async()=>({total:120,linhas:rows.slice(0,50)}),filter),/mudaram/);
+let valid=true;assert.equal(await exportarPedidosExcel(async()=>{valid=false;return{total:0,linhas:[]}},filter,{valido:()=>valid}),null);
+console.log('PASS: todas as páginas, filtros preservados, vazios, duplicação, mudança na base e cancelamento.');
