@@ -106,3 +106,24 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 
 /* Pedido de venda a partir do pedido RUMO */
 .com-form > .venda-rumo-items{grid-column:1 / -1;min-width:0}.venda-rumo-items .com-item{margin:12px 0;padding:16px}.venda-rumo-items select{width:100%;max-width:100%}.venda-rumo-items .com-tools input[type=search]{flex:1;min-width:180px}
+
+/* Ficha integrada de produto */
+#screen-produtos.product-editing > :not(.product-sheet){display:none!important}
+.product-sheet{width:100%;min-width:0}.product-sheet h2{overflow-wrap:anywhere}
+.product-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0;border-bottom:1px solid #d6e0e8;padding-bottom:8px}
+.product-tabs [role=tab]{min-height:40px;padding:8px 16px;background:#edf2f7;color:#244154;border:1px solid #cad7e0}
+.product-tabs [aria-selected=true]{background:#087d79;color:white;border-color:#087d79}
+.product-tab-panel[hidden]{display:none!important}
+.product-inline-editor form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.product-inline-editor fieldset{min-width:0;border:1px solid #d6e0e8;border-radius:8px;padding:16px;display:grid;gap:12px;align-content:start}
+.product-inline-editor form>h2,.product-inline-editor form>.intro,.product-inline-editor form>.status,.product-inline-editor form>.form-actions{grid-column:1/-1}
+.product-inline-editor label{display:grid;gap:5px;align-content:start}
+.product-inline-editor input,.product-inline-editor select,.product-inline-editor textarea{width:100%;min-width:0;box-sizing:border-box;height:auto;min-height:40px;padding:8px 10px}
+.product-inline-editor textarea{min-height:90px;resize:vertical}
+.product-inline-editor form:has(:invalid).was-validated :invalid{border-color:#c52626;background:#fff4f4}
+.product-inline-editor .catalog-lookup{display:flex;gap:6px;flex-wrap:wrap}.product-inline-editor .catalog-lookup input{flex:1;min-width:160px}
+.product-sheet .form-actions,.product-row-actions{display:flex;gap:8px;flex-wrap:wrap}.product-sheet .form-actions button{min-height:40px}
+.product-stock-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.product-stock-summary strong{display:block;margin-top:6px}
+.product-sheet td{white-space:normal;vertical-align:top}.product-sheet td p{white-space:pre-wrap;overflow-wrap:anywhere;max-width:700px}
+@media(max-width:850px){.product-inline-editor form{grid-template-columns:1fr}.product-stock-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}

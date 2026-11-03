@@ -99,7 +99,7 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   refresh.disabled=false;
  }
  function navigate(key,produtoId,expandirMenu=true){
-  if(key==='compras')key='pedidos-compra';if(comercial?.canLeave&&!comercial.canLeave())return;if(estoque&&!estoque.canLeave())return;
+  if(key==='compras')key='pedidos-compra';if(catalogo?.canLeave&&!catalogo.canLeave())return;if(comercial?.canLeave&&!comercial.canLeave())return;if(estoque&&!estoque.canLeave())return;
   const route=routes.get(key);if(!route)return;if(importacoesInternacionais&&!importacoesInternacionais.canLeave())return;current=key;if(!panel.hidden){try{sessionStorage.setItem('axe:erp:ultima-tela',key);}catch{}}
   estoque?.show(false);financeiroNumerario?.show(null);cadastros.show(null);if(fiscal)fiscal.show(null);if(catalogo)catalogo.show(null);if(importacao)importacao.show(false);if(comercial)comercial.show(null);if(gestao)gestao.show(null);if(importacoesInternacionais)importacoesInternacionais.show(false);home.hidden=true;future.hidden=true;
   for(const [k,b] of buttons){b.setAttribute('aria-current',k===key?'page':'false');if(k===key&&expandirMenu){let parent=b.parentElement;while(parent&&parent!==nav){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}}}
