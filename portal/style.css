@@ -151,3 +151,11 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 .product-sheet .form-actions button,.product-sheet .com-tools button,.product-row-actions button{font-size:13px;min-height:32px;padding:6px 12px}
 .product-sheet .form-actions{position:sticky;bottom:0;left:auto;right:auto;z-index:2;background:#fff;border-top:1px solid #dce4eb;padding:12px 0}
 @media(max-width:650px){.product-tab-panel{padding:12px}.product-inline-editor label{grid-template-columns:1fr}.product-inline-editor label>small,.product-inline-editor .catalog-lookup{grid-column:1}.product-sheet .product-tabs [role=tab]{padding:10px 14px}.product-identity th,.product-identity td{padding:7px;font-size:12px}}
+
+/* Códigos de produto sempre em uma linha */
+#screen-produtos > .scroll td:first-child,
+#screen-produtos table td:first-child,
+.product-identity th:first-child,
+.product-identity td:first-child,
+.product-tab-panel table td:nth-child(2){white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.product-identity td:first-child{min-width:105px}
