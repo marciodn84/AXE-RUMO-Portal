@@ -127,3 +127,27 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 .product-stock-summary strong{display:block;margin-top:6px}
 .product-sheet td{white-space:normal;vertical-align:top}.product-sheet td p{white-space:pre-wrap;overflow-wrap:anywhere;max-width:700px}
 @media(max-width:850px){.product-inline-editor form{grid-template-columns:1fr}.product-stock-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Abas integradas e ficha compacta, conforme referência do Nomus */
+.product-sheet > button:first-child{background:transparent;color:#24526d;border:0;padding:4px 0;min-height:30px;box-shadow:none}
+.product-sheet > h2{margin:10px 0 16px;font-size:24px}
+.product-identity{margin:0 0 16px}.product-identity table{width:100%;border-collapse:collapse}
+.product-identity th{background:#e9f0f5;color:#284455;font-size:12px;padding:9px 12px;text-transform:none}
+.product-identity td{font-size:14px;padding:10px 12px;border:1px solid #dce4eb}
+.product-sheet .product-tabs{gap:0;flex-wrap:nowrap;overflow-x:auto;margin:0;padding:0;border-bottom:1px solid #d4dfe7}
+.product-sheet .product-tabs [role=tab]{background:transparent;color:#516474;border:0;border-bottom:3px solid transparent;border-radius:0;box-shadow:none;font-weight:500;font-size:14px;min-height:42px;padding:10px 20px;white-space:nowrap}
+.product-sheet .product-tabs [role=tab]:hover{background:#f3f7fa;color:#087d79}
+.product-sheet .product-tabs [aria-selected=true]{background:transparent;color:#087d79;border-bottom-color:#087d79;font-weight:700}
+.product-tab-panel{border:1px solid #d4dfe7;border-top:0;padding:20px;background:#fff;min-height:240px}
+.product-inline-editor form{gap:18px}
+.product-inline-editor form>h2,.product-inline-editor form>.intro{display:none}
+.product-inline-editor fieldset{padding:12px 14px;border-radius:3px;gap:9px}
+.product-inline-editor legend{font-size:14px;font-weight:600;padding:0 5px}
+.product-inline-editor label{grid-template-columns:minmax(130px,40%) minmax(0,1fr);gap:7px 12px;align-items:center;font-size:13px;font-weight:400}
+.product-inline-editor label>small{grid-column:2;font-size:11px}
+.product-inline-editor input,.product-inline-editor select,.product-inline-editor textarea{min-height:32px;font-size:13px;padding:5px 8px;border-radius:3px}
+.product-inline-editor textarea{min-height:64px}
+.product-inline-editor .catalog-lookup{grid-column:2;grid-row:2}
+.product-sheet .form-actions button,.product-sheet .com-tools button,.product-row-actions button{font-size:13px;min-height:32px;padding:6px 12px}
+.product-sheet .form-actions{position:sticky;bottom:0;left:auto;right:auto;z-index:2;background:#fff;border-top:1px solid #dce4eb;padding:12px 0}
+@media(max-width:650px){.product-tab-panel{padding:12px}.product-inline-editor label{grid-template-columns:1fr}.product-inline-editor label>small,.product-inline-editor .catalog-lookup{grid-column:1}.product-sheet .product-tabs [role=tab]{padding:10px 14px}.product-identity th,.product-identity td{padding:7px;font-size:12px}}

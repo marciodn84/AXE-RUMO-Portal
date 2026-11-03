@@ -19,9 +19,10 @@ export function initFichaProduto(api,edit){
   try{
    if(id){const q=(await api({acao:'ficha_produto',id,aba:'codigos',pagina:0})).resultado;if(gen!==epoch)return;id=q.produto_id;record=await api({acao:'detalhe',tipo:'produto',id});if(gen!==epoch)return;}
    else record={};
-   const updateTitle=()=>{heading.textContent=id?'Ficha do produto · '+(record.codigo_axe||record.codigo_anterior||'#'+id)+' · '+record.descricao_referencia:'Novo produto AXE';};updateTitle();status.textContent='';
+   const summary=el('div',null,'product-identity');root.append(summary);
+   const updateTitle=()=>{heading.textContent=id?'Cadastro do produto':'Novo produto AXE';summary.replaceChildren();table(summary,['Código AXE','Descrição do produto','Unidade','Tipo de produto','Situação'],[[(record.codigo_axe||record.codigo_anterior||(id?'#'+id:'Gerado ao salvar')),record.descricao_referencia||'Novo produto',record.unidade_referencia||'—',record.tipo_item||'—',record.bloqueado_comercial?'Bloqueado':record.ativo===false?'Inativo':'Ativo']]);};updateTitle();status.textContent='';
    const nav=el('div',null,'product-tabs');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Seções do produto');root.append(nav);
-   for(const [key,label]of [['axe','Dados AXE'],['clientes','Clientes'],['fornecedores','Fornecedores'],['estoque','Estoque'],['historico','Histórico']]){
+   for(const [key,label]of [['axe','Geral'],['clientes','Vendas'],['fornecedores','Compras'],['estoque','Estoque'],['historico','Histórico']]){
     const p=el('section',null,'product-tab-panel'),b=button(label,()=>select(key));p.setAttribute('role','tabpanel');p.id='produto-painel-'+key;b.id='produto-aba-'+key;b.setAttribute('role','tab');b.setAttribute('aria-controls',p.id);p.setAttribute('aria-labelledby',b.id);b.disabled=key!=='axe'&&!id;
     b.onkeydown=e=>{if(!['ArrowRight','ArrowLeft','Home','End'].includes(e.key))return;e.preventDefault();const bs=[...nav.querySelectorAll('button')].filter(x=>!x.disabled),i=bs.indexOf(b),next=e.key==='Home'?0:e.key==='End'?bs.length-1:(i+(e.key==='ArrowRight'?1:bs.length-1))%bs.length;bs[next].click();bs[next].focus();};nav.append(b);root.append(p);panes.set(key,{panel:p,tab:b,loaded:false,page:0,seq:0});
    }
@@ -42,9 +43,11 @@ export function initFichaProduto(api,edit){
     try{const r=(await api({acao:'ficha_produto',id,aba:key,pagina:p.page})).resultado;if(gen!==epoch||n!==p.seq)return;p.panel.replaceChildren();const toolbar=el('div',null,'com-tools');p.panel.append(toolbar);
      toolbar.append(button('Atualizar',()=>{if([...p.panel.querySelectorAll('form')].some(f=>dirtyForms.has(f))&&!confirm('Descartar alterações não salvas?'))return;return list(key);}));
      if(key==='clientes'){
+      p.panel.prepend(el('h3','Clientes · códigos e descrições de venda'));
       toolbar.append(button('Adicionar cliente',()=>relation(key,'referencia_cliente',null)),button('Vincular referência existente',()=>relation(key,'opcao_cliente',null)));
       table(p.panel,['Cliente / CNPJ','Código do cliente','Nome / descrição','Unidade / conversão','Situação','Ações'],r.linhas.map(x=>{const details=el('div');details.append(el('strong',x.descricao_cliente));if(x.descricao_detalhada){const d=el('details');d.append(el('summary','Descrição detalhada'),el('p',x.descricao_detalhada));details.append(d);}const actions=el('div',null,'product-row-actions');actions.append(button('Editar referência',()=>relation(key,'referencia_cliente',x)),button('Editar vínculo',()=>relation(key,'opcao_cliente',x.opcao,{referencia_cliente_id:x.id,produto_id:id})));return[x.cliente_nome+' · '+x.cnpj,x.codigo_cliente,details,(x.unidade_cliente||'—')+' · '+(x.opcao?.fator_conversao??x.fator_conversao_axe??'—'),x.opcao?.situacao||(x.ativo?'Ativa':'Inativa'),actions];}));
      }else if(key==='fornecedores'){
+      p.panel.prepend(el('h3','Fornecedores · códigos e descrições de compra'));
       toolbar.append(button('Adicionar fornecedor',()=>relation(key,'produto_fornecedor',null)));
       table(p.panel,['Fornecedor','Código do fornecedor','Descrição','Unidade / conversão','Situação','Ações'],r.linhas.map(x=>[x.fornecedor_nome+' · '+(x.documento||''),x.codigo_fornecedor,x.descricao_fornecedor,(x.unidade_compra||'—')+' · '+(x.fator_conversao??'—'),x.situacao+(x.preferencial?' · Preferencial':''),button('Editar fornecedor do produto',()=>relation(key,'produto_fornecedor',x))]));
      }else if(key==='estoque'){

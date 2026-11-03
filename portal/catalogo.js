@@ -1,4 +1,4 @@
-import {initFichaProduto} from './ficha-produto.js?v=20261103-ficha70';
+import {initFichaProduto} from './ficha-produto.js?v=20261103-ficha71';
 import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
