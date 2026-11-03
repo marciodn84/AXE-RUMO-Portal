@@ -38,11 +38,19 @@ Deno.serve(async(req:Request)=>{
   if(b.acao==='listar'){
    if(!tables[b.secao]||!Number.isSafeInteger(b.pagina??0)||(b.pagina??0)<0||(b.pagina??0)>10000)return reply({erro:'Consulta inválida'},400);
    const params:Record<string,string>={select:'*',order:b.secao==='precos'?'data_negocio.desc.nullslast,id.desc':'id.asc',limit:'50',offset:String((b.pagina??0)*50)};
+   if(b.secao==='pedidos'&&b.ordenacao!==undefined&&b.ordenacao!==''){
+    const orders:Record<string,string>={data_pedido_asc:'data_pedido.asc.nullslast,numero_pedido.asc,numero_item.asc,id.asc',data_pedido_desc:'data_pedido.desc.nullslast,numero_pedido.asc,numero_item.asc,id.asc',data_remessa_asc:'data_remessa.asc.nullslast,numero_pedido.asc,numero_item.asc,id.asc',data_remessa_desc:'data_remessa.desc.nullslast,numero_pedido.asc,numero_item.asc,id.asc'};
+    if(typeof b.ordenacao!=='string'||!Object.hasOwn(orders,b.ordenacao))return reply({erro:'Ordenação inválida'},400);
+    params.order=orders[b.ordenacao];
+   }
    const search=String(b.busca||'').slice(0,100).replace(/[%*]/g,'');if(search)params.termos_busca='ilike.*'+search+'*';
    if(b.cliente_id!==undefined){if(!positive(b.cliente_id)||!['pedidos','precos','regras'].includes(b.secao))return reply({erro:'Filtro inválido'},400);params.cliente_id='eq.'+b.cliente_id;}
    if(b.produto_id!==undefined){if(!positive(b.produto_id)||b.secao!=='produtos')return reply({erro:'Produto inválido'},400);params.id='eq.'+b.produto_id;}
    if(b.secao==='resolver'&&b.historico===true)params.order='registrado_em.desc,id.desc';
    if(b.status&&b.secao==='regras'&&['RASCUNHO','ATIVA','INATIVA'].includes(b.status))params.status='eq.'+b.status;
+   if(b.secao==='pedidos'&&b.incluir_cancelados!==true){
+    params.and='(or(fase_status_sap.is.null,fase_status_sap.not.in.(CANCELADO,CANCELADO_PDF_SEM_PRODUTOS,ITEM_EXCLUIDO_PDF,Cancelado)),or(and(fase_status_sap.not.is.null,fase_status_sap.neq.""),status_texto.is.null,status_texto.neq.Cancelado))';
+   }
    if(b.secao==='pedidos'&&b.status!==undefined&&b.status!==''){
     const statuses:Record<string,string[]>={AGUARDANDO_ACEITE:['AGUARDANDO_ACEITE','Sem resposta','Aguardando aceite'],ACEITO:['ACEITO','Aceito Fornecedor','Aceito'],CORRECAO_SOLICITADA:['CORRECAO_SOLICITADA','Devolucao Portal','Correção solicitada'],RECUSADO:['RECUSADO','Recusado'],CANCELADO:['CANCELADO','CANCELADO_PDF_SEM_PRODUTOS','ITEM_EXCLUIDO_PDF','Cancelado'],ENTREGUE:['ENTREGUE','Entregue']};
     if(typeof b.status!=='string'||(!Object.hasOwn(statuses,b.status)&&b.status!=='NAO_INFORMADO'))return reply({erro:'Status inválido'},400);
@@ -106,4 +114,3 @@ Deno.serve(async(req:Request)=>{
   return reply({erro:'Operação não permitida'},400);
  }catch(e){return reply({erro:e instanceof Error&&e.message==='LIMIT'?'Formulário excede o tamanho permitido':'Não foi possível concluir. Verifique os dados ou tente atualizar a tela.'},400);}
 });
-
