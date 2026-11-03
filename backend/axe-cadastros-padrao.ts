@@ -48,7 +48,7 @@ Deno.serve(async(req:Request)=>{
    if(b.produto_id!==undefined){if(!positive(b.produto_id)||b.secao!=='produtos')return reply({erro:'Produto inválido'},400);params.id='eq.'+b.produto_id;}
    if(b.secao==='resolver'&&b.historico===true)params.order='registrado_em.desc,id.desc';
    if(b.status&&b.secao==='regras'&&['RASCUNHO','ATIVA','INATIVA'].includes(b.status))params.status='eq.'+b.status;
-   if(b.secao==='pedidos'&&b.incluir_cancelados!==true){
+   if(b.secao==='pedidos'&&b.incluir_cancelados!==true&&!(Array.isArray(b.statuses)&&b.statuses.includes('CANCELADO'))){
     params.and='(or(fase_status_sap.is.null,fase_status_sap.not.in.(CANCELADO,CANCELADO_PDF_SEM_PRODUTOS,ITEM_EXCLUIDO_PDF,Cancelado)),or(and(fase_status_sap.not.is.null,fase_status_sap.neq.""),status_texto.is.null,status_texto.neq.Cancelado))';
    }
    if(b.secao==='pedidos'&&b.situacao_prazo!==undefined&&b.situacao_prazo!==''){
@@ -70,11 +70,12 @@ Deno.serve(async(req:Request)=>{
     const cond:string[]=[];if(b.data_inicio)cond.push(campo+'.gte.'+b.data_inicio);if(b.data_fim)cond.push(campo+'.lte.'+b.data_fim);
     if(cond.length)params.and=params.and?params.and.slice(0,-1)+','+cond.join(',')+')':'('+cond.join(',')+')';
    }
-   if(b.secao==='pedidos'&&b.status!==undefined&&b.status!==''){
+   if(b.secao==='pedidos'&&(b.statuses!==undefined||(b.status!==undefined&&b.status!==''))){
     const statuses:Record<string,string[]>={AGUARDANDO_ACEITE:['AGUARDANDO_ACEITE','Sem resposta','Aguardando aceite'],ACEITO:['ACEITO','Aceito Fornecedor','Aceito'],CORRECAO_SOLICITADA:['CORRECAO_SOLICITADA','Devolucao Portal','Correção solicitada'],RECUSADO:['RECUSADO','Recusado'],CANCELADO:['CANCELADO','CANCELADO_PDF_SEM_PRODUTOS','ITEM_EXCLUIDO_PDF','Cancelado'],ENTREGUE:['ENTREGUE','Entregue']};
-    if(typeof b.status!=='string'||(!Object.hasOwn(statuses,b.status)&&b.status!=='NAO_INFORMADO'))return reply({erro:'Status inválido'},400);
-    if(b.status==='NAO_INFORMADO')params.or='(fase_status_sap.eq.STATUS_AUSENTE,and(or(fase_status_sap.is.null,fase_status_sap.eq.""),or(status_texto.is.null,status_texto.eq."")))';
-    else{const values='('+statuses[b.status].map(x=>'"'+x+'"').join(',')+')';params.or='(fase_status_sap.in.'+values+',and(or(fase_status_sap.is.null,fase_status_sap.eq.""),status_texto.in.'+values+'))';}
+    const selected=b.statuses!==undefined?b.statuses:[b.status];
+    if(!Array.isArray(selected)||selected.length>7||selected.some((s:unknown)=>typeof s!=='string'||(!Object.hasOwn(statuses,s)&&s!=='NAO_INFORMADO')))return reply({erro:'Status inválido'},400);
+    if(!selected.length)params.id='eq.-1';
+    else{const clauses=[...new Set(selected)].map(s=>{if(s==='NAO_INFORMADO')return 'fase_status_sap.eq.STATUS_AUSENTE,and(or(fase_status_sap.is.null,fase_status_sap.eq.""),or(status_texto.is.null,status_texto.eq.""))';const values='('+statuses[s].map(x=>'"'+x+'"').join(',')+')';return 'fase_status_sap.in.'+values+',and(or(fase_status_sap.is.null,fase_status_sap.eq.""),status_texto.in.'+values+')';});params.or='('+clauses.join(',')+')';}
    }
    if(b.secao==='resolver'&&b.campo){if(!['descricao_referencia','unidade_referencia','ncm_referencia','identificador'].includes(b.campo))return reply({erro:'Campo inválido'},400);params.campo='eq.'+b.campo;}
    const table=b.secao==='resolver'&&b.historico===true?'portal_escolhas_produtos_historico':b.secao==='precos'&&b.incluir_versoes!==true?'portal_precos_atuais':tables[b.secao];

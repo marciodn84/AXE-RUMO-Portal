@@ -83,3 +83,14 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 #screen-pedidos .orders-date-line .order-status-filter{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0;font-size:13px;font-weight:600;min-width:0}
 #screen-pedidos .orders-date-line select,#screen-pedidos .orders-date-line input{width:100%;height:42px;min-width:0;margin:0;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-family:inherit;font-size:14px;background:#fff;color:#142235}
 @media(max-width:600px){#screen-pedidos .orders-date-line{grid-template-columns:minmax(0,1fr)}}
+
+#screen-pedidos .orders-filter-line{grid-template-columns:minmax(170px,1fr) minmax(170px,1fr) minmax(250px,1.4fr)}
+#screen-pedidos .orders-status-field{position:relative}
+#screen-pedidos .orders-status-picker{margin:0;min-width:0}
+#screen-pedidos .orders-status-picker summary{height:42px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:14px;font-weight:400;cursor:pointer;white-space:nowrap}
+#screen-pedidos .orders-status-options{position:absolute;top:100%;left:0;z-index:30;min-width:260px;padding:10px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 6px 18px #14263820}
+#screen-pedidos .orders-status-options label{display:flex;align-items:center;gap:9px;margin:0;padding:9px 8px;font-size:14px;font-weight:400;cursor:pointer;white-space:nowrap}
+#screen-pedidos .orders-status-options label:hover{background:#f0f6f6}
+#screen-pedidos .orders-status-options input{width:17px;height:17px;min-width:17px;flex:none;margin:0;accent-color:#087f78}
+@media(max-width:900px){#screen-pedidos .orders-filter-line{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){#screen-pedidos .orders-filter-line{grid-template-columns:minmax(0,1fr)}}
