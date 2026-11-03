@@ -94,3 +94,12 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 #screen-pedidos .orders-status-options input{width:17px;height:17px;min-width:17px;flex:none;margin:0;accent-color:#087f78}
 @media(max-width:900px){#screen-pedidos .orders-filter-line{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){#screen-pedidos .orders-filter-line{grid-template-columns:minmax(0,1fr)}}
+
+/* Duas linhas no desktop: busca e ações; seis filtros lado a lado. */
+@media(min-width:901px){
+ #screen-pedidos .orders-filter-line{grid-template-columns:minmax(0,1.15fr) minmax(0,1.15fr) minmax(0,1.65fr) minmax(0,1.05fr) minmax(0,1fr) minmax(0,1fr);gap:10px}
+ #screen-pedidos .orders-filter-line .order-status-filter{font-size:12px}
+ #screen-pedidos .orders-filter-line select,#screen-pedidos .orders-filter-line input[type=date]{width:100%;min-width:0;height:42px;padding:8px;font-family:inherit;font-size:13px;margin:0}
+ #screen-pedidos .orders-status-picker summary{font-size:13px;overflow:hidden;text-overflow:ellipsis}
+}
+#screen-pedidos .orders-filter-line input[type=date]{border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#142235;min-width:0}
