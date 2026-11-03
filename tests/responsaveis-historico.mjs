@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {nomeResponsavel,identificarResponsaveis} from '../backend/axe-catalogo/nomes-responsaveis.mjs';
+const id='f296afe4-eca8-48ad-a79a-388188988730',other='00000000-0000-0000-0000-000000000001';
+assert.equal(nomeResponsavel({user_metadata:{nome:'Márcio'},email:'teste@example.com'}),'Márcio');
+assert.equal(nomeResponsavel({email:'teste@example.com'}),'teste@example.com');
+let lookups=0;
+const r=await identificarResponsaveis({linhas:[{responsavel:id},{responsavel:id},{responsavel:other},{responsavel:other},{responsavel:null}]},{id,email:'teste@example.com'},async()=>{lookups++;return{user_metadata:{full_name:'Outro usuário'}};});
+assert.equal(r.linhas[0].responsavel,'teste@example.com');assert.equal(r.linhas[0].responsavel_id,id);assert.equal(r.linhas[2].responsavel,'Outro usuário');assert.equal(r.linhas[4].responsavel,null);assert.equal(lookups,1);
+const missing=await identificarResponsaveis({linhas:[{responsavel:other}]},{id},async()=>{throw Error('Missing');});assert.equal(missing.linhas[0].responsavel,'Usuário não identificado');
+console.log('PASS: nome, e-mail, cache por usuário, histórico original e falha de consulta.');

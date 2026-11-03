@@ -1,3 +1,4 @@
+import {identificarResponsaveis} from './nomes-responsaveis.mjs';
 import {consultarEmpresa,validarCNPJ} from './cnpj-ws.mjs';
 const baseHeaders={"content-type":"application/json","access-control-allow-origin":"https://marciodn84.github.io","access-control-allow-headers":"authorization,apikey,content-type","access-control-allow-methods":"POST,OPTIONS","cache-control":"no-store"};
 async function bodyJson(req:Request){
@@ -33,7 +34,13 @@ Deno.serve(async(req:Request)=>{
   }
   async function rpc(name:string,data:unknown){
    const res=await fetch(base+'/rest/v1/rpc/'+name,{method:'POST',headers:backend,body:JSON.stringify(data)});const result=await res.json();
-   if(!res.ok){const messages:Record<string,string>={'23505':'Esse registro já existe. Atualize a lista antes de tentar novamente.','23503':'Um dos cadastros relacionados não foi encontrado.','23514':'Revise formatos, vigência, alíquotas e campos obrigatórios.','22P02':'Revise os números e os identificadores informados.','22007':'Revise as datas informadas.'};return reply({erro:messages[result.code]||(result.code==='P0001'?String(result.message).slice(0,240):'Não foi possível salvar. Atualize a tela e confira os dados.')},409);}return reply({ok:true,resultado:result});
+   if(!res.ok){const messages:Record<string,string>={'23505':'Esse registro já existe. Atualize a lista antes de tentar novamente.','23503':'Um dos cadastros relacionados não foi encontrado.','23514':'Revise formatos, vigência, alíquotas e campos obrigatórios.','22P02':'Revise os números e os identificadores informados.','22007':'Revise as datas informadas.'};return reply({erro:messages[result.code]||(result.code==='P0001'?String(result.message).slice(0,240):'Não foi possível salvar. Atualize a tela e confira os dados.')},409);}if(name==='axe_produto_ficha'&&b.aba==='historico'){
+    await identificarResponsaveis(result,user,async id=>{
+     const r=await fetch(base+'/auth/v1/admin/users/'+encodeURIComponent(id),{headers:backend,signal:AbortSignal.timeout(5000)});
+     if(!r.ok)throw Error('USER_LOOKUP');return await r.json();
+    });
+   }
+   return reply({ok:true,resultado:result});
   }
 
   if(b.acao==='ficha_produto'){
