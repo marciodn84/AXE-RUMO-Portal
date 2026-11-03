@@ -51,6 +51,16 @@ Deno.serve(async(req:Request)=>{
    if(b.secao==='pedidos'&&b.incluir_cancelados!==true){
     params.and='(or(fase_status_sap.is.null,fase_status_sap.not.in.(CANCELADO,CANCELADO_PDF_SEM_PRODUTOS,ITEM_EXCLUIDO_PDF,Cancelado)),or(and(fase_status_sap.not.is.null,fase_status_sap.neq.""),status_texto.is.null,status_texto.neq.Cancelado))';
    }
+   if(b.secao==='pedidos'&&b.situacao_prazo!==undefined&&b.situacao_prazo!==''){
+    if(!['atrasados','ate_10_dias','mais_10_dias'].includes(b.situacao_prazo))return reply({erro:'Situação do prazo inválida'},400);
+    const hoje=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+    const limite=new Date(hoje+'T00:00:00Z');limite.setUTCDate(limite.getUTCDate()+10);const fim=limite.toISOString().slice(0,10);
+    const cond=['or(fase_status_sap.is.null,fase_status_sap.not.in.(ENTREGUE,Entregue,CANCELADO,Cancelado,CANCELADO_PDF_SEM_PRODUTOS,ITEM_EXCLUIDO_PDF))','or(and(fase_status_sap.not.is.null,fase_status_sap.neq.""),status_texto.is.null,status_texto.not.in.(Entregue,Cancelado))'];
+    if(b.situacao_prazo==='atrasados')params.data_remessa='lt.'+hoje;
+    else if(b.situacao_prazo==='mais_10_dias')params.data_remessa='gt.'+fim;
+    else{params.data_remessa='gte.'+hoje;cond.push('data_remessa.lte.'+fim);}
+    params.and=params.and?params.and.slice(0,-1)+','+cond.join(',')+')':'('+cond.join(',')+')';
+   }
    if(b.secao==='pedidos'&&b.status!==undefined&&b.status!==''){
     const statuses:Record<string,string[]>={AGUARDANDO_ACEITE:['AGUARDANDO_ACEITE','Sem resposta','Aguardando aceite'],ACEITO:['ACEITO','Aceito Fornecedor','Aceito'],CORRECAO_SOLICITADA:['CORRECAO_SOLICITADA','Devolucao Portal','Correção solicitada'],RECUSADO:['RECUSADO','Recusado'],CANCELADO:['CANCELADO','CANCELADO_PDF_SEM_PRODUTOS','ITEM_EXCLUIDO_PDF','Cancelado'],ENTREGUE:['ENTREGUE','Entregue']};
     if(typeof b.status!=='string'||(!Object.hasOwn(statuses,b.status)&&b.status!=='NAO_INFORMADO'))return reply({erro:'Status inválido'},400);
