@@ -61,6 +61,15 @@ Deno.serve(async(req:Request)=>{
     else{params.data_remessa='gte.'+hoje;cond.push('data_remessa.lte.'+fim);}
     params.and=params.and?params.and.slice(0,-1)+','+cond.join(',')+')':'('+cond.join(',')+')';
    }
+   if(b.secao==='pedidos'&&(b.data_campo!==undefined||b.data_inicio!==undefined||b.data_fim!==undefined)){
+    const campo=b.data_campo??'data_remessa';
+    if(!['data_remessa','data_pedido'].includes(campo))return reply({erro:'Campo de data inválido'},400);
+    const validDate=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
+    if((b.data_inicio!==undefined&&b.data_inicio!==''&&!validDate(b.data_inicio))||(b.data_fim!==undefined&&b.data_fim!==''&&!validDate(b.data_fim)))return reply({erro:'Data inválida'},400);
+    if(b.data_inicio&&b.data_fim&&b.data_inicio>b.data_fim)return reply({erro:'A data final deve ser igual ou posterior à data inicial.'},400);
+    const cond:string[]=[];if(b.data_inicio)cond.push(campo+'.gte.'+b.data_inicio);if(b.data_fim)cond.push(campo+'.lte.'+b.data_fim);
+    if(cond.length)params.and=params.and?params.and.slice(0,-1)+','+cond.join(',')+')':'('+cond.join(',')+')';
+   }
    if(b.secao==='pedidos'&&b.status!==undefined&&b.status!==''){
     const statuses:Record<string,string[]>={AGUARDANDO_ACEITE:['AGUARDANDO_ACEITE','Sem resposta','Aguardando aceite'],ACEITO:['ACEITO','Aceito Fornecedor','Aceito'],CORRECAO_SOLICITADA:['CORRECAO_SOLICITADA','Devolucao Portal','Correção solicitada'],RECUSADO:['RECUSADO','Recusado'],CANCELADO:['CANCELADO','CANCELADO_PDF_SEM_PRODUTOS','ITEM_EXCLUIDO_PDF','Cancelado'],ENTREGUE:['ENTREGUE','Entregue']};
     if(typeof b.status!=='string'||(!Object.hasOwn(statuses,b.status)&&b.status!=='NAO_INFORMADO'))return reply({erro:'Status inválido'},400);
