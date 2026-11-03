@@ -6,9 +6,9 @@ import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=2
 import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261031-stock55';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
-import {initCadastros} from './cadastros.js?v=20261103-twolines68';
+import {initCadastros} from './cadastros.js?v=20261103-vendas69';
 import {initCatalogo} from './catalogo.js?v=20261031-fornecedor58';
-import {initComercial} from './comercial.js?v=20261023-gestao1';
+import {initComercial} from './comercial.js?v=20261103-vendas69';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
@@ -55,6 +55,7 @@ const estoque=initEstoque(p=>call(p,'axe-estoque'));
 const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais,financeiroNumerario,estoque);
 document.addEventListener('axe-tributacao-produto',event=>erp.navigate('tributacao-produtos',event.detail));
 new MutationObserver(()=>{if($('panel').hidden){estoque.reset();fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();gestao.reset();importacoesInternacionais.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
+document.addEventListener('axe-criar-venda-rumo',event=>{if(!event.detail?.pedido_rumo_id)return;erp.navigate('pedidos-comerciais');comercial.criarRumo(event.detail.pedido_rumo_id);});
 document.addEventListener('axe-produtos-empresa',event=>erp.navigate('equivalencias',event.detail));
 
 document.addEventListener('axe-simular-proposta',event=>erp.navigate('simulador',event.detail));

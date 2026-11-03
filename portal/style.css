@@ -103,3 +103,6 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
  #screen-pedidos .orders-status-picker summary{font-size:13px;overflow:hidden;text-overflow:ellipsis}
 }
 #screen-pedidos .orders-filter-line input[type=date]{border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#142235;min-width:0}
+
+/* Pedido de venda a partir do pedido RUMO */
+.com-form > .venda-rumo-items{grid-column:1 / -1;min-width:0}.venda-rumo-items .com-item{margin:12px 0;padding:16px}.venda-rumo-items select{width:100%;max-width:100%}.venda-rumo-items .com-tools input[type=search]{flex:1;min-width:180px}
