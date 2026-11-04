@@ -42,3 +42,32 @@
 
 .imp-ack{width:min(1100px,94vw);max-height:90vh;overflow:auto}.imp-ack pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.imp-ack .import-mapping{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px}.imp-ack label{display:flex;flex-direction:column;gap:6px;margin:12px 0}.imp-ack input[type=checkbox]{align-self:flex-start}.imp-ack fieldset{min-width:0}.imp-ack table{width:100%}.imp-ack td,.imp-ack th{padding:8px;text-align:left}.imp-ack button{margin:8px 8px 8px 0}.imp-ack textarea{width:100%;box-sizing:border-box}
 .imp-fluxo section,.imp-fluxo .fluxo-parcial{margin-top:20px}.imp-fluxo .fluxo-parcial{border:1px solid #dce5ed;border-radius:12px;padding:20px;background:#fff}.imp-fluxo .fluxo-proxima{background:#edf7f5;border-left:4px solid #00857b;padding:12px 16px;margin:16px 0;border-radius:6px}.imp-fluxo .fluxo-status{font-size:1.1rem;font-weight:700;color:#075b55}.imp-fluxo table td{vertical-align:top}.imp-fluxo .cadastro-toolbar{flex-wrap:wrap;gap:8px}.imp-fluxo details button{margin:4px}
+/* Purchase order: shared registration colors, compact header and spreadsheet. */
+.imp-internacional .purchase-order-actions{justify-content:flex-end;gap:6px}
+.imp-internacional .purchase-order-actions button.action-icon{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;min-height:38px;padding:8px;margin:0;border:1px solid #dbe5e9;border-radius:5px;background:transparent;color:#346778;box-shadow:none}
+.purchase-order-actions .action-icon svg{width:19px;height:19px;pointer-events:none}
+.imp-internacional .purchase-order-actions button:hover{background:#e7f3f3;color:#087f80}
+.purchase-order-actions button:focus-visible{outline:2px solid #087f80;outline-offset:2px}
+.purchase-order-header{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,3fr);gap:16px}
+.imp-internacional .purchase-order-header fieldset{margin:12px 0;min-width:0;padding:16px}
+.purchase-order-header>.import-mapping{min-width:0}
+.purchase-order-header fieldset:last-child>.import-mapping{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.imp-internacional .purchase-order-header textarea{min-height:58px;height:58px}
+.purchase-order-sheet{width:100%;border-collapse:collapse;font-size:13px}
+.purchase-order-sheet th{position:sticky;top:0;background:#eef5f6;color:#346778;text-align:left;white-space:nowrap;z-index:1}
+.purchase-order-sheet td,.purchase-order-sheet th{padding:9px;border-bottom:1px solid #dbe5e9;vertical-align:top}
+.purchase-order-sheet tbody tr:nth-child(even){background:#f7fafb}
+.purchase-order-sheet tbody tr:hover{background:#eef7f7}
+.imp-internacional .purchase-order-sheet label{gap:0;margin:0}
+.imp-internacional .purchase-order-sheet input{font-size:13px;min-width:95px;min-height:34px;height:34px;padding:6px;margin:0}
+.imp-internacional .purchase-order-sheet input[name=descricao]{min-width:260px}
+.imp-internacional .purchase-order-sheet input[name=linha],.imp-internacional .purchase-order-sheet input[name=unidade]{min-width:55px;width:65px}
+.imp-internacional .purchase-order-sheet input[type=number]{text-align:right;width:110px}
+.imp-internacional .purchase-order-sheet input:disabled{color:#263f4a;background:transparent;border-color:transparent;opacity:1}
+.purchase-order-row-total{font-weight:600;text-align:right;white-space:nowrap}
+.purchase-order-row-actions{min-width:160px;font-size:12px}
+.purchase-order-row-actions p{margin:0 0 6px}
+@media(max-width:900px){.purchase-order-header{grid-template-columns:1fr}.purchase-order-header fieldset:last-child>.import-mapping{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.purchase-order-header fieldset:last-child>.import-mapping{grid-template-columns:1fr}}
+.purchase-order-header fieldset:first-child>.import-mapping{display:flex;flex-direction:column;gap:12px}
+.purchase-order-header fieldset:first-child select{width:100%}

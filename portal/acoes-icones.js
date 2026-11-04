@@ -11,10 +11,10 @@ const paths={
  inativar:['M8 5v14','M16 5v14']
 };
 export function padronizarAcoes(container){
- for(const button of container.querySelectorAll('td button,.fiscal-screen .source-card button')){
+ for(const button of container.querySelectorAll('td button,.purchase-order-actions button,.fiscal-screen .source-card button')){
   if(button.classList.contains('action-icon'))continue;
   const title=button.textContent.trim();
-  const kind=/^Bloquear (cliente|produto|fornecedor)$/.test(title)?'bloquear':/^Desbloquear (cliente|produto|fornecedor)$/.test(title)?'desbloquear':['Histórico de bloqueios','Histórico de estoque'].includes(title)?'historico':(title==='Entrada de estoque'||/^Editar/.test(title))?'editar':title==='Saída de estoque'?'inativar':/^(Endereços e cobrança|Ver códigos|Produtos aceitos|Abrir tributação|Simular aplicação|Abrir|Abrir processo|Ver etapa|Consultar|Abrir parcela|Abrir embarque)$/.test(title)?'visualizar':/^(Vincular|Selecionar|Sugerir ou cadastrar|Consultar \/ trocar produto)/.test(title)?'vincular':/^(Conferir regra|Validar regra)$/.test(title)?'conferir':/^(Nova versão|Criar nova versão.*)$/.test(title)?'versao':title==='Continuar'?'editar':title==='Ativar'?'ativar':title==='Inativar'?'inativar':null;
+  const kind=button.closest('.purchase-order-actions')?(/^Editar/.test(title)?'editar':/^Voltar/.test(title)?'historico':/pagamento|SWIFT/.test(title)?'vincular':'visualizar'):/^Bloquear (cliente|produto|fornecedor)$/.test(title)?'bloquear':/^Desbloquear (cliente|produto|fornecedor)$/.test(title)?'desbloquear':['Histórico de bloqueios','Histórico de estoque'].includes(title)?'historico':(title==='Entrada de estoque'||/^Editar/.test(title))?'editar':title==='Saída de estoque'?'inativar':/^(Endereços e cobrança|Ver códigos|Produtos aceitos|Abrir tributação|Simular aplicação|Abrir|Abrir processo|Ver etapa|Consultar|Abrir parcela|Abrir embarque)$/.test(title)?'visualizar':/^(Vincular|Selecionar|Sugerir ou cadastrar|Consultar \/ trocar produto)/.test(title)?'vincular':/^(Conferir regra|Validar regra)$/.test(title)?'conferir':/^(Nova versão|Criar nova versão.*)$/.test(title)?'versao':title==='Continuar'?'editar':title==='Ativar'?'ativar':title==='Inativar'?'inativar':null;
   if(!kind)continue;
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   for(const [key,value]of Object.entries({viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.8','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',focusable:'false'}))svg.setAttribute(key,value);

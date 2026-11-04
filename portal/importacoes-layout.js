@@ -1,5 +1,5 @@
 import {organizarFormulario} from './importacoes-formulario.js?v=20261030-imp34';
-import {padronizarAcoes} from './acoes-icones.js?v=20261030-imp35';
+import {padronizarAcoes} from './acoes-icones.js?v=20261104-pedido6';
 import {indicadorSituacao} from './cadastro-controle.js?v=20261030-padrao32';
 const cores={
  'Elaboração':'pending','Enviado':'pending','Aceito -ACK':'released','Aguardando aceite':'pending','Aguardando Entrega':'pending','Recebimento Parcial':'pending','Cancelado':'inactive','Cancelada':'inactive',
@@ -10,7 +10,7 @@ const cores={
 export function padronizarImportacao(root){
  function atualizar(){
   padronizarAcoes(root);
-  for(const form of root.querySelectorAll('form'))organizarFormulario(form);
+  for(const form of root.querySelectorAll('form'))if(form.dataset.layout!=='pedido-planilha')organizarFormulario(form);
   for(const td of root.querySelectorAll('td')){if(td.children.length)continue;const text=td.textContent.trim(),cor=cores[text];if(!cor)continue;const badge=indicadorSituacao(text);badge.className='client-commercial-status '+cor;td.replaceChildren(badge);}
  }
  const observer=new MutationObserver(atualizar);observer.observe(root,{childList:true,subtree:true});atualizar();return()=>observer.disconnect();

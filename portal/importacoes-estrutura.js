@@ -1,6 +1,6 @@
 import {initComprasNFe} from './compras-nfe.js?v=20261104-cadastro2';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
-import {padronizarImportacao} from './importacoes-layout.js?v=20261031-carrier53';
+import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
 import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-fornecedor58';
@@ -121,20 +121,26 @@ export function initEstruturaImportacao(api,legacy){
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
   if(!editing&&item&&opts.editar&&tipo==='pedidos')top.append(pagamento.button(item.id));
   if(!editing&&item&&opts.editar&&tipo==='parcelas')top.append(pagamento.button(item.pedido_id,item.id)); 
+  if(tipo==='pedidos')top.classList.add('purchase-order-actions');
   body.append(top,node('h2',(item?item.referencia:tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque')));
   const form=node('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
   let collect,summary=()=>{};const participantes={};
   const info=node('div',undefined,'planned-card');
   if(tipo==='pedidos'){
+   form.dataset.layout='pedido-planilha';form.classList.add('purchase-order-form');
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
     ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
     ['data_pedido','Data do pedido','date'],['forma_pagamento','Forma de pagamento','text',[['','Selecionar forma de pagamento'],...(opts.formas_pagamento||[]).map(x=>[x.codigo,x.nome])]],['condicao_pagamento','Condição de pagamento do documento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
    ],item||{status:'Elaboração',moeda:'USD'});
    if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));general.fornecedor_id.value=String(pr.id);changed();})));
-   const section=node('fieldset');section.append(node('legend','Itens do pedido'));const cards=node('div');section.append(cards);form.append(section);
+   const header=node('div',undefined,'purchase-order-header'),supplier=node('fieldset'),supplierFields=node('div',undefined,'import-mapping');supplier.append(node('legend','Dados do fornecedor'),supplierFields);
+   const generalBox=general.referencia.closest('fieldset');generalBox.querySelector('legend').textContent='Informações gerais do pedido';supplierFields.append(general.fornecedor_id.parentElement);supplierFields.append(node('p',item?.fornecedor_pais?'País: '+item.fornecedor_pais:'Selecione o fornecedor do pedido.'));
+   generalBox.before(header);header.append(supplier,generalBox);
+   const section=node('fieldset');section.className='purchase-order-items';section.append(node('legend','Itens do pedido'));const scroll=node('div',undefined,'scroll'),table=node('table',undefined,'purchase-order-sheet'),thead=node('thead'),heading=node('tr'),cards=node('tbody');
+   const columns=['Linha','Código AXE','Código do fornecedor / PN','Descrição técnica','Unidade','Quantidade','Preço unitário','Peso unitário (kg)','Disponibilizada','Disponibilidade','Total','Vínculo e ações'];for(const title of columns){const th=node('th',title);th.scope='col';heading.append(th);}thead.append(heading);table.append(thead,cards);scroll.append(table);section.append(scroll);form.append(section);
    let lines=[];
    function add(x={}){
-    const card=node('article',undefined,'imp-line');card.append(node('h3','Linha do pedido'));
+    const card=node('tr');
     const inputs=fields(card,[
      ['linha','Linha'],['codigo_axe','Código AXE'],['codigo_fornecedor','Código do fornecedor / part number'],['descricao','Descrição técnica'],['unidade','Unidade'],
      ['quantidade','Quantidade pedida','number'],['valor_unitario','Preço unitário FOB','number'],['peso_bruto_unitario','Peso bruto unitário (kg)','number'],
@@ -147,6 +153,10 @@ export function initEstruturaImportacao(api,legacy){
     if(editing)card.append(button('Selecionar produto do cadastro',()=>cadastros.escolher('produto',{codigo_anterior:inputs.codigo_axe.value,part_number:inputs.codigo_fornecedor.value,descricao_referencia:inputs.descricao.value,unidade_referencia:inputs.unidade.value},pr=>{line.produto_id=pr.id;produtoLabel.textContent=(pr.codigo_axe||'#'+pr.id)+' · '+pr.descricao_referencia;if(!inputs.descricao.value)inputs.descricao.value=pr.descricao_referencia||'';if(!inputs.unidade.value)inputs.unidade.value=pr.unidade_referencia||'';changed();})));
     if(x.reservada!==undefined)card.append(node('p','Reservada em embarques: '+x.reservada+' · Recebida: '+x.recebida));
     if(editing)card.append(button('Remover item',()=>{lines=lines.filter(l=>l!==line);card.remove();changed();summary();}));
+    const actions=node('td',undefined,'purchase-order-row-actions');
+    for(const input of Object.values(inputs)){const cell=node('td'),label=input.parentElement;for(const child of [...label.childNodes])if(child.nodeType===Node.TEXT_NODE)child.remove();cell.append(label);card.append(cell);}
+    const total=node('td',undefined,'purchase-order-row-total');const updateTotal=()=>{total.textContent=money(Number(inputs.quantidade.value||0)*Number(inputs.valor_unitario.value||0),general.moeda.value);};card.addEventListener('input',updateTotal);general.moeda.addEventListener('change',updateTotal);updateTotal();card.append(total);
+    for(const child of [...card.children])if(child.tagName!=='TD')actions.append(child);card.append(actions);
     cards.append(card);return inputs;
    }
    (item?.itens||[]).forEach(add);
