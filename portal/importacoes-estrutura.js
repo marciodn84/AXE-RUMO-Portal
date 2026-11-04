@@ -92,7 +92,7 @@ export function initEstruturaImportacao(api,legacy){
   pagination.append(prev,node('span','Página '+(page+1)+' · '+r.total+' registro(s)'),next);msg.textContent='';
  }
  const situacaoParcela=situacaoPagamentoParcela;
- async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
+ async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(tipo==='parcelas'&&d.pedido_id&&!d.fornecedor_pais){const pedido=await api({acao:'v2_detalhe',tipo:'pedidos',id:d.pedido_id});d.fornecedor_pais=pedido.fornecedor_pais;}if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
  function closeDialogs(){comprasNF.reset();transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
   const dialog=node('dialog',undefined,'imp-picker'),heading=node('h2',title),status=node('p'),q=node('input');q.type='search';q.placeholder='Buscar';q.setAttribute('aria-label','Buscar no seletor');
@@ -119,8 +119,8 @@ export function initEstruturaImportacao(api,legacy){
   if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
   if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
-  if(!editing&&item&&opts.editar&&tipo==='pedidos')top.append(pagamento.button(item.id));
-  if(!editing&&item&&opts.editar&&tipo==='parcelas')top.append(pagamento.button(item.pedido_id,item.id)); 
+  if(!editing&&item&&opts.editar&&tipo==='pedidos'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR')top.append(pagamento.button(item.id));
+  if(!editing&&item&&opts.editar&&tipo==='parcelas'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR')top.append(pagamento.button(item.pedido_id,item.id)); 
   if(tipo==='pedidos')top.classList.add('purchase-order-actions');
   body.append(top,node('h2',(item?item.referencia:tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque')));
   const form=node('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
@@ -201,8 +201,10 @@ export function initEstruturaImportacao(api,legacy){
     info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(total-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
    if(item&&!editing){
-    const documentos=node('section');body.append(documentos);void liberacao.render(item,documentos,opts.editar);
-    const sugestoes=node('section');body.append(sugestoes);void planos.render(item,sugestoes,opts.editar);
+    if(item.fornecedor_pais&&item.fornecedor_pais!=='BR'){
+     const documentos=node('section');body.append(documentos);void liberacao.render(item,documentos,opts.editar);
+     const sugestoes=node('section');body.append(sugestoes);void planos.render(item,sugestoes,opts.editar);
+    }
     const box=node('section');box.append(node('h3','Parcelas deste pedido'));
     for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
     if(opts.editar)box.append(button('Adicionar parcela deste pedido',()=>{tipo='parcelas';renderNav();dirty=false;pending=null;edit(null,item);}));body.append(box);
