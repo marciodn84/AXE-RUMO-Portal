@@ -1,3 +1,4 @@
+import {initComprasNFe} from './compras-nfe.js?v=20261104-nfe1';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
 import {padronizarImportacao} from './importacoes-layout.js?v=20261031-carrier53';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
@@ -30,7 +31,7 @@ export function initEstruturaImportacao(api,legacy){
  let tipo='visao',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
- const guard=()=>!busy&&cadastros.canLeave()&&visao.canLeave()&&transporte.canLeave()&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
+ const guard=()=>!busy&&comprasNF.canLeave()&&cadastros.canLeave()&&visao.canLeave()&&transporte.canLeave()&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  const check=g=>g===epoch&&!root.hidden;
  function button(text,fn){const b=node('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
@@ -50,6 +51,7 @@ export function initEstruturaImportacao(api,legacy){
  }}
  const intro=node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro');
  root.append(intro,nav,msg,body);
+ const comprasNF=initComprasNFe(api,root,async id=>{await open(id);});
  const cadastros=initCadastrosImportacao(api,root);
  const entrada=initEntradaEmail(api,root);
  const transporte=initTransporteDocumental(api,root,async id=>{await open(id);});
@@ -91,7 +93,7 @@ export function initEstruturaImportacao(api,legacy){
  }
  const situacaoParcela=situacaoPagamentoParcela;
  async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
- function closeDialogs(){transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
+ function closeDialogs(){comprasNF.reset();transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
   const dialog=node('dialog',undefined,'imp-picker'),heading=node('h2',title),status=node('p'),q=node('input');q.type='search';q.placeholder='Buscar';q.setAttribute('aria-label','Buscar no seletor');
   const rows=node('div',undefined,'scroll'),bar=node('div',undefined,'cadastro-toolbar');let pagina=0,request=0;const g=epoch;
@@ -115,6 +117,7 @@ export function initEstruturaImportacao(api,legacy){
   const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);return;}await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
   if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
+  if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
   if(!editing&&item&&opts.editar&&tipo==='pedidos')top.append(pagamento.button(item.id));
   if(!editing&&item&&opts.editar&&tipo==='parcelas')top.append(pagamento.button(item.pedido_id,item.id)); 
