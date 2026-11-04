@@ -3,7 +3,7 @@ import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=2
 import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261031-fornecedor58';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261104-parcelas10';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-fornecedor58';
@@ -64,7 +64,7 @@ export function initEstruturaImportacao(api,legacy){
  const notas=initNotasImportacao(api,root);
  const visao=initVisaoImportacao(api,root,async(t,id,pedidoId)=>{
   if(!guard())return;if(t==='pedidos'&&navigateERP){navigateERP('pedidos-compra',{pedidoId:id,novo:!id,editar:Boolean(id)});return;}await visao.show(false);voltarFluxo=pedidoId||'novo';tipo=t;body.replaceChildren();
-  if(id){const d=await api({acao:'v2_detalhe',tipo:t,id});current=d;edit(d,null,true);}else edit(null);
+  if(id){const d=await api({acao:'v2_detalhe',tipo:t,id});current=d;edit(d,null,true);}else if(t==='parcelas'&&pedidoId){const pedido=await api({acao:'v2_detalhe',tipo:'pedidos',id:pedidoId});edit(null,pedido);}else edit(null);
  });
 
  let searchValue='';
@@ -199,9 +199,13 @@ export function initEstruturaImportacao(api,legacy){
     info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(total-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
    if(item&&!editing){
-    const box=node('section');box.append(node('h3','Parcelas deste pedido'));
-    for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
-    if(opts.editar)box.append(button('Adicionar parcela deste pedido',()=>{tipo='parcelas';renderNav();dirty=false;pending=null;edit(null,item);}));body.append(box);
+    const international=Boolean(item.fornecedor_pais&&item.fornecedor_pais!=='BR');
+    const box=node('section');box.append(node('h3',international?'Resumo financeiro do pedido':'Parcelas deste pedido'));
+    if(international){box.append(node('p','A programação das parcelas, os vencimentos e os pagamentos são tratados na aba Pagamentos do processo de importação.'));
+    }else{
+     for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
+     if(opts.editar)box.append(button('Adicionar parcela deste pedido',()=>{tipo='parcelas';renderNav();dirty=false;pending=null;edit(null,item);}));
+    }body.append(box);
    }
   }else if(tipo==='parcelas'){
    const p=order||item;
