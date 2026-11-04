@@ -21,3 +21,13 @@ A unidade do XML e o fator confirmado são salvos em `produtos_fornecedores.unid
 Aplicar `compras_nfe_xml.sql` uma única vez e publicar `backend/axe-compras-nfe.ts` como `axe-compras-nfe` com verificação JWT. A interface está em `portal/`, conforme `wrangler.jsonc`; os arquivos fiscais nunca entram no pacote público.
 
 Testes: `tests/compras-nfe.sql` é executado em BEGIN/ROLLBACK, com um XML privado de fixture via `axe.test_xml`; cobre parsing decimal, conferência obrigatória, conversão, excesso de saldo, duplicidade, retry, autorização, DTD, destinatário, estorno, nova entrada parcial e proteção contra alteração do pedido. `tests/edge-compras-nfe.mts` cobre autenticação, usuário confiável e allowlist. `tests/ui-compras-nfe.cjs` verifica a conferência e o retorno ao pedido em navegador, inclusive timeout sem duplicação. XMLs reais não pertencem ao repositório.
+
+## Conferência cadastral e correção da obtenção
+
+A ampliação `produto_obtencao_controlada.sql` e `compras_nfe_cadastro.sql` mantém o ID e o código histórico do produto. Administrador autorizado pode corrigir a obtenção mediante versão atual, justificativa e requisição idempotente; o cadastro comum continua impedindo alterações diretas. O histórico registra antes/depois e a justificativa.
+
+A entrada passa a exigir aprovação cadastral antes da confirmação. Campos disponíveis no XML (NCM, CEST, GTIN, código/descrição e origem do fornecedor) completam os vazios. Divergências exigem decisão entre sugestão, cadastro atual com justificativa ou valor informado com justificativa. Part Number não é deduzido silenciosamente de cProd: a equivalência exige confirmação quando não existe PN confiável. Dados não informados no XML, como dimensões e fabricante, não são inventados. Após aprovação explícita, os dados conferidos ficam validados e a referência de compra aprovada, sem fila posterior para resolver estas divergências.
+
+A origem informada pelo fornecedor fica no vínculo de compra; a sugestão de origem AXE considera a obtenção TER (1→2 e 6→7). Referência oficial da tabela: https://sefaz.pb.gov.br/legislacao/99-regulamentos/anexos-icms/1532-anexo-14-codigo-de-situacao-tributaria-cst . O usuário resolve divergências na entrada. A obtenção não é alterada pelo XML.
+
+Notas já confirmadas oferecem **Completar cadastro pela NF-e**, que usa o XML preservado e registra as decisões sem gerar entrada de estoque. Concorrência no produto/referência exige refazer a conferência. Testes SQL e de navegador cobrem correção, versão, permissões, conferência obrigatória, divergência sem decisão, preenchimento, histórico, nova entrada e atualização de nota existente sem estoque duplicado.

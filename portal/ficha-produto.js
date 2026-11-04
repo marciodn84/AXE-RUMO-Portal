@@ -1,3 +1,4 @@
+import {corrigirObtencaoProduto}from './produto-obtencao.js?v=20261104-cadastro2';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const qty=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:6});
 const money=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:6});
@@ -30,6 +31,7 @@ export function initFichaProduto(api,edit){
    async function axe(){const p=panes.get('axe');p.loaded=true;p.panel.replaceChildren();const target=el('div');p.panel.append(target);
     await edit('produto',id,{}, {target,ficha:true,valido:()=>gen===epoch,onCancel:()=>{if(canLeave())reset();},onSaved:async saved=>{id=Number(saved.id);record=saved;updateTitle();for(const v of panes.values())v.tab.disabled=false;dirtyForms.delete(target.querySelector('form'));await axe();status.textContent='Dados AXE salvos.';}});
     if(gen!==epoch)return;
+    if(id&&record.codigo_axe)p.panel.append(button('Corrigir forma de obtenção',async()=>{if(dirty())throw Error('Salve ou descarte as alterações antes da correção.');const r=await corrigirObtencaoProduto(api,record,root);if(r){record=r;updateTitle();await axe();status.textContent='Forma de obtenção corrigida. Código e vínculos preservados.';}}));
     if(id){const codes=el('details');codes.append(el('summary','Códigos e descrições de origem'));const body=el('div');codes.append(body);p.panel.append(codes);let pg=0;
      const more=button('Carregar códigos',async()=>{const r=(await api({acao:'ficha_produto',id,aba:'codigos',pagina:pg})).resultado;if(gen!==epoch||!codes.isConnected)return;table(body,['Origem','Empresa','Código','Descrição','Situação'],r.linhas.map(x=>[x.contexto,x.entidade,x.codigo_produto,x.descricao_produto,x.status_validacao]));pg++;more.hidden=pg*50>=r.total;more.textContent='Mais códigos';if(!r.total)body.append(el('p','Nenhum código adicional.'));});codes.append(more);
     }

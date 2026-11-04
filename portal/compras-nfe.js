@@ -1,3 +1,4 @@
+import {criarConferenciaCadastro}from './cadastro-nfe.js?v=20261104-cadastro2';
 const el=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date());
@@ -26,6 +27,7 @@ export function initComprasNFe(api,root,onSaved){
    if(!r.notas.length)list.append(el('p','Nenhuma nota de entrada registrada.'));
    for(const n of r.notas){const box=el('fieldset');box.append(el('legend','NF-e '+n.numero+' / '+n.serie+' · '+n.estado),el('p',brl(n.valor)+' · Entrada '+n.data_entrada),el('p','Chave: '+n.chave));
     box.append(button('Baixar XML da NF-e '+n.numero,async()=>{const f=await api({acao:'compra_nf_baixar',pedido_id:pedido.id,id:n.id});const url=URL.createObjectURL(new Blob([f.xml],{type:'application/xml'})),a=el('a');a.href=url;a.download=f.nome;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}));
+    if(editar&&n.estado==='Confirmada')box.append(button('Completar cadastro pela NF-e '+n.numero,async()=>{const r=await api({acao:'compra_nf_cadastro_previa',pedido_id:pedido.id,id:n.id});renderCadastroExistente(n,r);}));
     if(editar&&n.estado==='Confirmada'){const why=field(box,'Justificativa do estorno da NF-e '+n.numero,'','textarea');let req=null;box.append(button('Estornar NF-e '+n.numero,async()=>{if(why.value.trim().length<5)throw Error('Justifique o estorno.');if(!confirm('Estornar toda esta nota e suas entradas de estoque?'))return;req??={acao:'compra_nf_estornar',pedido_id:pedido.id,id:n.id,requisicao_id:crypto.randomUUID(),confirmado:true,justificativa:why.value.trim()};await api(req);dirty=false;reset();await onSaved(pedido.id);}));}list.append(box);
    }content.append(list);
   }
@@ -40,6 +42,12 @@ export function initComprasNFe(api,root,onSaved){
    });upload.append(reading);content.append(upload);
   }
   const review=el('section');content.append(review);await history();
+  function renderCadastroExistente(n,r){
+   review.replaceChildren(el('h3','Completar cadastro pela NF-e '+n.numero),el('p','Esta operação atualiza somente o cadastro. Não altera a nota nem gera outra entrada de estoque.'));
+   pending=null;dirty=true;
+   const confs=r.cadastros.map(c=>{const item=r.documento.itens.find(i=>i.linha===c.linha);review.append(el('h4','Linha '+c.linha+' · '+item.codigo));return {linha:c.linha,pedido_item_id:c.pedido_item_id,ui:criarConferenciaCadastro(review,c.cadastro,()=>pending=null)};});
+   review.append(button('Salvar cadastro conferido pela nota',async()=>{const vinculos=confs.map(c=>({linha:c.linha,pedido_item_id:c.pedido_item_id,cadastro:c.ui.collect()}));pending??={acao:'compra_nf_cadastro_salvar',pedido_id:pedido.id,id:n.id,requisicao_id:crypto.randomUUID(),confirmado:true,vinculos};await api(pending);dirty=false;reset();await onSaved(pedido.id);}));
+  }
   function render(){
    review.replaceChildren();const d=preview.documento;
    review.append(el('h3','Conferência da NF-e '+d.numero+' / '+d.serie),el('p',d.emitente+' · CNPJ '+d.cnpj),el('p','Chave: '+d.chave),el('p','Produtos: '+brl(d.totais.vProd)+' · IPI: '+brl(d.totais.vIPI)+' · Total da nota: '+brl(d.totais.vNF)),el('p','O XML informa protocolo de autorização. A situação atual na SEFAZ e a assinatura digital não são verificadas por esta tela.'));
@@ -50,12 +58,14 @@ export function initComprasNFe(api,root,onSaved){
     for(const p of preview.itens_pedido||[])select.append(new Option('Linha '+p.linha+' · '+p.descricao+' · Saldo '+(Number(p.quantidade)-Number(p.recebida))+' '+p.unidade,p.id));
     label.append(select);box.append(label);const factor=field(box,'Unidades AXE por '+item.unidade+' da linha '+item.linha,'','number');factor.step='0.00000001';factor.min='0.00000001';
     const info=el('p');box.append(info);const cost=field(box,'Custo total de estoque da linha '+item.linha,item.valor_bruto,'number');cost.step='0.000001';
+    const cadastroBox=el('section');let cadastroUI=null;
     const save=check(box,'Salvar unidade '+item.unidade+' e conversão na aba Fornecedor do produto (linha '+item.linha+')');save.checked=true;
     const suggest=()=>{const p=preview.itens_pedido.find(p=>p.id===select.value),v=p?.fornecedores?.find(v=>v.codigo_fornecedor===item.codigo&&String(v.unidade_compra||'').toUpperCase()===String(item.unidade).toUpperCase());factor.value=v?.fator_conversao??(p&&String(p.unidade_axe).toUpperCase()===item.unidade.toUpperCase()?1:'');update();};
     function update(){const p=preview.itens_pedido.find(p=>p.id===select.value);info.textContent=p?'Produto AXE: '+(p.produto_codigo||'#'+p.produto_id)+' · Unidade '+(p.unidade_axe||'pendente')+' · Entrada '+(Number(item.quantidade)*Number(factor.value||0))+' '+(p.unidade_axe||'')+' · Preço do pedido '+brl(p.valor_unitario):'Selecione o item do pedido.';pending=null;}
-    select.onchange=suggest;factor.oninput=update;cost.oninput=()=>pending=null;save.onchange=()=>pending=null;
-    const suggested=sugerirVinculoNFe(item,preview.itens_pedido||[]);if(suggested){select.value=suggested.pedido_item_id;factor.value=suggested.fator;}update();review.append(box);
-    return {item,select,factor,cost,save};
+    function cadastroRender(){cadastroBox.replaceChildren();const c=preview.cadastros?.find(c=>c.linha===item.linha)?.opcoes.find(c=>c.pedido_item_id===select.value)?.cadastro;cadastroUI=c?criarConferenciaCadastro(cadastroBox,c,()=>pending=null):null;if(!c)cadastroBox.append(el('p','Selecione um item com produto AXE cadastrado para conferir os dados.'));}
+    select.onchange=()=>{suggest();cadastroRender();};factor.oninput=update;cost.oninput=()=>pending=null;save.onchange=()=>pending=null;
+    const suggested=sugerirVinculoNFe(item,preview.itens_pedido||[]);if(suggested){select.value=suggested.pedido_item_id;factor.value=suggested.fator;}update();box.append(cadastroBox);cadastroRender();review.append(box);
+    return {item,select,factor,cost,save,cadastro:()=>{if(!cadastroUI)throw Error('Confira o cadastro de todas as linhas.');return cadastroUI.collect();}};
    });
    review.append(el('p','Informe o custo de estoque após conferir tributos recuperáveis e despesas. O valor bruto do XML é uma referência; nenhum crédito tributário é deduzido automaticamente. A unidade do fornecedor será cadastrada sem alterar a unidade AXE.'));
    const reason=field(review,'Justificativa da conversão ou diferença de preço/código/custo','','textarea');reason.maxLength=2000;
@@ -66,7 +76,7 @@ export function initComprasNFe(api,root,onSaved){
    review.append(button('Confirmar entrada da nota e estoque',async()=>{
     if(!checked.checked)throw Error('Confirme a conferência do recebimento.');
     if(!date.value)throw Error('Informe a data do recebimento.');
-    const vinculos=rows.map(({item,select,factor,cost,save})=>{if(!select.value||!factor.value||Number(factor.value)<=0||cost.value===''||Number(cost.value)<0)throw Error('Complete item, fator e custo de todas as linhas.');return {linha:item.linha,pedido_item_id:select.value,fator:factor.value,custo_total:cost.value,salvar_fornecedor:save.checked};});
+    const vinculos=rows.map(({item,select,factor,cost,save,cadastro})=>{if(!select.value||!factor.value||Number(factor.value)<=0||cost.value===''||Number(cost.value)<0)throw Error('Complete item, fator e custo de todas as linhas.');return {linha:item.linha,pedido_item_id:select.value,fator:factor.value,custo_total:cost.value,salvar_fornecedor:save.checked,cadastro:cadastro()};});
     pending??={acao:'compra_nf_confirmar',pedido_id:pedido.id,pedido_versao:preview.pedido_versao,xml,nome,data_entrada:date.value,justificativa:reason.value.trim(),vinculos,requisicao_id:crypto.randomUUID(),confirmado:true,custos_conferidos:true};
     const result=await api(pending);dirty=false;reset();await onSaved(pedido.id);return result;
    }));

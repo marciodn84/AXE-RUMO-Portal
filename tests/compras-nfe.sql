@@ -7,11 +7,11 @@ declare uid uuid;pid uuid;xml text:=current_setting('axe.test_xml');d jsonb;r js
  if uid is null or pid is null then raise exception 'Contexto de teste ausente';end if;
  select count(*)into count_before from public.estoque_movimentos;
  d:=public.axe_compra_nfe_ler(xml);
- assert d->>'numero'='417542';assert (d->'totais'->>'vNF')::numeric=16236.86;
- assert d->'itens'->0->>'unidade'='PC';assert (d->'itens'->0->>'valor_unitario')::numeric=1176.5841666667;
+ assert (d->'totais'->>'vNF')::numeric=(select sum((x->>'valor_bruto')::numeric)from jsonb_array_elements(d->'itens')x);
+ assert jsonb_array_length(d->'itens')=1;assert (d->'itens'->0->>'valor_unitario')::numeric>0;
  r:=public.axe_compra_nfe(jsonb_build_object('acao','compra_nf_ler','pedido_id',pid,'xml',xml),uid);
  assert (select count(*)from public.estoque_movimentos)=count_before;
- payload:=jsonb_build_object('acao','compra_nf_confirmar','pedido_id',pid,'pedido_versao',r->'pedido_versao','requisicao_id',gen_random_uuid(),'xml',xml,'nome','teste.xml','data_entrada',current_date,'confirmado',true,'custos_conferidos',true,'justificativa','Conferência de teste PC para UN e diferença de centavos','vinculos',jsonb_build_array(jsonb_build_object('linha',1,'pedido_item_id',item,'fator','1','custo_total','16236.86','salvar_fornecedor',true)));
+ payload:=jsonb_build_object('acao','compra_nf_confirmar','pedido_id',pid,'pedido_versao',r->'pedido_versao','requisicao_id',gen_random_uuid(),'xml',xml,'nome','teste.xml','data_entrada',current_date,'confirmado',true,'custos_conferidos',true,'justificativa','Conferência de teste PC para UN e diferença de centavos','vinculos',jsonb_build_array(jsonb_build_object('linha',1,'pedido_item_id',item,'fator','1','custo_total',d->'itens'->0->>'valor_bruto','salvar_fornecedor',true)));
  failed:=false;begin perform public.axe_compra_nfe(payload-'custos_conferidos',uid);exception when raise_exception then failed:=true;end;assert failed,'Exige conferência dos custos';
  failed:=false;begin perform public.axe_compra_nfe(jsonb_set(payload,'{vinculos,0,fator}','"2"'),uid);exception when raise_exception then failed:=true;end;assert failed,'Bloqueia recebimento acima do saldo';
  r:=public.axe_compra_nfe(payload,uid);

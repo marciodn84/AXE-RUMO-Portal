@@ -1,4 +1,4 @@
-import {initFichaProduto} from './ficha-produto.js?v=20261103-ficha71';
+import {initFichaProduto} from './ficha-produto.js?v=20261104-cadastro2';
 import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
@@ -80,7 +80,7 @@ export function initCatalogo(api){
   if(kind==='produto'&&!context.ficha)return ficha.abrir(id);
   const gen=epoch;let record;try{record=id?await api({acao:'detalhe',tipo:kind,id:Number(id)}):{ativo:true,pais:kind==='fornecedor'?'BR':undefined,situacao:'EM_AVALIACAO',tipo_vinculo:'REFERENCIA',preferencial:false,...defaults};}catch(e){status.textContent=e.message;return;}if(gen!==epoch)return;
   if(dialog&&!context.target)dialog.remove();const inline=kind==='cliente'||!!context.target;const dlg=node(inline?'section':'dialog',undefined,context.target?'product-inline-editor':inline?'client-editor':'edit-dialog catalog-dialog');if(!context.target)dialog=dlg;if(inline)dlg.close=()=>{const host=dlg.parentElement;dlg.remove();if(!context.target){host?.classList.remove('client-editing');const search=host?.querySelector('input[type=search]');search?.scrollIntoView({block:'center'});search?.focus({preventScroll:true});}};const form=node('form');form.addEventListener('invalid',()=>form.classList.add('was-validated'),true);form.append(node('h2',(id?'Editar: ':'Novo cadastro: ')+labels[kind]));
-  if(kind==='produto')form.append(node('p','Código AXE: '+(record.codigo_axe||'gerado ao definir a forma de obtenção')+'. O código permanece igual se o NCM mudar. Alterações de descrição, unidade ou NCM voltam à conferência. Impostos e alíquotas são definidos nas regras fiscais.','intro'));
+  if(kind==='produto')form.append(node('p','Código AXE: '+(record.codigo_axe||'gerado ao definir a forma de obtenção')+'. O código histórico permanece igual nas correções controladas de obtenção e nas alterações de NCM. Alterações de descrição, unidade ou NCM voltam à conferência. Impostos e alíquotas são definidos nas regras fiscais.','intro'));
   if(kind==='cliente'){const identity=node('label','ID ERP'),value=node('input');value.type='text';value.readOnly=true;value.value=record.id??'';value.placeholder='Gerado automaticamente ao salvar';value.setAttribute('aria-label','ID ERP');identity.append(value);form.append(identity);}
   if(kind==='opcao_cliente'||kind==='produto_fornecedor')form.append(node('p','Conversão: quantidade de unidades AXE contida em uma unidade do cliente ou fornecedor. Ex.: uma caixa com 10 unidades AXE → fator 10.','intro'));
   const inputs={};let group;const groups=[];

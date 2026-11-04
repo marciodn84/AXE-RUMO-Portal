@@ -2,12 +2,12 @@ import {initEstoque}from './estoque.js?v=20261031-stock56';
 import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261031-carrier53';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261104-nfe1';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261104-cadastro2';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261103-ficha71';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
 import {initCadastros} from './cadastros.js?v=20261103-codigos74';
-import {initCatalogo} from './catalogo.js?v=20261103-ficha71';
+import {initCatalogo} from './catalogo.js?v=20261104-cadastro2';
 import {initComercial} from './comercial.js?v=20261103-vendas69';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
@@ -45,7 +45,7 @@ async function loadAccomp(){
 const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'),payload=>call(payload,'axe-catalogo'));
 
 const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'));
-const catalogo=initCatalogo(payload=>call(payload,'axe-catalogo'));
+const catalogo=initCatalogo(payload=>call(payload,payload.acao==='compra_produto_obtencao'?'axe-compras-nfe':'axe-catalogo'));
 const importacao=initImportacao(payload=>call(payload,'axe-importacao'));
 const comercial=initComercial(payload=>call(payload,'axe-comercial'));
 const gestao=initGestao(payload=>call(payload,'axe-gestao'));

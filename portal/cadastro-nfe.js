@@ -1,0 +1,14 @@
+const el=(t,s)=>{const e=document.createElement(t);if(s!=null)e.textContent=s;return e;};
+export function criarConferenciaCadastro(parent,prev,onChange=()=>{}){
+ const box=el('fieldset');box.append(el('legend','Conferência cadastral · resolver antes de concluir'),el('p','Campos vazios são completados com os dados apresentados. Para cada divergência, escolha o valor correto agora. O código AXE e os vínculos existentes são preservados.'));
+ const rows=[];
+ for(const c of prev.campos||[]){
+  const line=el('div');line.style.cssText='border-top:1px solid #d6e1ea;padding:12px 0';line.append(el('strong',c.rotulo),el('p','Cadastro: '+(c.atual||'Vazio')+' → Informação sugerida: '+c.sugerido));if(c.observacao)line.append(el('small',c.observacao));
+  const label=el('label','Decisão · '+c.rotulo),choice=el('select');choice.setAttribute('aria-label','Decisão · '+c.rotulo);choice.append(new Option('Selecione uma decisão',''),new Option(c.confirmar?'Confirmo a equivalência sugerida':'Usar informação sugerida','XML'),new Option('Manter o cadastro atual','MANTER'),new Option('Informar o valor correto','INFORMAR'));choice.value=c.exige_decisao?'':'XML';label.append(choice);line.append(label);
+  const vl=el('label','Valor correto · '+c.rotulo),value=el('input');value.setAttribute('aria-label','Valor correto · '+c.rotulo);value.value=c.atual||c.sugerido;vl.append(value);line.append(vl);
+  const jl=el('label','Justificativa · '+c.rotulo),why=el('input');why.setAttribute('aria-label','Justificativa · '+c.rotulo);why.maxLength=1000;jl.append(why);line.append(jl);
+  const update=()=>{vl.hidden=choice.value!=='INFORMAR';jl.hidden=!['MANTER','INFORMAR'].includes(choice.value);onChange();};choice.onchange=update;value.oninput=onChange;why.oninput=onChange;update();box.append(line);rows.push({c,choice,value,why});
+ }
+ const label=el('label'),approved=el('input');approved.type='checkbox';label.style.cssText='flex-direction:row;gap:8px;align-items:flex-start';const txt='Conferi e aprovo os dados cadastrais e resolvi todas as divergências';approved.setAttribute('aria-label',txt);approved.onchange=onChange;label.append(approved,document.createTextNode(txt));box.append(label);parent.append(box);
+ return {collect(){if(!approved.checked)throw Error('Confira e aprove os dados cadastrais antes de concluir.');const decisoes={};for(const {c,choice,value,why}of rows){if(!choice.value)throw Error('Resolva a divergência de '+c.rotulo+'.');if(['MANTER','INFORMAR'].includes(choice.value)&&why.value.trim().length<5)throw Error('Justifique a decisão de '+c.rotulo+'.');if(choice.value==='MANTER'&&!c.atual||choice.value==='INFORMAR'&&!value.value.trim())throw Error('Informe o valor correto de '+c.rotulo+'.');decisoes[c.campo]={acao:choice.value,valor:value.value.trim(),justificativa:why.value.trim()};}return {conferido:true,produto_versao:prev.produto_versao,fornecedor_versao:prev.fornecedor_versao,decisoes};}};
+}

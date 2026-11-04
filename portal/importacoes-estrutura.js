@@ -1,4 +1,4 @@
-import {initComprasNFe} from './compras-nfe.js?v=20261104-nfe1';
+import {initComprasNFe} from './compras-nfe.js?v=20261104-cadastro2';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
 import {padronizarImportacao} from './importacoes-layout.js?v=20261031-carrier53';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
