@@ -71,3 +71,28 @@
 @media(max-width:560px){.purchase-order-header fieldset:last-child>.import-mapping{grid-template-columns:1fr}}
 .purchase-order-header fieldset:first-child>.import-mapping{display:flex;flex-direction:column;gap:12px}
 .purchase-order-header fieldset:first-child select{width:100%}
+/* Compact item grid: predictable column widths and readable cell contents. */
+.imp-internacional .purchase-order-items{padding:12px}
+.purchase-order-sheet{table-layout:fixed;min-width:1180px}
+.purchase-order-sheet th{white-space:normal;line-height:1.3;font-size:11px;letter-spacing:.02em;vertical-align:middle}
+.purchase-order-sheet td,.purchase-order-sheet th{padding:6px 4px;border-right:1px solid #e5edef;vertical-align:middle}
+.purchase-order-sheet th:nth-child(1){width:40px}
+.purchase-order-sheet th:nth-child(2){width:90px}
+.purchase-order-sheet th:nth-child(3){width:105px}
+.purchase-order-sheet th:nth-child(4){width:220px}
+.purchase-order-sheet th:nth-child(5){width:48px}
+.purchase-order-sheet th:nth-child(6){width:70px}
+.purchase-order-sheet th:nth-child(7){width:90px}
+.purchase-order-sheet th:nth-child(8){width:64px}
+.purchase-order-sheet th:nth-child(9){width:78px}
+.purchase-order-sheet th:nth-child(10){width:112px}
+.purchase-order-sheet th:nth-child(11){width:95px}
+.purchase-order-sheet th:nth-child(12){width:110px}
+.imp-internacional .purchase-order-sheet input,.imp-internacional .purchase-order-sheet input[name=descricao],.imp-internacional .purchase-order-sheet input[name=linha],.imp-internacional .purchase-order-sheet input[name=unidade],.imp-internacional .purchase-order-sheet input[type=number]{width:100%;min-width:0;max-width:100%;box-sizing:border-box;height:32px;min-height:32px;padding:4px;font-size:12px}
+.purchase-order-row-actions{min-width:0;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+.purchase-order-row-actions p{margin:0 0 3px}
+.imp-internacional .purchase-order-row-actions button{margin:2px;padding:4px 6px;font-size:11px;min-height:28px}
+.purchase-order-row-total{font-size:12px;white-space:normal;font-variant-numeric:tabular-nums}
+.purchase-order-sheet input:focus{position:relative;z-index:2;outline:2px solid #087f80;outline-offset:-1px}
+.imp-internacional .purchase-order-sheet td label{min-width:0;width:100%;white-space:normal}
+.purchase-order-sheet td{white-space:normal;overflow-wrap:anywhere}
