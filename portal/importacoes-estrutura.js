@@ -208,22 +208,24 @@ export function initEstruturaImportacao(api,legacy){
     }body.append(box);
    }
   }else if(tipo==='parcelas'){
-   const p=order||item;
+   const p=order||item,nacional=p?.fornecedor_pais==='BR';
+   const marcos=nacional?[['Pedido','Data do pedido'],['Manual','Vencimento informado'],...(['Disponibilização / invoice','Coleta'].includes(item?.marco)?[[item.marco,'Data-base informada (registro existente)']]:[])]:['Pedido','Disponibilização / invoice','Coleta','Manual'];
    form.append(node('p','Pedido: '+(p?.pedido||p?.referencia||'')+' · Moeda: '+p?.moeda));
    const f=fields(grid(form,'Condição da parcela'),[
     ['referencia','Identificação da parcela'],['modo','Definição do valor','text',['Valor','Percentual']],['valor','Valor da parcela','number'],['percentual','Percentual do pedido','number'],
-    ['marco','Marco para vencimento','text',['Pedido','Disponibilização / invoice','Coleta','Manual']],['proforma','Proforma / invoice de pagamento'],
+    ['marco','Marco para vencimento','text',marcos],...(!nacional?[['proforma','Proforma / invoice de pagamento']]:[]),
     ['data_base','Data-base informada','date'],['dias','Dias corridos após a data-base','number'],['vencimento','Vencimento manual','date'],['status','Situação','text',[['Prevista',Number(item?.valor_pago||0)>=Number(item?.valor||Infinity)?'Pagamento efetivado':'Aguardando pagamento'],['Cancelada','Cancelada']]]
-   ],item||{modo:'Valor',marco:'Disponibilização / invoice',dias:0,status:'Prevista'});
+   ],item||{modo:'Valor',marco:nacional?'Manual':'Disponibilização / invoice',dias:0,status:'Prevista'});
+   if(nacional){f.marco.addEventListener('change',()=>{if(f.marco.value==='Pedido'&&order?.data_pedido&&!f.data_base.value)f.data_base.value=order.data_pedido;});}
    f.valor.required=true;f.valor.min='0.01';f.percentual.required=true;f.percentual.min='0.000001';f.percentual.max='100';f.dias.step='1';f.dias.max='3650';
    const pay=fields(grid(form,'Registro manual do pagamento'),[
-    ['meio_pagamento','Meio do pagamento manual','text',[['','Selecionar PIX ou cartão'],...(opts.meios_pagamento||[]).filter(x=>x.codigo!=='REMESSA_BANCARIA').map(x=>[x.codigo,x.nome])]],['valor_pago','Valor pago acumulado na moeda do pedido','number'],['data_pagamento','Data do pagamento mais recente','date'],['cambio','Taxa efetiva para BRL','number'],['contrato_cambio','Referência do contrato de câmbio'],['observacoes','Observações','textarea']
+    ['meio_pagamento','Meio do pagamento manual','text',[['','Selecionar PIX ou cartão'],...(opts.meios_pagamento||[]).filter(x=>x.codigo!=='REMESSA_BANCARIA').map(x=>[x.codigo,x.nome])]],['valor_pago','Valor pago acumulado na moeda do pedido','number'],['data_pagamento','Data do pagamento mais recente','date'],...(!nacional?[['cambio','Taxa efetiva para BRL','number'],['contrato_cambio','Referência do contrato de câmbio']]:[]),['observacoes','Observações','textarea']
    ],item||{valor_pago:0});
-   collect=()=>({...read(f),...read(pay),pedido_id:item?.pedido_id||order?.id});
+   collect=()=>({...read(f),...read(pay),...(nacional?{proforma:item?.proforma??'',cambio:item?.cambio??'',contrato_cambio:item?.contrato_cambio??''}:{}),pedido_id:item?.pedido_id||order?.id});
    summary=()=>{pay.data_pagamento.required=Number(pay.valor_pago.value||0)>0;pay.meio_pagamento.required=Number(pay.valor_pago.value||0)>Number(item?.valor_pago||0);const d=collect(),date=d.marco==='Manual'?d.vencimento:vencimentoParcela(d.data_base,d.dias);f.vencimento.disabled=!editing||d.marco!=='Manual';f.valor.disabled=!editing||d.modo==='Percentual';f.percentual.disabled=!editing||d.modo!=='Percentual';
-    info.replaceChildren(node('h3','Vencimento: '+dt(date)),node('p','30 DUE: selecione Disponibilização / invoice, informe a data da invoice e 30 dias corridos.'));
+    info.replaceChildren(node('h3','Vencimento: '+dt(date)),node('p',nacional?'Informe o vencimento ou calcule-o pela data-base e pelo prazo em dias corridos.':'30 DUE: selecione Disponibilização / invoice, informe a data da invoice e 30 dias corridos.'));
     if(d.modo==='Percentual')info.append(node('p',order?'Valor calculado: '+money(Number(order.total)*Number(d.percentual||0)/100,order.moeda):'O percentual será recalculado sobre o total atual do pedido ao salvar.'));
-    info.append(node('p','PIX e cartão: informe o valor e a data do pagamento realizado. Remessa bancária: importe os documentos no botão Contrato e SWIFT. O sistema registra a confirmação e não executa pagamentos.'));
+    info.append(node('p',nacional?'Informe o meio, o valor e a data do pagamento realizado. O sistema registra a confirmação e não executa pagamentos.':'PIX e cartão: informe o valor e a data do pagamento realizado. Remessa bancária: importe os documentos na aba Pagamentos do processo de importação. O sistema registra a confirmação e não executa pagamentos.'));
    };
   }else{
    const f=fields(grid(form,'Lote de embarque'),[
