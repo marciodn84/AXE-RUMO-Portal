@@ -1,3 +1,4 @@
+import {botaoTributos} from './tributos-registros.js?v=20261105-tributos15';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261030-imp34';
@@ -79,6 +80,7 @@ export function initNotasImportacao(api,parent){
    if(data.vinculos.length&&!confirm('Trocar o embarque remove os vínculos de itens ainda não salvos. Continuar?'))return;
    await picker('Embarque da nota',(pagina,busca)=>api({acao:'v2_listar',tipo:'embarques',pagina,busca}),[['Embarque',x=>x.referencia],['Fornecedor',x=>x.fornecedor],['Situação',x=>x.status]],async x=>{if(x.status==='Cancelado')throw Error('Selecione um embarque ativo');shipment=await locked(()=>api({acao:'v2_detalhe',tipo:'embarques',id:x.id}));data.vinculos=[];changed();render();});
   }));body.append(proc);
+  body.append(botaoTributos(api,'entrada_importacao',note.id,'BRL'));
   for(const item of note.xml.itens){
    const box=el('fieldset');box.append(el('legend','Linha '+item.linha+' · '+item.codigo),el('p',item.descricao),el('p',item.quantidade+' '+item.unidade+' · NCM '+item.ncm+' · Produtos '+brl(item.valor)),el('p','DI/DUIMP no XML: '+(item.declaracoes.map(x=>x.numero).join(', ')||'Não informada em campo estruturado')));
    const taxes=el('details');taxes.append(el('summary','Valores fiscais da linha'));table(taxes,['Campo','Valor'],[['Frete',brl(item.frete)],['Seguro',brl(item.seguro)],['Outras despesas',brl(item.outras)],...Object.entries(item.impostos).map(([k,v])=>[k,brl(v)])]);box.append(taxes);

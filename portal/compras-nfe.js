@@ -1,3 +1,4 @@
+import {botaoTributos, mostrarTributos} from './tributos-registros.js?v=20261105-tributos15';
 import {criarConferenciaFinanceira} from './compras-financeiro.js?v=20261104-financeiro13';
 import {criarConferenciaCadastro}from './cadastro-nfe.js?v=20261104-cadastro2';
 const el=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};
@@ -27,6 +28,7 @@ export function initComprasNFe(api,root,onSaved){
    const list=el('section');list.append(el('h3','Notas vinculadas ao pedido'));
    if(!r.notas.length)list.append(el('p','Nenhuma nota de entrada registrada.'));
    for(const n of r.notas){const box=el('fieldset');box.append(el('legend','NF-e '+n.numero+' / '+n.serie+' · '+n.estado),el('p',brl(n.valor)+' · Entrada '+n.data_entrada),el('p','Chave: '+n.chave));
+    box.append(botaoTributos(api,'entrada',n.id,'BRL'));
     box.append(button('Baixar XML da NF-e '+n.numero,async()=>{const f=await api({acao:'compra_nf_baixar',pedido_id:pedido.id,id:n.id});const url=URL.createObjectURL(new Blob([f.xml],{type:'application/xml'})),a=el('a');a.href=url;a.download=f.nome;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}));
     if(editar&&n.estado==='Confirmada')box.append(button('Completar cadastro pela NF-e '+n.numero,async()=>{const r=await api({acao:'compra_nf_cadastro_previa',pedido_id:pedido.id,id:n.id});renderCadastroExistente(n,r);}));
     if(editar&&n.estado==='Confirmada'){const why=field(box,'Justificativa do estorno da NF-e '+n.numero,'','textarea');let req=null;box.append(button('Estornar NF-e '+n.numero,async()=>{if(why.value.trim().length<5)throw Error('Justifique o estorno.');if(!confirm('Estornar toda esta nota e suas entradas de estoque?'))return;req??={acao:'compra_nf_estornar',pedido_id:pedido.id,id:n.id,requisicao_id:crypto.randomUUID(),confirmado:true,justificativa:why.value.trim()};await api(req);dirty=false;reset();await onSaved(pedido.id);}));}list.append(box);
@@ -52,6 +54,7 @@ export function initComprasNFe(api,root,onSaved){
   function render(){
    review.replaceChildren();const d=preview.documento;
    review.append(el('h3','Conferência da NF-e '+d.numero+' / '+d.serie),el('p',d.emitente+' · CNPJ '+d.cnpj),el('p','Chave: '+d.chave),el('p','Produtos: '+brl(d.totais.vProd)+' · IPI: '+brl(d.totais.vIPI)+' · Total da nota: '+brl(d.totais.vNF)),el('p','O XML informa protocolo de autorização. A situação atual na SEFAZ e a assinatura digital não são verificadas por esta tela.'));
+   mostrarTributos(review,d.tributos);
    const date=field(review,'Data do recebimento',today(),'date');date.min=d.emissao.slice(0,10);date.max=today();
    rows=d.itens.map(item=>{
     const box=el('fieldset');box.append(el('legend','Linha '+item.linha+' · Código '+item.codigo),el('p',item.descricao),el('p',item.quantidade+' '+item.unidade+' · Mercadorias '+brl(item.valor)+' · Valor bruto com despesas e tributos '+brl(item.valor_bruto)));

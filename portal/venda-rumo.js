@@ -1,12 +1,14 @@
+import {botaoTributos} from './tributos-registros.js?v=20261105-tributos15';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const money=(v,c='BRL')=>v==null?'Pendente':Number(v).toLocaleString('pt-BR',{style:'currency',currency:c||'BRL'});
-export function initVendaRumo(api,{box,say,back}){
+export function initVendaRumo(api,{box,say,back,tributosApi}){
  let epoch=0,current=null,dirty=false;
  const rpc=async d=>(await api(d)).resultado;
  const btn=(text,fn)=>{const b=el('button',text);b.type='button';b.onclick=async()=>{const e=epoch;b.disabled=true;try{await fn();}catch(x){if(e===epoch)say(x.message);}finally{if(b.isConnected)b.disabled=false;}};return b;};
  async function abrir(id){
   const e=++epoch;say('Carregando pedido de venda…');current=await rpc({acao:'rumo_detalhe',id});if(e!==epoch)return;
   const p=current;dirty=false;box.replaceChildren(btn('Voltar à lista',back),el('h2','Pedido de venda AXE PC-'+String(p.id).padStart(6,'0')),el('p','Origem: RUMO '+p.pedido_cliente+' · '+p.documento.cliente.nome+' · CNPJ '+p.documento.cliente.cnpj),el('p','Situação: '+(p.estado==='APROVADO'?'Aprovado — execução interna iniciada':'Rascunho — aguardando vínculo e aprovação'),'badge'));
+  if(tributosApi)box.append(botaoTributos(tributosApi,'venda',p.id));
   if(p.fonte_alterada)box.append(el('p','O pedido RUMO foi atualizado. Recarregue e confira os dados antes de aprovar.','error'));
   box.append(el('p','Pagamento: '+(p.documento.condicao_pagamento||'Não informado no cadastro de origem')+' · Data do pedido: '+(p.documento.data_pedido||'Não informada')));
   const actions=el('div',undefined,'com-tools'),form=el('form',undefined,'com-form'),itemsBox=el('div',undefined,'venda-rumo-items');box.append(actions,form);form.append(itemsBox);const fields=[];

@@ -11,7 +11,7 @@ import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-for
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261031-carrier53';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261031-fornecedor58';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261105-tributos15';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const date=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'Pendente';
 const money=(v,c='USD')=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:c}).format(Number(v));
