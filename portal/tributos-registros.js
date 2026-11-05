@@ -62,7 +62,50 @@ export function botaoTributos(api, origem, registro, moeda) {
       const dados = await api({acao: 'v2_tributos_ler', origem, registro: String(registro)});
       if (!dialog.isConnected) return;
       status.textContent = '';
-      mostrarTributos(dialog, dados.fiscais);
+      const fiscais = elemento('section');
+      dialog.append(fiscais);
+      mostrarTributos(fiscais, dados.fiscais);
+      if (origem === 'venda' && dados.editar) {
+        const vinculo = elemento('form');
+        const label = elemento('label', 'XML da NF-e de venda');
+        const arquivo = elemento('input');
+        arquivo.type = 'file';
+        arquivo.accept = '.xml,application/xml,text/xml';
+        arquivo.required = true;
+        label.append(arquivo);
+        const confirmacao = elemento('label', 'Conferi que a NF-e corresponde integralmente a este pedido');
+        const confirmado = elemento('input');
+        confirmado.type = 'checkbox';
+        confirmado.required = true;
+        confirmacao.prepend(confirmado);
+        const importar = elemento('button', 'Vincular XML e ler tributos');
+        importar.type = 'submit';
+        vinculo.append(label, confirmacao, importar);
+        dialog.append(vinculo);
+        vinculo.onsubmit = async event => {
+          event.preventDefault();
+          importar.disabled = true;
+          try {
+            const file = arquivo.files[0];
+            if (!file || file.size > 2097152) throw Error('Selecione um XML de até 2 MB');
+            const bytes = await file.arrayBuffer();
+            const prefixo = new TextDecoder('latin1').decode(bytes.slice(0, 200));
+            const encoding = prefixo.match(/encoding\s*=\s*["']([^"']+)/i)?.[1]?.toLowerCase() || 'utf-8';
+            if (!['utf-8', 'utf8', 'iso-8859-1', 'windows-1252'].includes(encoding)) throw Error('Use XML em UTF-8 ou ISO-8859-1');
+            const xml = new TextDecoder(encoding, {fatal: true}).decode(bytes);
+            const nota = await api({acao: 'nf_venda_tributos_upload', pedido_id: Number(registro), confirmado: confirmado.checked, xml});
+            const revisado = await api({acao: 'v2_tributos_ler', origem, registro: String(registro)});
+            fiscais.replaceChildren();
+            mostrarTributos(fiscais, revisado.fiscais);
+            status.textContent = 'NF-e ' + nota.numero + ' vinculada.';
+            vinculo.reset();
+          } catch (error) {
+            status.textContent = error.message;
+          } finally {
+            importar.disabled = false;
+          }
+        };
+      }
       if (!dados.editar && !dados.linhas.length && !dados.fiscais.length) {
         status.textContent = 'Não há tributos discriminados neste registro.';
         return;

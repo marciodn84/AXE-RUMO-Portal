@@ -1,4 +1,4 @@
-import {botaoTributos} from './tributos-registros.js?v=20261105-tributos15';
+import {botaoTributos, mostrarTributos} from './tributos-registros.js?v=20261105-tributos16';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261030-imp34';
@@ -31,7 +31,7 @@ export function initNotasImportacao(api,parent){
   let preview=null;const out=el('div');file.onchange=()=>{preview=null;uploadPending=null;out.replaceChildren();};
   async function prepare(){const f=file.files[0];if(!f)throw Error('Selecione o arquivo');if(!f.size||f.size>(tipo==='XML'?2097152:8388608))throw Error('Arquivo acima do limite ou vazio');return {tipo,nome:f.name,conteudo:await fileBase64(f),...(tipo==='PDF'?{paginas:await lerPDFImportacao(f,t=>msg.textContent=t)}:{})};}
   if(tipo==='XML')box.append(button('Ler XML e conferir',async()=>{
-   const payload=await prepare();const r=await locked(()=>api({acao:'nf_ler_xml',...payload}));preview={payload,xml:r};out.replaceChildren(el('p','NF-e '+r.numero+' · Série '+r.serie+' · '+r.itens.length+' item(ns) · '+brl(r.totais.vNF)),el('p','Chave: '+r.chave));r.avisos.forEach(x=>out.append(el('p',x,'status error')));
+   const payload=await prepare();const r=await locked(()=>api({acao:'nf_ler_xml',...payload}));preview={payload,xml:r};out.replaceChildren(el('p','NF-e '+r.numero+' · Série '+r.serie+' · '+r.itens.length+' item(ns) · '+brl(r.totais.vNF)),el('p','Chave: '+r.chave));r.avisos.forEach(x=>out.append(el('p',x,'status error')));mostrarTributos(out,r.tributos);
    if(r.autorizada)out.append(button('Anexar este XML',async()=>{if(!preview)return;uploadPending??={acao:'nf_upload',...preview.payload,requisicao_id:crypto.randomUUID()};const saved=await locked(()=>api(uploadPending));uploadPending=null;await open(saved.id);msg.textContent='XML anexado. Os vínculos identificados nos documentos foram preenchidos; complete somente as pendências e anexe o PDF.';}));
    else out.append(el('p','Use o XML emitido com protocolo de autorização. O espelho pode ser consultado aqui, mas não será anexado como nota emitida.'));
   }));

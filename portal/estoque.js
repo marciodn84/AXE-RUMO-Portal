@@ -1,4 +1,4 @@
-import {botaoTributos} from './tributos-registros.js?v=20261105-tributos15';
+import {botaoTributos} from './tributos-registros.js?v=20261105-tributos16';
 import {padronizarAcoes}from './acoes-icones.js?v=20261031-stock55';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const money=v=>v==null?'Pendente':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:6});

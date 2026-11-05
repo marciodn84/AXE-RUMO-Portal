@@ -1,14 +1,14 @@
-import {initEstoque}from './estoque.js?v=20261105-tributos15';
+import {initEstoque}from './estoque.js?v=20261105-tributos16';
 import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261104-financeiro14';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261105-tributos15';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261105-tributos16';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261103-ficha71';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
 import {initCadastros} from './cadastros.js?v=20261103-codigos74';
 import {initCatalogo} from './catalogo.js?v=20261104-unidades5';
-import {initComercial} from './comercial.js?v=20261105-tributos15';
+import {initComercial} from './comercial.js?v=20261105-tributos16';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
@@ -47,7 +47,7 @@ const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'),payload=>ca
 const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'));
 const catalogo=initCatalogo(payload=>call(payload,payload.acao==='compra_produto_obtencao'?'axe-compras-nfe':'axe-catalogo'));
 const importacao=initImportacao(payload=>call(payload,'axe-importacao'));
-const tributosApi=payload=>call(payload,'axe-importacoes-internacionais');
+const tributosApi=payload=>call(payload,payload.acao==='nf_venda_tributos_upload'?'axe-importacoes-notas':'axe-importacoes-internacionais');
 const comercial=initComercial(payload=>call(payload,'axe-comercial'),tributosApi);
 const gestao=initGestao(payload=>call(payload,'axe-gestao'));
 const importacoesInternacionais=initImportacoesInternacionais(payload=>call(payload,payload.acao?.startsWith('compra_nf_')?'axe-compras-nfe':(payload.acao?.startsWith('transp_')||payload.acao?.startsWith('lib_')||payload.acao?.startsWith('pagdoc_')||payload.acao?.startsWith('plano_')||payload.acao?.startsWith('fxdoc_')||payload.acao?.startsWith('ack_')||payload.acao?.startsWith('email_'))?'axe-documentos-entrada':(payload.acao?.startsWith('num_')||payload.acao?.startsWith('fech_')||payload.acao?.startsWith('pedido_pdf_'))?'axe-importacoes-fechamento':payload.acao?.startsWith('nf_')?'axe-importacoes-notas':'axe-importacoes-internacionais'));

@@ -1,4 +1,4 @@
-import {botaoTributos} from './tributos-registros.js?v=20261105-tributos15';
+import {botaoTributos} from './tributos-registros.js?v=20261105-tributos16';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const money=(v,c='BRL')=>v==null?'Pendente':Number(v).toLocaleString('pt-BR',{style:'currency',currency:c||'BRL'});
 export function initVendaRumo(api,{box,say,back,tributosApi}){
