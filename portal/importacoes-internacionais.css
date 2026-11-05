@@ -96,3 +96,4 @@
 .purchase-order-sheet input:focus{position:relative;z-index:2;outline:2px solid #087f80;outline-offset:-1px}
 .imp-internacional .purchase-order-sheet td label{min-width:0;width:100%;white-space:normal}
 .purchase-order-sheet td{white-space:normal;overflow-wrap:anywhere}
+.compra-financeiro table{width:100%;font-size:12px}.compra-financeiro th{white-space:normal}.compra-financeiro td{padding:6px;white-space:normal}.compra-financeiro td input,.compra-financeiro td select{min-width:105px;width:100%;box-sizing:border-box}.compra-financeiro td:first-child input{min-width:190px}.compra-financeiro input[type=checkbox]{width:18px;min-height:18px}.compra-financeiro input[type=number]{text-align:right}

@@ -1,3 +1,4 @@
+import {criarConferenciaFinanceira} from './compras-financeiro.js?v=20261104-financeiro13';
 import {criarConferenciaCadastro}from './cadastro-nfe.js?v=20261104-cadastro2';
 const el=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -72,12 +73,13 @@ export function initComprasNFe(api,root,onSaved){
    const checked=check(review,'Conferi produtos, quantidades, conversões, custos e recebimento físico');
    for(const x of [date,reason,checked])x.oninput=()=>pending=null;
    if(d.duplicatas?.length){review.append(el('h4','Cobrança informada no XML'));for(const x of d.duplicatas)review.append(el('p',x.numero+' · '+x.vencimento+' · '+brl(x.valor)));}
-   review.append(el('p','A confirmação registra a nota, atualiza o estoque e o recebimento do pedido. Não cria títulos financeiros nem realiza escrituração ou transmissão fiscal.'));
+   const financeiro=criarConferenciaFinanceira(review,preview.financeiro,d,date,()=>rows.reduce((sum,r)=>{const it=preview.itens_pedido.find(i=>i.id===r.select.value);return sum+Math.round(Number(it?.valor_unitario||0)*Number(r.item.quantidade)*Number(r.factor.value||0)*100)/100;},0),()=>pending=null);
+   review.append(el('p','A confirmação consolida o financeiro conferido, registra a nota e atualiza estoque e recebimento na mesma operação.'));
    review.append(button('Confirmar entrada da nota e estoque',async()=>{
     if(!checked.checked)throw Error('Confirme a conferência do recebimento.');
     if(!date.value)throw Error('Informe a data do recebimento.');
     const vinculos=rows.map(({item,select,factor,cost,save,cadastro})=>{if(!select.value||!factor.value||Number(factor.value)<=0||cost.value===''||Number(cost.value)<0)throw Error('Complete item, fator e custo de todas as linhas.');return {linha:item.linha,pedido_item_id:select.value,fator:factor.value,custo_total:cost.value,salvar_fornecedor:save.checked,cadastro:cadastro()};});
-    pending??={acao:'compra_nf_confirmar',pedido_id:pedido.id,pedido_versao:preview.pedido_versao,xml,nome,data_entrada:date.value,justificativa:reason.value.trim(),vinculos,requisicao_id:crypto.randomUUID(),confirmado:true,custos_conferidos:true};
+    pending??={acao:'compra_nf_confirmar',pedido_id:pedido.id,pedido_versao:preview.pedido_versao,xml,nome,data_entrada:date.value,justificativa:reason.value.trim(),vinculos,requisicao_id:crypto.randomUUID(),confirmado:true,custos_conferidos:true,financeiro:financeiro.collect()};
     const result=await api(pending);dirty=false;reset();await onSaved(pedido.id);return result;
    }));
   }

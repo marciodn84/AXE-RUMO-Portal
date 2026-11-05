@@ -1,0 +1,10 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const{meioXML,sugerirFinanceiro}=await import('data:text/javascript;base64,'+Buffer.from(fs.readFileSync(new URL('../portal/compras-financeiro.js',import.meta.url))).toString('base64'));
+let sequence=0;const id=()=>`novo-${++sequence}`,doc={numero:'1',totais:{vNF:110},pagamentos:[{codigo:'15',valor:110}],duplicatas:[{numero:'001',valor:55,vencimento:'2026-12-01'},{numero:'002',valor:55,vencimento:'2027-01-01'}]};
+const ctx={parcelas:[{id:'a',valor:100,valor_pago:0,confirmado:0,referencia:'A',vencimento:'2026-12-01'},{id:'b',valor:100,valor_pago:0,confirmado:0,referencia:'B',vencimento:'2027-01-01'}],previsao_entrega:'2026-12-01'};
+let p=sugerirFinanceiro(ctx,doc,'2026-11-04',210,true,id);assert.equal(p.reduce((s,x)=>s+x.valor,0),210);assert.equal(p.reduce((s,x)=>s+x.valor_nota,0),110);assert.equal(p.filter(x=>x.valor_nota>0).length,2);assert.equal(p[0].id,'a');assert.equal(p[0].meio_pagamento,'BOLETO');
+const prepaid={parcelas:[{id:'paid',referencia:'Adiantamento',valor:200,valor_pago:200,confirmado:0,vencimento:'2026-10-01',meio_pagamento:'PIX'}],previsao_entrega:'2026-12-01'};
+p=sugerirFinanceiro(prepaid,{...doc,duplicatas:[]},'2026-11-04',210,false,id);assert.equal(p[0].valor_pago,200);assert.equal(p[0].valor,200);assert.equal(p[0].valor_nota,110);assert.equal(p[0].vencimento,'2026-10-01');assert.equal(p[1].valor,10);assert.equal(p[1].valor_nota,0);
+assert.equal(meioXML({pagamentos:[{codigo:'17',valor:100},{codigo:'15',valor:10}]}),'','Meios mistos exigem escolha explícita');assert.equal(meioXML({pagamentos:[{codigo:'99',valor:100}]}),'');
+p=sugerirFinanceiro({parcelas:[]},{numero:'1',totais:{vNF:0}},'2026-11-04',0,false,id);assert.deepEqual(p,[]);
+console.log('PASS: nota parcial, reutilização de provisões, adiantamento sem duplicar dívida, meios mistos e nota sem valor financeiro.');

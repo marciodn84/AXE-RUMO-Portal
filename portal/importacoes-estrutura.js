@@ -1,4 +1,5 @@
-import {initComprasNFe} from './compras-nfe.js?v=20261104-cadastro2';
+import {criarProgramacaoNacional} from './compras-programacao.js?v=20261104-financeiro13';
+import {initComprasNFe} from './compras-nfe.js?v=20261104-financeiro13';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
 import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
@@ -128,12 +129,13 @@ export function initEstruturaImportacao(api,legacy){
    form.dataset.layout='pedido-planilha';form.classList.add('purchase-order-form');
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
     ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
-    ['data_pedido','Data do pedido','date'],['forma_pagamento','Forma de pagamento','text',[['','Selecionar forma de pagamento'],...(opts.formas_pagamento||[]).map(x=>[x.codigo,x.nome])]],['condicao_pagamento','Condição de pagamento do documento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
+    ['data_pedido','Data do pedido','date'],['previsao_entrega','Previsão de entrega','date'],['meio_pagamento_previsto','Meio de pagamento previsto','text',[['','Definir na conferência'],...(opts.meios_pagamento||[]).filter(x=>['PIX','CARTAO','BOLETO','TRANSFERENCIA_BANCARIA'].includes(x.codigo)).map(x=>[x.codigo,x.nome])]],['forma_pagamento','Forma de pagamento','text',[['','Selecionar forma de pagamento'],...(opts.formas_pagamento||[]).map(x=>[x.codigo,x.nome])]],['condicao_pagamento','Condição de pagamento do documento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
    ],item||{status:'Elaboração',moeda:'USD'});
    if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));general.fornecedor_id.value=String(pr.id);changed();})));
    const header=node('div',undefined,'purchase-order-header'),supplier=node('fieldset'),supplierFields=node('div',undefined,'import-mapping');supplier.append(node('legend','Dados do fornecedor'),supplierFields);
    const generalBox=general.referencia.closest('fieldset');generalBox.querySelector('legend').textContent='Informações gerais do pedido';supplierFields.append(general.fornecedor_id.parentElement);supplierFields.append(node('p',item?.fornecedor_pais?'País: '+item.fornecedor_pais:'Selecione o fornecedor do pedido.'));
    generalBox.before(header);header.append(supplier,generalBox);
+   const programacao=criarProgramacaoNacional(form,general,item,opts,editing);
    const section=node('fieldset');section.className='purchase-order-items';section.append(node('legend','Itens do pedido'));const scroll=node('div',undefined,'scroll'),table=node('table',undefined,'purchase-order-sheet'),thead=node('thead'),heading=node('tr'),cards=node('tbody');
    const columns=['Linha','Código AXE','Código do fornecedor / PN','Descrição técnica','Unidade','Quantidade','Preço unitário','Peso unitário (kg)','Disponibilizada','Disponibilidade','Total','Vínculo e ações'];for(const title of columns){const th=node('th',title);th.scope='col';heading.append(th);}thead.append(heading);table.append(thead,cards);scroll.append(table);section.append(scroll);form.append(section);
    let lines=[];
@@ -194,16 +196,17 @@ export function initEstruturaImportacao(api,legacy){
      }finally{busy=false;if(check(g))controls.forEach((c,i)=>{if(c.isConnected)c.disabled=states[i];});}
     }),status,preview);form.prepend(box);
    }
-   collect=()=>({...read(general),itens:lines.map(l=>({id:l.id,produto_id:l.produto_id,...read(l.inputs)}))});
+   collect=()=>({...read(general),...programacao(),itens:lines.map(l=>({id:l.id,produto_id:l.produto_id,...read(l.inputs)}))});
    summary=()=>{const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
-    info.replaceChildren(node('h3','FOB do pedido: '+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(total-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(total-parcelado,d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
+    const nacional=item?.fornecedor_pais==='BR'||opts.fornecedores?.some(x=>String(x.id)===general.fornecedor_id.value&&x.pais==='BR'),financeiro=nacional?parcelado:total;
+    info.replaceChildren(node('h3',(nacional?'Valor do pedido: ':'FOB do pedido: ')+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(financeiro-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(Math.max(0,total-parcelado),d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
    };
    if(item&&!editing){
     const international=Boolean(item.fornecedor_pais&&item.fornecedor_pais!=='BR');
     const box=node('section');box.append(node('h3',international?'Resumo financeiro do pedido':'Parcelas deste pedido'));
     if(international){box.append(node('p','A programação das parcelas, os vencimentos e os pagamentos são tratados na aba Pagamentos do processo de importação.'));
     }else{
-     for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
+     for(const p of item.parcelas||[]){box.append(node('p',p.referencia+' · '+money(p.valor,item.moeda)+' · '+dt(p.vencimento)+' · '+(p.financeiro?.fase?p.financeiro.fase+' · ':'')+situacaoParcela(p)),button('Abrir parcela',()=>{tipo='parcelas';renderNav();return open(p.id);}));}
      if(opts.editar)box.append(button('Adicionar parcela deste pedido',()=>{tipo='parcelas';renderNav();dirty=false;pending=null;edit(null,item);}));
     }body.append(box);
    }
