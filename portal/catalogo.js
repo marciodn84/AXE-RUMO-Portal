@@ -1,5 +1,5 @@
 import {paises}from './paises.js?v=20261104-paises4';
-import {initFichaProduto} from './ficha-produto.js?v=20261104-cadastro2';
+import {initFichaProduto} from './ficha-produto.js?v=20261106-reposicao1';
 import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
@@ -32,10 +32,10 @@ const schemas={
  documento:['Referência documental',['produto_id','Produto AXE','lookup:produto',true],['tipo','Tipo de documento','text',true],['titulo','Título','text',true],['referencia_arquivo','Referência do arquivo ou endereço HTTPS','text',true],['revisao','Revisão'],['valido_desde','Válido desde','date'],['valido_ate','Válido até','date']]
 };
 const nameOf=(type,r)=>type==='produto'?[r.codigo_axe||r.codigo_anterior||'#'+r.id,r.descricao_referencia].join(' · '):type==='cliente'?['ID '+r.id,r.nome,r.cnpj].filter(Boolean).join(' · '):type==='fornecedor'?[r.razao_social,r.cnpj||r.documento_fiscal].filter(Boolean).join(' · '):['Cliente #'+r.cliente_id,r.codigo_cliente,r.descricao_cliente].join(' · ');
-export function initCatalogo(api){
+export function initCatalogo(api,custoReposicao){
  const root=document.getElementById('cadastrosRoot');const screen=node('section',undefined,'cadastro-screen');screen.hidden=true;root.append(screen);
  let epoch=0,request=0,active=null,type='fornecedor',page=0,query='',productFilter=null,referenceFilter=null,dialog=null;const controle=controleCadastro(api,()=>active==='fornecedores');
- const ficha=initFichaProduto(api,edit);
+ const ficha=initFichaProduto(api,edit,custoReposicao);
  const cache=new Map();const mesclagem=selecaoMesclagem(api,'fornecedor',()=>{cache.clear();return load();});
  const btn=(text,fn)=>{const b=node('button',text);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=e.message;status.className='status error';}finally{b.disabled=false;}};return b;};
  const heading=node('h2'),intro=node('p',undefined,'intro'),tabs=node('div',undefined,'catalog-tabs'),tools=node('form',undefined,'searchbar'),search=node('input');search.type='search';search.placeholder='Buscar por nome, código ou descrição';search.setAttribute('aria-label','Buscar no catálogo');

@@ -6,9 +6,9 @@ import './validacao-campos.js?v=20261030-email36';
 import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-acoes1';
 import {initGestao} from './gestao.js?v=20261106-acoes2';
 import {initERP} from './erp.js?v=20261106-empresas1';
-import {initFiscal} from './fiscal.js?v=20261106-acoes1';
+import {initFiscal} from './fiscal.js?v=20261106-reposicao1';
 import {initCadastros} from './cadastros.js?v=20261106-acoes1';
-import {initCatalogo} from './catalogo.js?v=20261106-acoes1';
+import {initCatalogo} from './catalogo.js?v=20261106-reposicao1';
 import {initComercial} from './comercial.js?v=20261106-acoes2';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
@@ -45,8 +45,9 @@ async function loadAccomp(){
 
 const cadastros=initCadastros(payload=>call(payload,'axe-cadastros'),payload=>call(payload,'axe-catalogo'));
 
-const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'));
-const catalogo=initCatalogo(payload=>call(payload,payload.acao==='compra_produto_obtencao'?'axe-compras-nfe':'axe-catalogo'));
+const custoReposicao=produto_id=>call({acao:'v2_produto_custo_reposicao',produto_id},'axe-importacoes-internacionais');
+const fiscal=initFiscal(payload=>call(payload,'axe-fiscal'),custoReposicao);
+const catalogo=initCatalogo(payload=>call(payload,payload.acao==='compra_produto_obtencao'?'axe-compras-nfe':'axe-catalogo'),custoReposicao);
 const importacao=initImportacao(payload=>call(payload,'axe-importacao'));
 const tributosApi=payload=>call(payload,payload.acao==='nf_venda_tributos_upload'?'axe-importacoes-notas':'axe-importacoes-internacionais');
 const comercial=initComercial(payload=>call(payload,'axe-comercial'),tributosApi);

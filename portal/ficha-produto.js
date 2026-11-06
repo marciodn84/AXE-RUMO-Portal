@@ -1,9 +1,10 @@
+import {referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao1';
 import {corrigirObtencaoProduto}from './produto-obtencao.js?v=20261104-cadastro2';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const qty=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:6});
 const money=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:6});
 const date=v=>v?new Date(v.length===10?v+'T12:00:00-03:00':v).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—';
-export function initFichaProduto(api,edit){
+export function initFichaProduto(api,edit,custoReposicao){
  let root=null,host=null,id=null,epoch=0,active='axe',record=null,dirtyForms=new Set(),panes=new Map();
  const dirty=()=>[...dirtyForms].some(f=>f.isConnected);
  const canLeave=()=>!root||!dirty()||confirm('Há alterações ainda não salvas na ficha do produto. Sair sem salvar?');
@@ -22,6 +23,20 @@ export function initFichaProduto(api,edit){
    else record={};
    const summary=el('div',null,'product-identity');root.append(summary);
    const updateTitle=()=>{heading.textContent=id?'Cadastro do produto':'Novo produto AXE';summary.replaceChildren();table(summary,['Código AXE','Descrição do produto','Unidade','Tipo de produto','Situação'],[[(record.codigo_axe||record.codigo_anterior||(id?'#'+id:'Gerado ao salvar')),record.descricao_referencia||'Novo produto',record.unidade_referencia||'—',record.tipo_item||'—',record.bloqueado_comercial?'Bloqueado':record.ativo===false?'Inativo':'Ativo']]);};updateTitle();status.textContent='';
+   if(id&&custoReposicao){
+    const custo=el('section',null,'source-card');
+    custo.hidden=true;root.append(custo);
+    void custoReposicao(id).then(r=>{
+     if(gen!==epoch||!custo.isConnected||!r.importado)return;
+     custo.hidden=false;
+     custo.append(el('h3','Última compra em moeda original'),el('p',referenciaCompra(r.compra)));
+     if(r.saldo?.custo_medio!=null)custo.append(el('p','Custo médio atual do estoque '+money(r.saldo.custo_medio)+' / '+r.saldo.unidade));
+    }).catch(err=>{
+     if(gen===epoch&&custo.isConnected&&record.forma_obtencao==='IMP'){
+      custo.hidden=false;custo.append(el('p','Compra em moeda original indisponível. '+err.message));
+     }
+    });
+   }
    const nav=el('div',null,'product-tabs');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Seções do produto');root.append(nav);
    for(const [key,label]of [['axe','Geral'],['clientes','Vendas'],['fornecedores','Compras'],['estoque','Estoque'],['historico','Histórico']]){
     const p=el('section',null,'product-tab-panel'),b=button(label,()=>select(key));p.setAttribute('role','tabpanel');p.id='produto-painel-'+key;b.id='produto-aba-'+key;b.setAttribute('role','tab');b.setAttribute('aria-controls',p.id);p.setAttribute('aria-labelledby',b.id);b.disabled=key!=='axe'&&!id;

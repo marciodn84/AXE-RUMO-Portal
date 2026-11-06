@@ -1,13 +1,13 @@
 import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
 import {indicadorSituacao} from './cadastro-controle.js?v=20261030-padrao32';
-import {mountSimulator} from './simulador.js?v=20261023-gestao1';
+import {mountSimulator} from './simulador.js?v=20261106-reposicao1';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const btn=(text,fn)=>{const b=e('button',text);b.type='button';b.onclick=fn;return b;};
 const taxes=['II','IPI','ICMS','ICMS_ST','FCP','PIS','COFINS','IBS_UF','IBS_MUN','CBS','IS'];
 const names={II:'Imposto de Importação',ICMS_ST:'ICMS-ST',IBS_UF:'IBS estadual',IBS_MUN:'IBS municipal',IS:'Imposto Seletivo'};
 const ufs='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 const numKeys=['natureza_id','perfil_id','produto_id','cliente_id','fornecedor_id','perfil_destinatario_id'];
-export function initFiscal(api){
+export function initFiscal(api,custoReposicao){
  const root=e('section',undefined,'cadastro-screen fiscal-screen');root.hidden=true;document.getElementById('cadastrosRoot').append(root);
  let simulationSeed=null;
  let section='regras',page=0,search='',product=null,options=null,epoch=0,modal=null,filter='';
@@ -44,7 +44,7 @@ export function initFiscal(api){
   prev.disabled=next.disabled=true;say('Carregando...');body.replaceChildren();
   try{
    await getOptions();if(gen!==epoch)return;
-   if(section==='simulador'){mountSimulator(body,api,options,()=>gen===epoch,simulationSeed);simulationSeed=null;say('');return;}
+   if(section==='simulador'){mountSimulator(body,api,options,()=>gen===epoch,simulationSeed,custoReposicao);simulationSeed=null;say('');return;}
    if(section==='estabelecimento'){renderCompany();count.textContent='';say('Estabelecimento fiscal da AXE.');return;}
    if(product&&section==='produtos')return await loadProduct(product.id,gen);
    const d=await api({acao:'listar',secao:section,pagina:page,busca:search,situacao:section==='regras'?filter:undefined});if(gen!==epoch)return;

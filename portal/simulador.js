@@ -1,11 +1,12 @@
+import {margensPorCusto,referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao1';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const button=(text,fn)=>{const n=el('button',text);n.type='button';n.onclick=fn;return n;};
 const money=v=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
 const pct=v=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:4}).format(Number(v))+'%';
 const titles={DADOS_INCOMPLETOS:'Faltam dados da operação',CONFLITO:'Regras conflitantes',SEM_REGRA:'Não há regras validadas',COBERTURA_PENDENTE:'Defina os tributos esperados na operação',COBERTURA_INCOMPLETA:'Faltam regras para tributos esperados',CFOP_PENDENTE:'Defina o CFOP'};
-export function mountSimulator(root,api,options,alive,seed=null){
+export function mountSimulator(root,api,options,alive,seed=null,custoReposicao=null){
  const wrap=el('div',undefined,'simulator'),form=el('form',undefined,'simulator-form'),result=el('div');result.setAttribute('aria-live','polite');
- const inputs={};let product=null,last=null,signature='',request='',dirty=true;
+ const inputs={};let product=null,last=null,signature='',request='',dirty=true,baseReposicao=null,consultaProduto=0;
  wrap.append(el('h3','Simulador fiscal e comercial'),el('p','Uma venda nacional por item, sem ST. Informe os valores atribuídos a este item. Impostos dependem de regras validadas e fórmulas vinculadas.','intro'));
  function field(group,key,label,type='text',choices=[],required=false){const l=el('label',label);let n;if(type==='select'){n=el('select');n.append(new Option('Selecione',''));for(const [v,t] of choices)n.append(new Option(t,v));}else{n=el('input');n.type=type;}n.name=key;n.required=required;l.append(n);group.append(l);inputs[key]=n;return n;}
  const context=el('fieldset'),values=el('fieldset');context.append(el('legend','Produto e operação'));values.append(el('legend','Valores comerciais'));
@@ -15,7 +16,33 @@ export function mountSimulator(root,api,options,alive,seed=null){
  async function find(term){status.textContent='Buscando produtos…';try{const d=await api({acao:'listar',secao:'produtos',busca:term,pagina:0});if(!alive())return;prod.replaceChildren(new Option('Selecione',''));for(const p of d.linhas)prod.append(new Option((p.codigo_axe||p.codigo_anterior||'#'+p.id)+' · '+p.descricao_referencia,p.id));status.textContent=d.total>50?'Refine a busca: há mais de 50 produtos.':d.total+' produto(s) encontrado(s).';return d.linhas;}catch(err){status.textContent=err.message;return [];}}
  searchRow.append(search,button('Buscar produto',()=>find(search.value.trim())),button('Usar exemplo do cabo',async()=>{const items=await find('FAB-000193');const p=items.find(x=>x.codigo_axe==='FAB-000193');if(!p||!alive())return;prod.value=p.id;await chooseProduct();const n=options.naturezas.linhas.find(x=>x.codigo==='VENDA_FABRICACAO');inputs.natureza_id.value=n?.id||'';const c=options.clientes.linhas.find(x=>x.cnpj==='02502844000166');inputs.cliente_id.value=c?.id||'';inputs.uf_destino.value='SP';inputs.consumidor_final.value='true';inputs.finalidade_destinatario.value='USO_CONSUMO';inputs.sujeito_st.value='false';markDirty();}));context.prepend(searchRow);
  const productInfo=el('p','','intro');prod.closest('label').after(productInfo);
- async function chooseProduct(){product=null;productInfo.textContent='';if(!prod.value)return;const id=Number(prod.value);try{const d=await api({acao:'produto',id});if(!alive()||Number(prod.value)!==id)return;product=d.produto;productInfo.textContent='NCM '+(product.ncm_referencia||'pendente')+' · Unidade: '+(product.unidade_referencia||'pendente de cadastro');}catch(err){status.textContent=err.message;}}
+ const comparacao=el('fieldset'),compraInfo=el('p'),taxa=el('input'),extras=el('input'),taxaLabel=el('label'),nomeTaxa=el('span'),extrasLabel=el('label','Outros custos de reposição por unidade (R$) ');
+ comparacao.hidden=true;
+ taxa.type=extras.type='number';taxa.step=extras.step='any';taxa.min='0.000001';
+ taxaLabel.append(nomeTaxa,taxa);extrasLabel.append(extras);
+ comparacao.append(el('legend','Cenário de reposição'),compraInfo,taxaLabel,extrasLabel,
+  el('p','A taxa converte o valor da mercadoria. Ajuste os demais custos em reais para o cenário de reposição.'));
+ async function chooseProduct(){
+  const seq=++consultaProduto;
+  product=null;baseReposicao=null;comparacao.hidden=true;taxa.value=extras.value='';productInfo.textContent='';
+  if(!prod.value)return;
+  const id=Number(prod.value);
+  try{
+   const d=await api({acao:'produto',id});
+   if(!alive()||seq!==consultaProduto)return;
+   product=d.produto;
+   productInfo.textContent='NCM '+(product.ncm_referencia||'pendente')+' · Unidade: '+(product.unidade_referencia||'pendente de cadastro');
+   if(!custoReposicao)return;
+   const r=await custoReposicao(id);
+   if(!alive()||seq!==consultaProduto||!r.importado)return;
+   baseReposicao=r;comparacao.hidden=false;
+   compraInfo.textContent=referenciaCompra(r.compra);
+   nomeTaxa.textContent='Taxa em BRL por '+(r.compra?.moeda||'unidade de moeda')+' ';
+   taxa.disabled=extras.disabled=!r.compra;
+   extras.value=r.compra?.despesas_unitarias_brl??'';
+   if(r.compra?.despesas_unitarias_brl!=null)compraInfo.textContent+=' · Demais custos sugeridos pela última entrada.';
+  }catch(err){if(alive()&&seq===consultaProduto)status.textContent=err.message;}
+ }
  prod.onchange=chooseProduct;
  field(context,'natureza_id','Tipo de operação','select',options.naturezas.linhas.filter(n=>n.ativo&&n.operacao==='VENDA'&&n.mercado==='DOMESTICO').map(n=>[n.id,n.nome]),true);
  field(context,'cliente_id','Cliente','select',options.clientes.linhas.map(c=>[c.id,c.nome+' · '+c.cnpj]),true);
@@ -28,15 +55,32 @@ export function mountSimulator(root,api,options,alive,seed=null){
  const emp=options.estabelecimento.linhas[0];context.append(el('p','Emitente: AXE · '+emp.cnpj+' · Paraná · Lucro presumido','intro'));
  for(const [k,t,required,defaultValue] of [['quantidade','Quantidade',true,'1'],['preco_unitario','Preço unitário (R$)',true,''],['desconto','Desconto incondicional do item (R$)',false,'0'],['frete','Frete cobrado do cliente (R$)',false,'0'],['seguro','Seguro cobrado do cliente (R$)',false,'0'],['outras_despesas','Outras despesas cobradas do cliente (R$)',false,'0'],['custo_unitario','Custo unitário do produto (R$, opcional)',false,''],['custos_adicionais','Outros custos da AXE neste item (R$)',false,'0']]){const n=field(values,k,t,'text',[],required);n.inputMode='decimal';n.pattern=['quantidade','preco_unitario','custo_unitario'].includes(k)?'[0-9]{1,12}([.,][0-9]{1,6})?':'[0-9]{1,12}([.,][0-9]{1,2})?';n.value=defaultValue;}
  values.append(el('p','Digite sem separador de milhar. Desconto, frete, seguro e despesas são valores totais do item, não unitários. O custo é informado para esta simulação; não altera o cadastro ou o estoque.','intro'));
- const go=el('button','Calcular e registrar simulação');go.type='submit';const row=el('div',undefined,'form-actions');row.append(go);form.append(context,values,status,row);wrap.append(form,result);root.append(wrap);
+ const go=el('button','Calcular e registrar simulação');go.type='submit';const row=el('div',undefined,'form-actions');row.append(go);form.append(context,values,comparacao,status,row);wrap.append(form,result);root.append(wrap);
  const history=el('section',undefined,'source-card');history.append(el('h3','Últimas 20 simulações'));const list=el('div');history.append(button('Atualizar histórico',()=>loadHistory()),list);wrap.append(history);
  function markDirty(){dirty=true;if(last)result.replaceChildren(el('p','Os dados foram alterados. Calcule novamente para atualizar o resultado.','status'));}
  form.addEventListener('input',markDirty);form.addEventListener('change',markDirty);
- function render(d){
+ function render(d,cenario=null){
   last=d;dirty=false;result.replaceChildren();const card=el('article',undefined,'simulation-result');card.append(el('h3',d.estado==='CALCULADA'?'Simulação calculada':'Valores comerciais calculados · tributação pendente'),el('p','Simulação #'+d.id+' · '+new Date(d.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})));
   if(d.produto)card.append(el('p',d.produto.codigo_axe+' · '+d.produto.descricao+' · NCM '+(d.produto.ncm||'pendente')));
   const grid=el('div',undefined,'simulation-totals');for(const [label,value] of [['Produtos',money(d.comercial.produtos_bruto)],['Desconto',money(d.comercial.desconto)],['Subtotal comercial antes dos acréscimos tributários',money(d.comercial.subtotal_sem_acrescimos_tributarios)],['Acréscimos tributários',money(d.totais.acrescimos_tributarios)],['Total a cobrar',money(d.totais.total_cobrado)],['Receita após tributos',money(d.totais.receita_apos_tributos)],['Custos considerados',money(d.totais.custo_total)],['Margem de contribuição',money(d.totais.margem_contribuicao)],['Margem sobre total cobrado',pct(d.totais.margem_contribuicao_pct)]]){const c=el('div',undefined,'source-card');c.append(el('span',label),el('strong',value));grid.append(c);}card.append(grid);
   if(d.totais.custo_unitario==null)card.append(el('p','Informe o custo unitário para calcular a margem.','intro'));
+  if(cenario){
+   const secao=el('section',undefined,'source-card');secao.append(el('h4','Margem por base de custo'));
+   const m=margensPorCusto(d,cenario.quantidade,cenario.outros,cenario.estoque,cenario.reposicao);
+   if(!m)secao.append(el('p','A comparação exige a receita após tributos calculada.'));
+   else{
+    const tabela=el('table'),h=tabela.createTHead().insertRow();
+    for(const titulo of ['Base','Custo unitário','Margem do item','Margem sobre o total cobrado'])h.append(el('th',titulo));
+    const b=tabela.createTBody();
+    for(const [nome,r] of [['Estoque em reais',m.estoque],[cenario.soCompra?'Reposição · só mercadoria convertida':'Reposição estimada',m.reposicao]]){
+     const linha=b.insertRow();for(const v of [nome,money(r?.custo),money(r?.margem),pct(r?.percentual)])linha.append(el('td',v));
+    }
+    secao.append(tabela);
+    if(!m.estoque)secao.append(el('p','Estoque sem saldo para calcular o custo médio.'));
+    if(!m.reposicao)secao.append(el('p','Informe uma taxa válida e confira os custos para calcular a reposição.'));
+   }
+   card.append(secao);
+  }
   const missing=el('ul');for(const p of d.pendencias||[])missing.append(el('li',p));if(missing.children.length)card.append(el('h4','Pendências'),missing);
   if(d.selecao.campos)card.append(el('p','Dados a completar: '+d.selecao.campos.join(', ')));
   for(const t of d.selecao.tributos||[])if(t.estado!=='SELECIONADA')card.append(el('p',t.tributo+': '+(titles[t.estado]||t.estado)));
@@ -45,7 +89,12 @@ export function mountSimulator(root,api,options,alive,seed=null){
   const notes=el('ul');for(const s of d.limites||[])notes.append(el('li',s));card.append(notes);
   const detail=el('details');detail.append(el('summary','Memória do cálculo e versões utilizadas'));const pre=el('pre',JSON.stringify(d,null,2));detail.append(pre);card.append(detail,button('Baixar memória da simulação',()=>{if(dirty)return;const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=el('a');a.href=URL.createObjectURL(blob);a.download='AXE-simulacao-'+d.id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0);}));result.append(card);
  }
- form.onsubmit=async ev=>{ev.preventDefault();if(!form.reportValidity())return;go.disabled=true;status.textContent='Calculando com as regras do servidor…';const old=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));try{const c={},v={};for(const [k,n] of Object.entries(inputs)){const val=n.value.trim();if(['quantidade','preco_unitario','desconto','frete','seguro','outras_despesas','custo_unitario','custos_adicionais'].includes(k))v[k]=val?val.replace(',','.'):null;else c[k]=['produto_id','natureza_id','cliente_id'].includes(k)?Number(val):['consumidor_final','sujeito_st'].includes(k)?val==='true':val||null;}const payload={contexto:c,valores:v};const fingerprint=JSON.stringify(payload);if(fingerprint!==signature){signature=fingerprint;request=crypto.randomUUID();}const d=await api({acao:'calcular',entrada:{...payload,requisicao_id:request}});if(!alive())return;const current=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));if(old!==current){status.textContent='A simulação foi registrada, mas os dados mudaram. Consulte o histórico ou calcule novamente.';return;}render(d);status.textContent='Simulação registrada. Nenhum pedido ou movimento foi criado.';await loadHistory();}catch(err){if(alive())status.textContent=err.message;}finally{go.disabled=false;}};
+ form.onsubmit=async ev=>{ev.preventDefault();if(!form.reportValidity())return;go.disabled=true;status.textContent='Calculando com as regras do servidor…';const old=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));try{const c={},v={};for(const [k,n] of Object.entries(inputs)){const val=n.value.trim();if(['quantidade','preco_unitario','desconto','frete','seguro','outras_despesas','custo_unitario','custos_adicionais'].includes(k))v[k]=val?val.replace(',','.'):null;else c[k]=['produto_id','natureza_id','cliente_id'].includes(k)?Number(val):['consumidor_final','sujeito_st'].includes(k)?val==='true':val||null;}const base=baseReposicao,fx=Number(taxa.value),complemento=Number(extras.value||0);
+ const cenario=base?{quantidade:Number(v.quantidade),outros:Number(v.custos_adicionais||0),
+  estoque:base.saldo?.custo_medio==null?null:Number(base.saldo.custo_medio),
+  reposicao:base.compra&&fx>0?Number(base.compra.valor_unitario)*fx+complemento:null,
+  soCompra:extras.value===''}:null;
+ const valoresCenario=[taxa.value,extras.value];const payload={contexto:c,valores:v};const fingerprint=JSON.stringify(payload);if(fingerprint!==signature){signature=fingerprint;request=crypto.randomUUID();}const d=await api({acao:'calcular',entrada:{...payload,requisicao_id:request}});if(!alive())return;const current=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));if(old!==current||valoresCenario[0]!==taxa.value||valoresCenario[1]!==extras.value){status.textContent='A simulação foi registrada, mas os dados mudaram. Consulte o histórico ou calcule novamente.';return;}render(d,cenario);status.textContent='Simulação registrada. Nenhum pedido ou movimento foi criado.';await loadHistory();}catch(err){if(alive())status.textContent=err.message;}finally{go.disabled=false;}};
  async function loadHistory(){try{const d=await api({acao:'historico_simulacoes'});if(!alive())return;list.replaceChildren();for(const r of d.linhas){const b=button('#'+r.id+' · '+new Date(r.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+' · '+(r.estado==='CALCULADA'?'Calculada':'Fiscal pendente'),async()=>{try{const full=await api({acao:'simulacao',id:r.id});if(alive()){render(full);status.textContent='Resultado histórico: os valores abaixo pertencem à simulação #'+r.id+'.';}}catch(err){status.textContent=err.message;}});list.append(b);}if(!d.linhas.length)list.append(el('p','Ainda não há simulações registradas.'));}catch(err){if(alive())list.textContent=err.message;}}
  if(seed)(async()=>{try{const d=await api({acao:'produto',id:Number(seed.produto_id)});if(!alive())return;prod.append(new Option((d.produto.codigo_axe||'')+' · '+d.produto.descricao_referencia,seed.produto_id));prod.value=seed.produto_id;await chooseProduct();if(!alive())return;for(const key of ['cliente_id','uf_destino','data_operacao','consumidor_final','finalidade_destinatario','municipio_destino','quantidade','custo_unitario','custos_adicionais'])if(seed[key]!=null)inputs[key].value=seed[key];status.textContent='Contexto da proposta carregado. Complete o perfil e a operação; informe o preço antes dos acréscimos tributários. O preço final da proposta não foi usado como base.';}catch(e){if(alive())status.textContent=e.message;}})();
  loadHistory();
