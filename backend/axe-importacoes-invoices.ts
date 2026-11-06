@@ -1,6 +1,6 @@
 import {classificarEmbarque} from './embarques-abrangencia.js';
 import {createClient} from 'npm:@supabase/supabase-js@2.99.2';
-import {extrairPaginasPDF} from './axe-importacoes-notas/di-documento.ts';
+import {extrairPaginasPDF} from './pdf-paginas.ts';
 import {parseInvoice,parsePacking,parsePesos,combinarLiberacao} from './embarque-documentos-parser.ts';
 const origins=['https://erp.axeengenharia.com','https://axe-rumo-portal.marciodnmachado.workers.dev','https://marciodn84.github.io'];
 const hash=async(bytes:Uint8Array)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(x=>x.toString(16).padStart(2,'0')).join('');
