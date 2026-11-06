@@ -1,3 +1,4 @@
+import {abrirPedidoPdf} from './compras-pedido-pdf.js?v=20261106-pdf1';
 import {dataHoraPesquisa} from './data-hora-pesquisa.js?v=20261106-email1';
 import {initComprasNFSe} from './compras-nfse.js?v=20261106-nfse1';
 import {mostrarPerfisCompra, perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';
@@ -129,6 +130,7 @@ export function initEstruturaImportacao(api,legacy){
   if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra==='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Entrada de NFS-e · XML',()=>comprasNFSe.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
+  if(!editing&&item&&tipo==='pedidos')top.append(button('Exportar pedido em PDF',()=>abrirPedidoPdf(api,item.id)));
   if(!editing&&item&&tipo==='pedidos')top.append(botaoTributos(api,'compra',item.id,item.moeda));
   if(tipo==='pedidos')top.classList.add('purchase-order-actions');
   body.append(top,node('h2',(item?item.referencia:tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque')));
