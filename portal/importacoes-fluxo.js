@@ -1,6 +1,6 @@
 import {initFaturaTransporte} from './importacoes-fatura-transporte.js?v=20261106-frete2';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261031-carrier53';
-import {initGradeImportacoes} from './importacoes-grade.js?v=20261031-carrier53';
+import {initGradeImportacoes} from './importacoes-grade.js?v=20261106-email1';
 import {initNumerario} from './importacoes-numerario.js?v=20261031-carrier53';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
 import {initLeituraDI} from './importacoes-di.js?v=20261029-docauto17';

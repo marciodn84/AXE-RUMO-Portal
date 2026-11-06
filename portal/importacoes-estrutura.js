@@ -1,3 +1,4 @@
+import {dataHoraPesquisa} from './data-hora-pesquisa.js?v=20261106-email1';
 import {initComprasNFSe} from './compras-nfse.js?v=20261106-nfse1';
 import {mostrarPerfisCompra, perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';
 import {botaoTributos} from './tributos-registros.js?v=20261106-perfis17';
@@ -7,13 +8,13 @@ import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=2
 import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-frete2';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-email1';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261031-carrier53';
 import {validarCampos} from './validacao-campos.js?v=20261030-email36';
-import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261030-email36';
+import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261106-email1';
 import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261106-perfis17';
@@ -85,11 +86,13 @@ export function initEstruturaImportacao(api,legacy){
   if(!check(g)||s!==seq)return;
   const table=node('table'),head=node('tr');
   const titles=tipo==='pedidos'?['Pedido','Fornecedor','Situação','FOB','Programado / pago','Ação']:tipo==='parcelas'?['Parcela / pedido','Vencimento','Valor','Pago / saldo','Situação','Ação']:['Embarque','Fornecedor','Situação','FOB','Coleta prevista','Ação'];
+  titles.splice(-1,0,'Última atualização');
   titles.forEach(t=>head.append(node('th',t)));table.append(head);
   for(const x of r.linhas){
    let vals;if(tipo==='pedidos')vals=[x.referencia,x.fornecedor,x.status,money(x.total,x.moeda),money(x.parcelado,x.moeda)+' / '+money(x.pago,x.moeda)];
    else if(tipo==='parcelas')vals=[x.referencia+' · '+x.pedido,dt(x.vencimento),money(x.valor,x.moeda),money(x.valor_pago,x.moeda)+' / '+money(Number(x.valor)-Number(x.valor_pago),x.moeda),situacaoParcela(x)];
    else vals=[x.referencia,x.fornecedor,x.status,money(x.total,x.moeda),dt(x.dados.previsao_coleta)];
+   vals.push(dataHoraPesquisa(x.atualizado_em));
    const tr=node('tr');vals.forEach(v=>tr.append(node('td',v)));const action=node('td');action.append(button('Abrir',()=>open(x.id)));tr.append(action);table.append(tr);
   }
   rows.append(table);if(!r.total)rows.append(node('p','Nenhum registro encontrado.'));

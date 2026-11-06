@@ -54,6 +54,26 @@ class EntradaEmail:
         documento = copy.deepcopy(self.request(dict(acao='email_detalhe', id=registro['id'])))
         documento['falhas_arquivamento'] = falhas
         documento['originais'] = [dict(anexo_id=a,nome=n,tipo_mime=t,conteudo=b) for a,n,t,b in anexos or []]
+        # Processa cada original DHL de forma independente dos demais agentes.
+        arquivos = {a.get('anexo_id'): a for a in documento.get('arquivos', [])}
+        faturas = []
+        for anexo_id, nome, _, conteudo in anexos or []:
+            arquivo = arquivos.get(anexo_id)
+            if not arquivo or not nome.lower().endswith('.pdf'):
+                continue
+            if 'dhl' not in (mensagem.get('remetente', '')+' '+mensagem.get('assunto', '')+' '+nome).lower() and not nome.upper().startswith('GRU'):
+                continue
+            try:
+                from faturas_dhl import analisar_pdf
+                dados = analisar_pdf(conteudo)
+                if dados:
+                    proposta = self.request(dict(acao='email_propor', tipo='FATURA_TRANSPORTADORA',
+                        mensagem_id=registro['id'], aplicacao=dict(dados, arquivo_id=arquivo['arquivo_id'])))
+                    faturas.append(dict(anexo_id=anexo_id, estado='EM_REVISAO', proposta_id=proposta['id']))
+                else:
+                    faturas.append(dict(anexo_id=anexo_id, estado='LEITURA_INCOMPLETA'))
+            except Exception as erro:
+                faturas.append(dict(anexo_id=anexo_id, estado='PENDENTE', erro_tipo=type(erro).__name__))
         # A newly recovered original must trigger a fresh analysis, not reuse a metadata-only result.
         assinatura = '|'.join(sorted(a['sha256'] for a in documento.get('arquivos', []) if a.get('sha256')))
         if assinatura:
@@ -83,4 +103,4 @@ class EntradaEmail:
             except Exception as erro:
                 # Não imprimir conteúdo de mensagem nem credenciais em logs do GitHub.
                 saidas[nome] = dict(estado='PENDENTE', erro_tipo=type(erro).__name__)
-        return dict(mensagem_id=registro['id'], agentes=saidas, falhas_arquivamento=falhas)
+        return dict(mensagem_id=registro['id'], agentes=saidas, falhas_arquivamento=falhas, faturas_dhl=faturas)
