@@ -1,3 +1,4 @@
+import {initFaturaTransporte} from './importacoes-fatura-transporte.js?v=20261106-frete1';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261031-carrier53';
 import {initGradeImportacoes} from './importacoes-grade.js?v=20261031-carrier53';
 import {initNumerario} from './importacoes-numerario.js?v=20261031-carrier53';
@@ -9,7 +10,7 @@ import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261031-carrier53';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261106-frete1';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261106-perfis17';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
@@ -22,13 +23,14 @@ export function initVisaoImportacao(api,parent,editCadastro){
  let abaProcesso='resumo',parcialSelecionada='';let avisosImportacao=[],id=null,processId=null,current=null,page=0,query='',epoch=0,request=0,loading=false;
  const status=el('p');status.setAttribute('role','status');header.append(el('h2','Processo de importação — visão única'),status);
  const wrap=async p=>{const r=await api(p);if(r.pagamento_automatico?.avisos)avisosImportacao=r.pagamento_automatico.avisos;if(/(?:salvar|aprovar|confirmar|aplicar|criar|importar|upload)$/.test(p.acao||'')&&id&&!root.hidden)void refresh();return r;};
+ const fatura=initFaturaTransporte(api,root);
  const cadastros=initCadastrosImportacao(wrap,root);
  const ack=initACKImportacao(wrap,root,refresh),pay=initPagamentoDocumental(wrap,root,refresh),lib=initLiberacaoDocumental(wrap,root,refresh),trans=initTransporteDocumental(wrap,root,refresh);
  const cost=initCustosImportacao(wrap,work),fx=initConciliacaoCambio(wrap,work),notes=initNotasImportacao(wrap,work);
  const planos=initParcelasSugeridas(wrap,root,refresh);
  const numerario=initNumerario(api);
  const grade=initGradeImportacoes(api,{abrir:async(ctx,tab='resumo',ship)=>{if(!guard())return;await open(ctx.pedido.id,ctx.processo?.id);abaProcesso=tab;parcialSelecionada=ship||'';render();},executar:async(ctx,kind,shipment)=>{if(!guard())return;if(['ack','pagamento','carga','transporte','participantes','produtos'].includes(kind)){current=ctx;await action(kind,shipment);}else{await open(ctx.pedido.id,ctx.processo?.id);if(kind==='numerario'){abaProcesso='numerario';render();return;}if(kind==='aduana'&&!current.editar){abaProcesso='aduana';render();return;}await action(kind,shipment);}},baixar:download,editar:pid=>editCadastro('pedidos',pid,pid),erro:message=>{status.textContent=message;status.className='status error';}});
- const guard=()=>planos.canLeave()&&numerario.canLeave()&&!declarationBusy&&leitorDI.canLeave()&&cadastros.canLeave()&&ack.canLeave()&&pay.canLeave()&&lib.canLeave()&&trans.canLeave()&&cost.canLeave()&&fx.canLeave()&&notes.canLeave();
+ const guard=()=>fatura.canLeave()&&planos.canLeave()&&numerario.canLeave()&&!declarationBusy&&leitorDI.canLeave()&&cadastros.canLeave()&&ack.canLeave()&&pay.canLeave()&&lib.canLeave()&&trans.canLeave()&&cost.canLeave()&&fx.canLeave()&&notes.canLeave();
  function btn(t,fn){const b=el('button',t);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=e.message;status.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
  async function closeWork(){if(consolidacao){consolidacao.close();consolidacao.remove();consolidacao=null;}if(!guard())return false;await cost.show(false);await fx.show(false);await notes.show(false);work.hidden=true;return true;}
  async function action(kind,shipment){if(!guard())return;const p=current.pedido;
@@ -91,7 +93,7 @@ export function initVisaoImportacao(api,parent,editCadastro){
       ])));
      }
     }
-    if(key==='transporte'){n.append(el('p','Situação: '+e.status+' · AWB/BL: '+(e.dados?.rastreio||'pendente')+' · Chegada prevista: '+date(e.dados?.previsao_chegada)));for(const role of ['transportador','despachante']){const bound=(e.participantes||[]).find(x=>x.papel===role);n.append(el('p',(role==='transportador'?'Transportador: ':'Despachante: ')+(bound?bound.nome:'Cadastro não vinculado')));if(r.editar)n.append(btn('Selecionar '+role,()=>cadastros.escolher('participante',{razao_social:e.dados?.[role]||''},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:e.id,cadastro_id:pr.id});await refresh();})));}}
+    if(key==='transporte'){n.append(btn('Fatura da transportadora',()=>fatura.show(e)));n.append(el('p','Situação: '+e.status+' · AWB/BL: '+(e.dados?.rastreio||'pendente')+' · Chegada prevista: '+date(e.dados?.previsao_chegada)));for(const role of ['transportador','despachante']){const bound=(e.participantes||[]).find(x=>x.papel===role);n.append(el('p',(role==='transportador'?'Transportador: ':'Despachante: ')+(bound?bound.nome:'Cadastro não vinculado')));if(r.editar)n.append(btn('Selecionar '+role,()=>cadastros.escolher('participante',{razao_social:e.dados?.[role]||''},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:e.id,cadastro_id:pr.id});await refresh();})));}}
     if(key==='estoque')n.append(btn('Abrir estoque e movimentações',()=>document.dispatchEvent(new CustomEvent('axe-abrir-estoque',{detail:{embarque_id:e.id}}))));
     if(key==='aduana')for(const d of s.declaracoes)n.append(el('p',(d.dados?.especie||'DI/DUIMP')+' '+d.referencia+' · Registro '+date(d.dados?.data_registro)+' · Desembaraço '+date(d.dados?.data_desembaraco)));
     if(key==='notas')for(const x of s.notas)n.append(el('p','NF-e '+x.chave+' · '+x.estado));
@@ -107,5 +109,5 @@ export function initVisaoImportacao(api,parent,editCadastro){
  async function list(){grade.close();root.closest('.imp-estrutura')?.classList.remove('processo-aberto');header.querySelector('h2').textContent='Pedidos e embarques de importação';const g=epoch,seq=++request;summary.replaceChildren();const bar=el('div',null,'cadastro-toolbar'),search=el('input');search.type='search';search.placeholder='Número do pedido';search.setAttribute('aria-label','Buscar pedido de importação');search.value=query;bar.append(search,btn('Buscar',async()=>{query=search.value;page=0;await list();}),btn('Novo pedido por PDF ou cadastro',()=>editCadastro('pedidos',null,null)));summary.append(bar);const r=await api({acao:'custo_fluxo_grade',pagina:page,busca:query});if(g!==epoch||seq!==request||root.hidden||id)return;bar.querySelectorAll('button').forEach(b=>{if(b.textContent==='Novo pedido por PDF ou cadastro')b.hidden=r.editar===false;});await grade.render(summary,r);const prev=btn('Anterior',async()=>{page--;await list();}),next=btn('Próxima',async()=>{page++;await list();});prev.disabled=page===0;next.disabled=(page+1)*30>=r.total;summary.append(prev,el('span',' Página '+(page+1)+' · '+r.total+' pedido(s) '),next);status.className='';status.textContent='Expanda um pedido para consultar seus embarques. Use o clipe para documentos e os três pontos para mais ações.';}
 
  async function open(pid,proc=null){if(!guard())return;grade.close();processId=proc;if(id!==pid){abaProcesso='resumo';parcialSelecionada='';}id=pid;await refresh();}
- return{canLeave:()=>root.hidden||guard(),open,async show(v,pid,proc){if(!guard())return;epoch++;request++;root.hidden=!v;if(!v){grade.close();await closeWork();return;}if(pid){processId=proc||null;if(id!==pid){abaProcesso='resumo';parcialSelecionada='';}id=pid;await refresh();}else if(id)await refresh();else await list();},reset(){epoch++;request++;leitorDI.reset();cadastros.reset();ack.reset();pay.reset();lib.reset();trans.reset();cost.reset();fx.reset();notes.reset();numerario.reset();planos.reset();grade.reset();root.hidden=true;summary.replaceChildren();id=null;processId=null;current=null;}};
+ return{canLeave:()=>root.hidden||guard(),open,async show(v,pid,proc){if(!guard())return;epoch++;request++;root.hidden=!v;if(!v){grade.close();await closeWork();return;}if(pid){processId=proc||null;if(id!==pid){abaProcesso='resumo';parcialSelecionada='';}id=pid;await refresh();}else if(id)await refresh();else await list();},reset(){epoch++;request++;leitorDI.reset();cadastros.reset();ack.reset();pay.reset();lib.reset();trans.reset();fatura.reset();cost.reset();fx.reset();notes.reset();numerario.reset();planos.reset();grade.reset();root.hidden=true;summary.replaceChildren();id=null;processId=null;current=null;}};
 }

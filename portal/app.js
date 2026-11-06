@@ -1,8 +1,8 @@
 import {initEstoque}from './estoque.js?v=20261106-perfis17';
-import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261104-financeiro14';
+import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261106-frete1';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-lote1';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-frete1';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
 import {initERP} from './erp.js?v=20261106-perfis17';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
