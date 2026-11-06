@@ -1,4 +1,4 @@
-import {abrirPedidoPdf} from './compras-pedido-pdf.js?v=20261106-pdf1';
+import {abrirPedidoPdf} from './compras-pedido-pdf.js?v=20261106-pdf2';
 import {dataHoraPesquisa} from './data-hora-pesquisa.js?v=20261106-email1';
 import {initComprasNFSe} from './compras-nfse.js?v=20261106-nfse1';
 import {mostrarPerfisCompra, perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';

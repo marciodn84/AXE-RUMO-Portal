@@ -22,8 +22,9 @@ function el(tag,text) {
   if(text!=null)n.textContent=text;
   return n;
 }
-function tabela(titulos,linhas) {
+function tabela(titulos,linhas,classe) {
   const t=el('table'),h=t.createTHead().insertRow(),b=t.createTBody();
+  if(classe)t.className=classe;
   for(const titulo of titulos.split('|')){const c=el('th',titulo);c.scope='col';h.append(c);}
   for(const linha of linhas){const r=b.insertRow();for(const valor of linha)r.append(el('td',valor??'—'));}
   return t;
@@ -68,7 +69,7 @@ function montar(dados,idioma,termos) {
   const linhas=p.itens||[];
   const centavos=linhas.map(x=>Math.round(Number(x.subtotal??Number(x.quantidade)*Number(x.valor_unitario))*100));
   secao(doc,itens,tabela(cols,linhas.map((x,i)=>[x.linha,x.codigo_axe,x.codigo_fornecedor,x.descricao,x.unidade,
-    num.format(x.quantidade),preco.format(x.valor_unitario),dinheiro(centavos[i]/100)])));
+    num.format(x.quantidade),preco.format(x.valor_unitario),dinheiro(centavos[i]/100)]),'po-itens'));
   const totais=el('div');totais.className='po-totais';
   totais.append(item(subtotal,dinheiro(centavos.reduce((a,b)=>a+b,0)/100)));
   if(t.total_documento!=null)totais.append(item(total,dinheiro(t.total_documento)));
