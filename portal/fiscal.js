@@ -1,6 +1,7 @@
-import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
+import {acoesLista} from './acoes-lista.js?v=20261106-acoes2';
+import {aplicarIconeAcao,padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
 import {indicadorSituacao} from './cadastro-controle.js?v=20261030-padrao32';
-import {mountSimulator} from './simulador.js?v=20261106-reposicao2';
+import {mountSimulator} from './simulador.js?v=20261106-fiscal-abas1';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const btn=(text,fn)=>{const b=e('button',text);b.type='button';b.onclick=fn;return b;};
 const taxes=['II','IPI','ICMS','ICMS_ST','FCP','PIS','COFINS','IBS_UF','IBS_MUN','CBS','IS'];
@@ -12,14 +13,21 @@ export function initFiscal(api,custoReposicao){
  let simulationSeed=null;
  let section='regras',page=0,search='',product=null,options=null,epoch=0,modal=null,filter='';
  const title=e('h2','Cadastro fiscal'),intro=e('p','Regras por operação e vigência. A validação registra a aprovação fiscal; não ativa emissão nem cálculo automático de documentos.','intro');
- const tabs=e('nav',undefined,'fiscal-tabs');tabs.setAttribute('aria-label','Cadastros fiscais');
- const tabButtons={};for(const [key,label] of [['simulador','Simulador fiscal/comercial'],['estabelecimento','Estabelecimento AXE'],['regras','Regras tributárias'],['naturezas','Tipos de operação'],['formulas','Fórmulas de cálculo'],['perfis','Perfis de produtos'],['destinatarios','Perfis de clientes'],['clientes_fiscais','Vincular clientes'],['produtos','Tributação por produto']]){const b=btn(label,()=>{section=key;page=0;product=null;load();});tabButtons[key]=b;tabs.append(b);}
+ const tabs=e('div',undefined,'fiscal-tabs fluxo-etapas-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Cadastros fiscais');
+ const tabButtons={};for(const [key,label] of [['simulador','Simulador fiscal/comercial'],['estabelecimento','Estabelecimento AXE'],['regras','Regras tributárias'],['naturezas','Tipos de operação'],['formulas','Fórmulas de cálculo'],['perfis','Perfis de produtos'],['destinatarios','Perfis de clientes'],['clientes_fiscais','Vincular clientes'],['produtos','Tributação por produto']]){const b=btn(label,()=>{section=key;page=0;product=null;load();});b.id='fiscal-aba-'+key;b.setAttribute('role','tab');b.setAttribute('aria-controls','fiscal-painel');tabButtons[key]=b;tabs.append(b);}
+ tabs.onkeydown=event=>{
+  const lista=Object.values(tabButtons),i=lista.indexOf(document.activeElement);
+  if(i<0||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const alvo=lista[event.key==='Home'?0:event.key==='End'?lista.length-1:(i+(event.key==='ArrowRight'?1:lista.length-1))%lista.length];
+  alvo.focus();alvo.click();
+ };
  const form=e('form',undefined,'searchbar'),input=e('input');input.type='search';input.placeholder='Buscar por título, nome ou produto';input.setAttribute('aria-label','Buscar cadastro fiscal');
  const submit=e('button','Buscar');submit.type='submit';const add=btn('Novo registro',()=>editSimple());
  const situation=e('select');situation.setAttribute('aria-label','Situação da regra');for(const [v,t] of [['','Todas as situações'],['RASCUNHO','Rascunhos'],['VALIDADA','Validadas'],['INATIVA','Inativas']])situation.append(new Option(t,v));situation.onchange=()=>{filter=situation.value;page=0;load();};
  form.append(input,submit,btn('Atualizar',()=>load()),situation,add,btn('Simular seleção',()=>simulate()));form.onsubmit=ev=>{ev.preventDefault();search=input.value.trim();page=0;load();};
  const msg=e('p','','status');msg.setAttribute('role','status');const body=e('div'),paging=e('div',undefined,'paging'),count=e('span');
- const prev=btn('Anterior',()=>{page--;load();}),next=btn('Próxima',()=>{page++;load();});paging.append(prev,count,next);root.append(title,intro,tabs,form,msg,body,paging);
+ const prev=btn('Anterior',()=>{page--;load();}),next=btn('Próxima',()=>{page++;load();});paging.append(prev,count,next);const painel=e('section');painel.id='fiscal-painel';painel.setAttribute('role','tabpanel');painel.append(form,msg,body,paging);root.append(title,intro,tabs,painel);
  async function getOptions(){options=await api({acao:'opcoes'});return options;}
  function say(text,error=false){msg.textContent=text;msg.className=error?'status error':'status';}
  async function run(type,data){return api({acao:'salvar',tipo:type,dados:{...data,requisicao_id:crypto.randomUUID()}});}
@@ -31,15 +39,95 @@ export function initFiscal(api,custoReposicao){
   const details=e('details');details.append(e('summary','Tributos e fundamentação'));
   for(const t of r.tributos||[]){details.append(e('p',(names[t.tributo]||t.tributo)+' · '+t.tratamento+' · Alíquota: '+(t.aliquota??'não informada')+'%'+(t.cst?' · CST '+t.cst:'')+(t.cclass_trib?' · cClassTrib '+t.cclass_trib:'')+' · Base: '+(t.base_calculo||'não informada')+(t.formula_id?' · Fórmula #'+t.formula_id:'')+(t.efeito_total?' · '+t.efeito_total:'')));details.append(e('p',[t.reducao_base!=null?'Redução de base: '+t.reducao_base+'%':null,t.reducao_aliquota!=null?'Redução de alíquota: '+t.reducao_aliquota+'%':null,t.diferimento!=null?'Diferimento: '+t.diferimento+'%':null,t.beneficio?'Benefício: '+t.beneficio:null,t.credito?'Créditos: '+t.credito:null].filter(Boolean).join(' · ')));}
   details.append(e('p','Fonte: '+(r.fonte||'não informada')),e('p','Fundamento: '+(r.fundamento_legal||'não informado')),e('p','Consulta: '+(r.data_consulta||'não informada')+' · Tabela: '+(r.versao_tabela||'não informada')));card.append(details);
-  if(r.situacao==='RASCUNHO'){card.append(btn('Editar rascunho',()=>editRule(r)),btn('Validar regra',()=>transition('validar',r)));}
-  card.append(btn('Criar nova versão',()=>transition('revisar',r)),btn('Simular aplicação',()=>simulate(r)));if(r.situacao!=='INATIVA')card.append(btn('Inativar',()=>transition('inativar',r)));return card;
+  details.open=true;
+  return card;
+ }
+ function tabelaFiscal(titulos,linhas){
+  const scroll=e('div',undefined,'scroll'),t=e('table'),h=t.createTHead().insertRow(),b=t.createTBody();
+  for(const titulo of titulos){const th=e('th',titulo);th.scope='col';h.append(th);}
+  for(const valores of linhas){
+   const tr=b.insertRow();
+   for(const v of valores){const td=tr.insertCell();if(v instanceof Node)td.append(v);else td.textContent=v??'—';}
+  }
+  scroll.append(t);body.append(scroll);
+ }
+ function verRegistro(titulo,conteudo){
+  if(modal)modal.remove();
+  const d=e('dialog',undefined,'imp-picker');modal=d;
+  d.append(e('h2',titulo),btn('Fechar',()=>d.close()),conteudo);
+  d.addEventListener('close',()=>{if(modal===d)modal=null;d.remove();},{once:true});
+  root.append(d);d.showModal();
+ }
+ const erroAcao=mensagem=>say(mensagem,true);
+ const menu=(nome,ver,acoes=[])=>acoes.length?acoesLista(nome,ver,async()=>acoes,erroAcao):iconeConsulta(nome,ver);
+ function iconeConsulta(nome,ver){
+  const b=btn('Abrir',()=>{try{return ver();}catch(err){erroAcao(err.message);}});
+  aplicarIconeAcao(b,'visualizar','Visualizar '+nome);
+  return b;
+ }
+ function tabelaRegras(rows){
+  tabelaFiscal(['Regra','Operação','Início da vigência','Fim da vigência','Tributos','Situação','Ações'],rows.map(r=>{
+   const a=[];
+   if(r.situacao==='RASCUNHO')a.push(['Editar rascunho','editar',()=>editRule(r)],['Validar regra','conferir',()=>transition('validar',r)]);
+   a.push(['Criar nova versão','versao',()=>transition('revisar',r)],['Simular aplicação','custo',()=>simulate(r)]);
+   if(r.situacao!=='INATIVA')a.push(['Inativar','inativar',()=>transition('inativar',r)]);
+   return [r.titulo+' · v'+r.versao,labelFor('naturezas',r.natureza_id),r.vigencia_inicio,r.vigencia_fim||'Sem data final',
+    (r.tributos||[]).map(t=>t.tributo).join(', ')||'—',indicadorSituacao(r.situacao),menu(r.titulo,()=>verRegistro('Regra tributária',ruleCard(r)),a)];
+  }));
+ }
+ function vincularCliente(r){
+  const {f,error}=openDialog('Vincular perfil fiscal do cliente');
+  f.append(e('p',r.nome+' · '+r.cnpj));
+  const perfil=field(f,'perfil','Perfil fiscal','select',r.perfil_destinatario_id,false,
+   options.destinatarios.linhas.map(p=>[p.id,p.nome]));
+  actions(f,error,()=>({tipo:'vinculo_cliente',dados:{cliente_id:r.id,perfil_destinatario_id:perfil.value,atualizado_em:r.atualizado_em}})).textContent='Salvar perfil';
+ }
+ function tabelaCadastro(rows){
+  if(section==='regras'){tabelaRegras(rows);return;}
+  if(section==='produtos'){
+   tabelaFiscal(['Código','Descrição','NCM','Perfil fiscal','Ações'],rows.map(r=>{
+    const codigo=r.codigo_axe||r.codigo_anterior||'#'+r.id;
+    return [codigo,r.descricao_referencia,r.ncm_referencia||'Pendente',r.perfil_fiscal_id?labelFor('perfis',r.perfil_fiscal_id):'—',
+     iconeConsulta(codigo,()=>{product=r;page=0;load();})];
+   }));return;
+  }
+  if(section==='clientes_fiscais'){
+   tabelaFiscal(['Cliente','CNPJ','Perfil fiscal','Ações'],rows.map(r=>{
+    const perfil=r.perfil_destinatario_id?labelFor('destinatarios',r.perfil_destinatario_id):'Pendente';
+    return [r.nome,r.cnpj,perfil,menu(r.nome,()=>verRegistro(r.nome,e('p','Perfil fiscal · '+perfil)),[['Vincular perfil fiscal','vincular',()=>vincularCliente(r)]])];
+   }));return;
+  }
+  const cabecalho=section==='formulas'?['Versão','Motor']:section==='naturezas'?['Direção','Mercado']:['Descrição / condição'];
+  tabelaFiscal(['Código','Nome',...cabecalho,'Situação','Ações'],rows.map(r=>{
+   const detalhes=e('div'),acoes=[];
+   let colunas;
+   if(section==='formulas'){
+    colunas=[r.versao,r.motor];
+    detalhes.append(e('p','Componentes da base · '+Object.entries(r.componentes||{}).map(([k,v])=>(v===-1?'−':'+')+' '+k).join(' ')),
+     e('p',r.observacoes||'Modelo de composição da base'));
+    acoes.push(['Criar nova versão da fórmula','versao',()=>editFormula(r)]);
+   }else if(section==='naturezas'){
+    colunas=[r.direcao,r.mercado];
+    detalhes.append(e('p',[r.direcao,r.mercado,r.contraparte].filter(Boolean).join(' · ')),
+     e('p','Estoque · '+(r.efeito_estoque||'Pendente')+' | Financeiro · '+(r.efeito_financeiro||'Pendente')),
+     e('p','CFOP interno · '+(r.cfop_interno||'—')+' | Interestadual · '+(r.cfop_interestadual||'—')+' | Exterior · '+(r.cfop_exterior||'—')),
+     e('p','Tributos esperados · '+((r.tributos_esperados||[]).join(', ')||'A definir')));
+    acoes.push(['Editar operação','editar',()=>editSimple(r)]);
+   }else{
+    const desc=r.condicao_icms|| (r.operacao? r.operacao+' · '+r.finalidade+(r.cfop?' · CFOP '+r.cfop:''):(r.descricao||'Sem descrição'));
+    colunas=[desc];detalhes.append(e('p',desc));
+   }
+   const estado=r.situacao||(typeof r.ativo==='boolean'?(r.ativo?'ATIVO':'INATIVO'):null);
+   return [r.codigo,r.nome,...colunas,estado?indicadorSituacao(estado):'—',
+    menu(r.nome,()=>verRegistro(r.nome,detalhes.cloneNode(true)),acoes)];
+  }));
  }
  async function transition(type,r){
   if(type!=='revisar'&&!confirm(type==='validar'?'Confirmar que esta regra e seus códigos foram conferidos com a orientação fiscal? A versão validada ficará protegida contra edição.':'Inativar esta regra?'))return;
   try{await run(type,{id:r.id,atualizado_em:r.atualizado_em,confirmacao:'CONFIRMAR'});await load();}catch(err){say(err.message,true);}
  }
  async function load(){
-  const gen=++epoch;const sim=section==='simulador';form.hidden=paging.hidden=sim;title.textContent=sim?'Simulação de venda':'Cadastro fiscal';intro.hidden=sim;Object.entries(tabButtons).forEach(([k,b])=>b.setAttribute('aria-pressed',String(k===section)));
+  const gen=++epoch;const sim=section==='simulador';form.hidden=paging.hidden=sim;title.textContent=sim?'Simulação de venda':'Cadastro fiscal';intro.hidden=sim;Object.entries(tabButtons).forEach(([k,b])=>{b.setAttribute('aria-selected',String(k===section));b.tabIndex=k===section?0:-1;});painel.setAttribute('aria-labelledby','fiscal-aba-'+section);
   add.hidden=['produtos','clientes_fiscais','estabelecimento'].includes(section);add.textContent=section==='regras'?'Nova regra':['perfis','destinatarios'].includes(section)?'Novo perfil':section==='formulas'?'Nova fórmula':'Novo tipo de operação';situation.hidden=section!=='regras';
   prev.disabled=next.disabled=true;say('Carregando...');body.replaceChildren();
   try{
@@ -48,16 +136,7 @@ export function initFiscal(api,custoReposicao){
    if(section==='estabelecimento'){renderCompany();count.textContent='';say('Estabelecimento fiscal da AXE.');return;}
    if(product&&section==='produtos')return await loadProduct(product.id,gen);
    const d=await api({acao:'listar',secao:section,pagina:page,busca:search,situacao:section==='regras'?filter:undefined});if(gen!==epoch)return;
-   for(const r of d.linhas){
-    if(section==='regras')body.append(ruleCard(r));
-    else{const card=e('article',undefined,'source-card');if(r.situacao)card.append(indicadorSituacao(r.situacao));else if(typeof r.ativo==='boolean')card.append(indicadorSituacao(r.ativo?'ATIVO':'INATIVO'));card.append(e('h3',section==='produtos'?(r.codigo_axe||r.codigo_anterior||'#'+r.id)+' · '+r.descricao_referencia:r.codigo+' · '+r.nome));
-     if(section==='produtos')card.append(e('p','NCM '+(r.ncm_referencia||'pendente')),btn('Abrir tributação',()=>{product=r;page=0;load();}));
-     else if(section==='clientes_fiscais'){card.querySelector('h3').textContent=r.nome+' · '+r.cnpj;const select=e('select');select.setAttribute('aria-label','Perfil fiscal de '+r.nome);select.append(new Option('Perfil ainda não definido',''));for(const p of options.destinatarios.linhas)select.append(new Option(p.nome,p.id));select.value=r.perfil_destinatario_id||'';card.append(select,btn('Salvar perfil do cliente',async()=>{try{await run('vinculo_cliente',{cliente_id:r.id,perfil_destinatario_id:select.value,atualizado_em:r.atualizado_em});await load();}catch(err){say(err.message,true);}}));}
-     else if(section==='formulas'){card.append(e('p','Versão '+r.versao+' · '+r.motor),e('p',Object.entries(r.componentes).map(([k,v])=>(v===-1?'−':'+')+' '+k).join(' ')),e('p',r.observacoes||'Modelo de composição da base'),btn('Criar nova versão da fórmula',()=>editFormula(r)));}
-     else if(section==='naturezas'){card.append(e('p',r.direcao+' · '+r.mercado+' · '+r.contraparte),e('p','Estoque: '+(r.efeito_estoque||'pendente')+' · Financeiro: '+(r.efeito_financeiro||'pendente')),e('p','CFOP interno: '+(r.cfop_interno||'pendente')+' · Interestadual: '+(r.cfop_interestadual||'pendente')+' · Exterior: '+(r.cfop_exterior||'pendente')),e('p','Cobertura de tributos: '+((r.tributos_esperados||[]).join(', ')||'a definir')),e('p',r.configurada?'Parâmetros cadastrados; movimentações operacionais serão implementadas nas próximas etapas.':'Configuração pendente'),btn('Editar operação',()=>editSimple(r)));}
-     else card.append(e('p',r.condicao_icms|| (r.operacao? r.operacao+' · '+r.finalidade+(r.cfop?' · CFOP '+r.cfop:''):(r.descricao||'Sem descrição'))));body.append(card);padronizarAcoes(body);}
-   }
-   padronizarAcoes(body);count.textContent=d.total?(page*50+1)+'–'+(page*50+d.linhas.length)+' de '+d.total:'Nenhum registro';prev.disabled=page===0;next.disabled=(page+1)*50>=d.total;say(d.linhas.length?'Consulta atualizada.':'Nenhum registro nesta consulta.');
+   tabelaCadastro(d.linhas);count.textContent=d.total?(page*50+1)+'–'+(page*50+d.linhas.length)+' de '+d.total:'Nenhum registro';prev.disabled=page===0;next.disabled=(page+1)*50>=d.total;say(d.linhas.length?'Consulta atualizada.':'Nenhum registro nesta consulta.');
   }catch(err){if(gen===epoch)say(err.message,true);}
  }
  async function loadProduct(id,gen){
@@ -66,7 +145,7 @@ export function initFiscal(api,custoReposicao){
   const select=e('select');select.setAttribute('aria-label','Perfil fiscal padrão do produto');select.append(new Option('Sem perfil fiscal',''));for(const p of options.perfis.linhas.filter(x=>x.ativo))select.append(new Option(p.codigo+' · '+p.nome,p.id));select.value=product.perfil_fiscal_id||'';
   card.append(e('p','Perfil fiscal padrão'),select,btn('Salvar perfil',async()=>{try{await run('vinculo',{produto_id:product.id,perfil_id:select.value,atualizado_em:product.atualizado_em});await load();}catch(err){say(err.message,true);}}),btn('Nova regra exclusiva',()=>editRule({produto_id:product.id,ncm:product.ncm_referencia})),btn('Voltar aos produtos',()=>{product=null;page=0;load();}));body.append(card);padronizarAcoes(body);
   body.append(e('p','Regras relacionadas por produto, perfil ou NCM. Confira operação, condições e vigência; esta consulta não seleciona nem calcula tributos automaticamente.','intro'));
-  for(const r of d.regras.linhas)body.append(ruleCard(r));if(!d.regras.total)body.append(e('p','Nenhuma regra relacionada a este produto.'));
+  if(d.regras.linhas.length)tabelaRegras(d.regras.linhas);if(!d.regras.total)body.append(e('p','Nenhuma regra relacionada a este produto.'));
   count.textContent=d.regras.total+' regra(s) relacionada(s)';prev.disabled=page===0;next.disabled=(page+1)*50>=d.regras.total;say('Tributação consultada.');
  }
  function openDialog(titleText){if(modal)modal.remove();modal=e('dialog',undefined,'edit-dialog fiscal-dialog');const f=e('form');f.append(e('h2',titleText));const error=e('p','','error');error.setAttribute('role','alert');modal.append(f);document.body.append(modal);modal.showModal();return {f,error};}
@@ -81,7 +160,11 @@ export function initFiscal(api,custoReposicao){
  function renderCompany(){
   const emp=options.estabelecimento.linhas[0],card=e('article',undefined,'source-card');
   card.append(e('h3',emp.nome),e('p','CNPJ '+emp.cnpj+' · '+emp.uf+' · Lucro presumido'),e('p','Endereço: '+(emp.endereco||'Ainda não informado')),e('p','Município IBGE: '+(emp.municipio_ibge||'Ainda não informado')),e('p','Origem fixa nas saídas e destino fixo nas entradas.'));
-  card.append(btn('Completar endereço fiscal',()=>{const {f,error}=openDialog('Estabelecimento fiscal da AXE');f.append(e('p','CNPJ, UF e regime são os dados confirmados da AXE.'));const municipio=field(f,'municipio_ibge','Código IBGE do município','text',emp.municipio_ibge);municipio.pattern='41[0-9]{5}';const endereco=field(f,'endereco','Endereço fiscal completo','textarea',emp.endereco);actions(f,error,()=>({tipo:'estabelecimento',dados:{municipio_ibge:municipio.value,endereco:endereco.value,atualizado_em:emp.atualizado_em}})).textContent='Salvar endereço';}));body.append(card);padronizarAcoes(body);
+  const completar=()=>{const {f,error}=openDialog('Estabelecimento fiscal da AXE');f.append(e('p','CNPJ, UF e regime são os dados confirmados da AXE.'));const municipio=field(f,'municipio_ibge','Código IBGE do município','text',emp.municipio_ibge);municipio.pattern='41[0-9]{5}';const endereco=field(f,'endereco','Endereço fiscal completo','textarea',emp.endereco);actions(f,error,()=>({tipo:'estabelecimento',dados:{municipio_ibge:municipio.value,endereco:endereco.value,atualizado_em:emp.atualizado_em}})).textContent='Salvar endereço';};
+  tabelaFiscal(['Empresa','CNPJ','UF','Município IBGE','Ações'],[[emp.nome,emp.cnpj,emp.uf,emp.municipio_ibge||'Pendente',
+   menu(emp.nome,()=>verRegistro('Estabelecimento fiscal',card),[['Completar endereço fiscal','editar',completar]])]]);
+  paging.hidden=true;
+
  }
  function editSimple(r={}){if(section==='formulas')return editFormula(r);if(section==='regras')return editRule({});const type=section==='destinatarios'?'perfil_destinatario':section==='perfis'?'perfil':'natureza';const {f,error}=openDialog(type==='perfil_destinatario'?'Novo perfil de clientes':type==='perfil'?'Novo perfil fiscal':r.id?'Editar tipo de operação':'Novo tipo de operação');const fields={};
   fields.codigo=field(f,'codigo','Código','text',r.codigo,true);fields.codigo.pattern='[A-Za-z0-9_]{2,60}';fields.codigo.readOnly=Boolean(r.id);fields.nome=field(f,'nome','Nome','text',r.nome,true);

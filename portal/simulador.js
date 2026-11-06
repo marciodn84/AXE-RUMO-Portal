@@ -1,3 +1,4 @@
+import {aplicarIconeAcao} from './acoes-icones.js?v=20261106-acoes2';
 import {custoEmMoeda,referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao2';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const button=(text,fn)=>{const n=el('button',text);n.type='button';n.onclick=fn;return n;};
@@ -97,7 +98,29 @@ export function mountSimulator(root,api,options,alive,seed=null,custoReposicao=n
  const payload={contexto:c,valores:v};
  if(baseReposicao)payload.reposicao={moeda:baseReposicao.compra?.moeda||null,taxa:taxa.value||null,outros_custos_unitarios:extras.value||null};
  const fingerprint=JSON.stringify(payload);if(fingerprint!==signature){signature=fingerprint;request=crypto.randomUUID();}const d=await api({acao:'calcular',entrada:{...payload,requisicao_id:request}});if(!alive())return;const current=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));if(old!==current||valoresCenario[0]!==taxa.value||valoresCenario[1]!==extras.value){status.textContent='A simulação foi registrada, mas os dados mudaram. Consulte o histórico ou calcule novamente.';return;}render(d);status.textContent='Simulação registrada. Nenhum pedido ou movimento foi criado.';await loadHistory();}catch(err){if(alive())status.textContent=err.message;}finally{go.disabled=false;}};
- async function loadHistory(){try{const d=await api({acao:'historico_simulacoes'});if(!alive())return;list.replaceChildren();for(const r of d.linhas){const b=button('#'+r.id+' · '+new Date(r.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+' · '+(r.estado==='CALCULADA'?'Calculada':'Fiscal pendente'),async()=>{try{const full=await api({acao:'simulacao',id:r.id});if(alive()){render(full);status.textContent='Resultado histórico: os valores abaixo pertencem à simulação #'+r.id+'.';}}catch(err){status.textContent=err.message;}});list.append(b);}if(!d.linhas.length)list.append(el('p','Ainda não há simulações registradas.'));}catch(err){if(alive())list.textContent=err.message;}}
+ async function loadHistory(){
+  try{
+   const d=await api({acao:'historico_simulacoes'});if(!alive())return;
+   list.replaceChildren();
+   if(!d.linhas.length){list.append(el('p','Ainda não há simulações registradas.'));return;}
+   const scroll=el('div',undefined,'scroll'),table=el('table'),head=table.createTHead().insertRow(),body=table.createTBody();
+   for(const texto of ['Simulação','Data e hora','Situação','Ações'])head.append(el('th',texto));
+   for(const r of d.linhas){
+    const b=button('Visualizar simulação #'+r.id,async()=>{
+     b.disabled=true;
+     try{const full=await api({acao:'simulacao',id:r.id});if(alive()){render(full);status.textContent='Resultado histórico: os valores abaixo pertencem à simulação #'+r.id+'.';}}
+     catch(err){if(alive())status.textContent=err.message;}
+     finally{b.disabled=false;}
+    });
+    aplicarIconeAcao(b,'visualizar');
+    const row=body.insertRow();
+    for(const texto of ['#'+r.id,new Date(r.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}),r.estado==='CALCULADA'?'Calculada':'Fiscal pendente'])row.append(el('td',texto));
+    row.insertCell().append(b);
+   }
+   scroll.append(table);list.append(scroll);
+  }catch(err){if(alive())list.textContent=err.message;}
+ }
+
  if(seed)(async()=>{try{const d=await api({acao:'produto',id:Number(seed.produto_id)});if(!alive())return;prod.append(new Option((d.produto.codigo_axe||'')+' · '+d.produto.descricao_referencia,seed.produto_id));prod.value=seed.produto_id;await chooseProduct();if(!alive())return;for(const key of ['cliente_id','uf_destino','data_operacao','consumidor_final','finalidade_destinatario','municipio_destino','quantidade','custo_unitario','custos_adicionais'])if(seed[key]!=null)inputs[key].value=seed[key];status.textContent='Contexto da proposta carregado. Complete o perfil e a operação; informe o preço antes dos acréscimos tributários. O preço final da proposta não foi usado como base.';}catch(e){if(alive())status.textContent=e.message;}})();
  loadHistory();
 }

@@ -159,3 +159,8 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 #produto-painel-clientes table td:nth-child(2),
 #produto-painel-fornecedores table td:nth-child(2){white-space:nowrap;overflow-wrap:normal;word-break:normal}
 .product-identity td:first-child{min-width:105px}
+
+.fiscal-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:18px 0 14px;border-bottom:1px solid #d5e0e7}
+.fiscal-tabs [role=tab]{background:transparent;color:#516474;border:0;border-bottom:3px solid transparent;border-radius:0;box-shadow:none;white-space:nowrap}
+.fiscal-tabs [role=tab][aria-selected=true]{border-bottom-color:#087f80;color:#075e58;font-weight:700}
+.fiscal-tabs [role=tab]:hover,.fiscal-tabs [role=tab]:focus-visible{background:#eef5f7;color:#075e58}
