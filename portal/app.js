@@ -1,14 +1,14 @@
-import {initEstoque}from './estoque.js?v=20261105-tributos16';
+import {initEstoque}from './estoque.js?v=20261106-perfis17';
 import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261104-financeiro14';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261105-tributos16';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-perfis17';
 import {initGestao} from './gestao.js?v=20261023-gestao1';
-import {initERP} from './erp.js?v=20261103-ficha71';
+import {initERP} from './erp.js?v=20261106-perfis17';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
 import {initCadastros} from './cadastros.js?v=20261103-codigos74';
 import {initCatalogo} from './catalogo.js?v=20261104-unidades5';
-import {initComercial} from './comercial.js?v=20261105-tributos16';
+import {initComercial} from './comercial.js?v=20261106-perfis17';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';

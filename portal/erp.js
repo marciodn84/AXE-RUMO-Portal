@@ -1,7 +1,7 @@
 const groups = [
  ['Visão geral',[['inicio','Visão geral','home']]],
  ['Comercial',[['simulador','Simulador fiscal e comercial','fiscal'],['oportunidades','Oportunidades','comercial'],['propostas','Propostas comerciais','comercial'],['pedidos-comerciais','Pedidos comerciais internos','comercial'],['pedidos','Pedidos do portal RUMO','live'],['precos','Histórico de preços','live']]],
- ['Operação',[['pedidos-compra','Pedidos de Compra','compras','Compras'],['importacoes-internacionais','Importações','importacoes-internacionais'],['estoque','Estoque e movimentações','estoque'],['producao','Produção','planned'],['logistica','Expedição e entregas','planned']]],
+ ['Operação',[['pedidos-compra','Pedidos de Compra','compras','Compras'],['compras-tributos','Configuração de tributos','compras','Compras'],['importacoes-internacionais','Importações','importacoes-internacionais'],['estoque','Estoque e movimentações','estoque'],['producao','Produção','planned'],['logistica','Expedição e entregas','planned']]],
  ['Financeiro',[['receber','Contas a receber','financeiro'],['pagar','Contas a pagar','financeiro'],['caixa','Fluxo de caixa','financeiro'],['conciliacao','Conciliação bancária','planned']]],
  ['Cadastros',[['clientes','Cadastro de Clientes','live'],['produtos','Produtos e identificadores','live'],['resolver','Pendências de produtos','live'],['fornecedores','Fornecedores','catalogo'],['equivalencias','Produtos por empresa','catalogo'],['estabelecimento','Estabelecimento AXE','fiscal','Fiscal'],['fiscal','Regras tributárias','fiscal','Fiscal'],['naturezas','Tipos de operação','fiscal','Fiscal'],['formulas','Fórmulas de cálculo','fiscal','Fiscal'],['perfis','Perfis de produtos','fiscal','Fiscal'],['destinatarios','Perfis de clientes','fiscal','Fiscal'],['clientes_fiscais','Vincular clientes a perfis','fiscal','Fiscal'],['tributacao-produtos','Tributação por produto','fiscal','Fiscal'],['regras','Conferência fiscal RUMO','live','Fiscal']]],
  ['Gestão',[['tarefas','Tarefas e atividades','gestao'],['projetos','Projetos','gestao'],['paginas','Conhecimento e controles','gestao'],['pedidos-gestao','Acompanhamento de pedidos','gestao'],['organizacoes','Organizações e contatos','gestao'],['documentos','Documentos e decisões','gestao'],['registros','Registros operacionais','gestao'],['indicadores','Indicadores e metas','planned'],['aprovacoes','Alçadas de aprovação','planned'],['relatorios','Relatórios gerenciais','planned'],['auditoria','Histórico de alterações','planned']]],
@@ -111,6 +111,7 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   else if(route.type==='financeiro')financeiroNumerario.show(key);
   else if(route.type==='gestao')gestao.show(key==='pedidos-gestao'?'pedidos':key);
   else if(route.type==='comercial')comercial.show(key);
+  else if(key==='compras-tributos')importacoesInternacionais.show(true,{area:'compras',configTributos:true});
   else if(key==='pedidos-compra')importacoesInternacionais.show(true,{area:'compras',...produtoId});
   else if(key==='importacoes-internacionais')importacoesInternacionais.show(true,produtoId);
   else if(key==='importacao')importacao.show(true,produtoId);

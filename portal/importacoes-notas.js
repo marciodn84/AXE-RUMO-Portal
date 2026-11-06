@@ -1,4 +1,4 @@
-import {botaoTributos, mostrarTributos} from './tributos-registros.js?v=20261105-tributos16';
+import {botaoTributos, mostrarTributos} from './tributos-registros.js?v=20261106-perfis17';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {validarCampos,marcarErro} from './validacao-campos.js?v=20261030-imp34';

@@ -1,4 +1,4 @@
-import {botaoTributos, mostrarTributos} from './tributos-registros.js?v=20261105-tributos16';
+import {botaoTributos, mostrarTributos} from './tributos-registros.js?v=20261106-perfis17';
 import {criarConferenciaFinanceira} from './compras-financeiro.js?v=20261104-financeiro13';
 import {criarConferenciaCadastro}from './cadastro-nfe.js?v=20261104-cadastro2';
 const el=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};

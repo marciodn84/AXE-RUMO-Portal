@@ -1,5 +1,5 @@
-import {botaoTributos} from './tributos-registros.js?v=20261105-tributos16';
-import {initVendaRumo} from './venda-rumo.js?v=20261105-tributos16';
+import {botaoTributos} from './tributos-registros.js?v=20261106-perfis17';
+import {initVendaRumo} from './venda-rumo.js?v=20261106-perfis17';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const money=v=>v===null||v===undefined?'Pendente':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});

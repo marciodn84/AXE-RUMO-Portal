@@ -1,11 +1,12 @@
-import {botaoTributos} from './tributos-registros.js?v=20261105-tributos16';
+import {mostrarPerfisCompra, perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';
+import {botaoTributos} from './tributos-registros.js?v=20261106-perfis17';
 import {criarProgramacaoNacional} from './compras-programacao.js?v=20261104-financeiro13';
-import {initComprasNFe} from './compras-nfe.js?v=20261105-tributos16';
+import {initComprasNFe} from './compras-nfe.js?v=20261106-perfis17';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
 import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261105-tributos16';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-perfis17';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-fornecedor58';
@@ -14,7 +15,7 @@ import {validarCampos} from './validacao-campos.js?v=20261030-email36';
 import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261030-email36';
 import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
-import {initNotasImportacao} from './importacoes-notas.js?v=20261105-tributos16';
+import {initNotasImportacao} from './importacoes-notas.js?v=20261106-perfis17';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261031-carrier53';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
@@ -118,8 +119,8 @@ export function initEstruturaImportacao(api,legacy){
   current=item;body.replaceChildren();msg.textContent='';const g=epoch,t=tipo;
   const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);return;}await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
-  if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
-  if(!editing&&item&&tipo==='pedidos'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
+  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
+  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(botaoTributos(api,'compra',item.id,item.moeda));
   if(tipo==='pedidos')top.classList.add('purchase-order-actions');
@@ -130,10 +131,20 @@ export function initEstruturaImportacao(api,legacy){
   if(tipo==='pedidos'){
    form.dataset.layout='pedido-planilha';form.classList.add('purchase-order-form');
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
-    ['referencia','Número do pedido'],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
+    ['referencia','Número do pedido'],['natureza_compra','Natureza da compra','text',[['PRODUTO','Produto'],['SERVICO','Serviço']]],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
     ['data_pedido','Data do pedido','date'],['previsao_entrega','Previsão de entrega','date'],['meio_pagamento_previsto','Meio de pagamento previsto','text',[['','Definir na conferência'],...(opts.meios_pagamento||[]).filter(x=>['PIX','CARTAO','BOLETO','TRANSFERENCIA_BANCARIA'].includes(x.codigo)).map(x=>[x.codigo,x.nome])]],['forma_pagamento','Forma de pagamento','text',[['','Selecionar forma de pagamento'],...(opts.formas_pagamento||[]).map(x=>[x.codigo,x.nome])]],['condicao_pagamento','Condição de pagamento do documento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
-   ],item||{status:'Elaboração',moeda:'USD'});
-   if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));general.fornecedor_id.value=String(pr.id);changed();})));
+   ],{status:'Elaboração',moeda:'USD',natureza_compra:'PRODUTO',...item});
+   general.natureza_compra.disabled=!editing||Boolean(item&&item.status!=='Elaboração');
+   const perfil=node('p');
+   const mostrarPerfil=()=>{const pais=opts.fornecedores.find(f=>String(f.id)===general.fornecedor_id.value)?.pais||item?.fornecedor_pais;perfil.textContent=pais?'Perfil tributário · '+perfisCompra[general.natureza_compra.value+(String(pais).trim().toUpperCase()==='BR'?'_NACIONAL':'_IMPORTADO')]:'Selecione o fornecedor para identificar o perfil tributário.';};
+   general.fornecedor_id.addEventListener('change',mostrarPerfil);general.natureza_compra.addEventListener('change',mostrarPerfil);mostrarPerfil();
+   general.natureza_compra.parentElement.after(perfil);
+   if(editing)form.append(button('Buscar ou cadastrar fornecedor',()=>cadastros.escolher('participante',{},pr=>{
+    if(!opts.fornecedores.some(f=>String(f.id)===String(pr.id)))opts.fornecedores.push({id:pr.id,nome:pr.razao_social,pais:pr.pais});
+    if(![...general.fornecedor_id.options].some(o=>o.value===String(pr.id)))general.fornecedor_id.append(new Option(pr.razao_social,pr.id));
+    general.fornecedor_id.value=String(pr.id);
+    general.fornecedor_id.dispatchEvent(new Event('change',{bubbles:true}));
+   })));
    const header=node('div',undefined,'purchase-order-header'),supplier=node('fieldset'),supplierFields=node('div',undefined,'import-mapping');supplier.append(node('legend','Dados do fornecedor'),supplierFields);
    const generalBox=general.referencia.closest('fieldset');generalBox.querySelector('legend').textContent='Informações gerais do pedido';supplierFields.append(general.fornecedor_id.parentElement);supplierFields.append(node('p',item?.fornecedor_pais?'País: '+item.fornecedor_pais:'Selecione o fornecedor do pedido.'));
    generalBox.before(header);header.append(supplier,generalBox);
@@ -149,7 +160,7 @@ export function initEstruturaImportacao(api,legacy){
      ['disponibilizada','Quantidade disponibilizada acumulada','number'],['data_disponibilidade','Data da disponibilidade','date']
     ],{linha:'',quantidade:1,valor_unitario:0,disponibilizada:0,...x});
     const line={id:x.id||crypto.randomUUID(),produto_id:x.produto_id||null,inputs,card};lines.push(line);
-    if(!line.produto_id&&x.codigo_axe)void api({acao:'custo_cadastro_buscar',tipo:'produto',busca:x.codigo_axe}).then(r=>{if(!card.isConnected)return;const exact=r.linhas.filter(p=>[p.codigo_axe,p.codigo_anterior].includes(x.codigo_axe));if(exact.length===1){line.produto_id=exact[0].id;produtoLabel.textContent=(exact[0].codigo_axe||'#'+exact[0].id)+' · '+exact[0].descricao_referencia;}}).catch(()=>{});
+    if(general.natureza_compra.value==='PRODUTO'&&!line.produto_id&&x.codigo_axe)void api({acao:'custo_cadastro_buscar',tipo:'produto',busca:x.codigo_axe}).then(r=>{if(!card.isConnected||general.natureza_compra.value==='SERVICO')return;const exact=r.linhas.filter(p=>[p.codigo_axe,p.codigo_anterior].includes(x.codigo_axe));if(exact.length===1){line.produto_id=exact[0].id;produtoLabel.textContent=(exact[0].codigo_axe||'#'+exact[0].id)+' · '+exact[0].descricao_referencia;}}).catch(()=>{});
 
     const produtoLabel=node('p',line.produto_id?'Produto do cadastro AXE #'+line.produto_id:'Produto do cadastro ainda não vinculado');card.prepend(produtoLabel);
     if(editing)card.append(button('Selecionar produto do cadastro',()=>cadastros.escolher('produto',{codigo_anterior:inputs.codigo_axe.value,part_number:inputs.codigo_fornecedor.value,descricao_referencia:inputs.descricao.value,unidade_referencia:inputs.unidade.value},pr=>{line.produto_id=pr.id;produtoLabel.textContent=(pr.codigo_axe||'#'+pr.id)+' · '+pr.descricao_referencia;if(!inputs.descricao.value)inputs.descricao.value=pr.descricao_referencia||'';if(!inputs.unidade.value)inputs.unidade.value=pr.unidade_referencia||'';changed();})));
@@ -159,7 +170,17 @@ export function initEstruturaImportacao(api,legacy){
     for(const input of Object.values(inputs)){const cell=node('td'),label=input.parentElement;for(const child of [...label.childNodes])if(child.nodeType===Node.TEXT_NODE)child.remove();cell.append(label);card.append(cell);}
     const total=node('td',undefined,'purchase-order-row-total');const updateTotal=()=>{total.textContent=money(Number(inputs.quantidade.value||0)*Number(inputs.valor_unitario.value||0),general.moeda.value);};card.addEventListener('input',updateTotal);general.moeda.addEventListener('change',updateTotal);updateTotal();card.append(total);
     for(const child of [...card.children])if(child.tagName!=='TD')actions.append(child);card.append(actions);
-    cards.append(card);return inputs;
+    const produtoBotao=Array.from(actions.querySelectorAll('button')).find(b=>b.textContent==='Selecionar produto do cadastro');
+    const ajustarNatureza=()=>{
+      if(!card.isConnected) return;
+      const servico=general.natureza_compra.value==='SERVICO';
+      produtoLabel.hidden=servico;
+      if(produtoBotao)produtoBotao.hidden=servico;
+    };
+    cards.append(card);
+    general.natureza_compra.addEventListener('change',ajustarNatureza);
+    ajustarNatureza();
+    return inputs;
    }
    (item?.itens||[]).forEach(add);
    if(editing)section.append(button('Adicionar item',()=>{if(lines.length>=100)throw Error('Até 100 itens por pedido.');const f=add();changed();f.linha.focus();}));
@@ -198,7 +219,7 @@ export function initEstruturaImportacao(api,legacy){
      }finally{busy=false;if(check(g))controls.forEach((c,i)=>{if(c.isConnected)c.disabled=states[i];});}
     }),status,preview);form.prepend(box);
    }
-   collect=()=>({...read(general),...programacao(),itens:lines.map(l=>({id:l.id,produto_id:l.produto_id,...read(l.inputs)}))});
+   collect=()=>({...read(general),...programacao(),itens:lines.map(l=>({id:l.id,produto_id:general.natureza_compra.value==='SERVICO'?null:l.produto_id,...read(l.inputs)}))});
    summary=()=>{const d=collect(),total=d.itens.reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.valor_unitario||0),0),parcelado=(item?.parcelas||[]).filter(p=>p.status!=='Cancelada').reduce((s,x)=>s+Number(x.valor),0);
     const nacional=item?.fornecedor_pais==='BR'||opts.fornecedores?.some(x=>String(x.id)===general.fornecedor_id.value&&x.pais==='BR'),financeiro=nacional?parcelado:total;
     info.replaceChildren(node('h3',(nacional?'Valor do pedido: ':'FOB do pedido: ')+money(total,d.moeda)),node('p','Pagamentos confirmados: '+money((item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)+' · Saldo devedor: '+money(financeiro-(item?.parcelas||[]).reduce((s,p)=>s+Number(p.valor_pago||0),0),d.moeda)),node('p','Parcelas programadas: '+money(parcelado,d.moeda)+' · Valor ainda sem programação: '+money(Math.max(0,total-parcelado),d.moeda)),node('p','Parcelas por percentual mantêm o valor confirmado ao salvar; revise a programação após alterar o pedido. Disponibilidade acumulada inclui as quantidades já liberadas para embarques anteriores. Pesos em kg; nenhum prazo é preenchido automaticamente.'));
@@ -303,7 +324,7 @@ export function initEstruturaImportacao(api,legacy){
   async show(visible,contexto={}){
    epoch++;seq++;closeDialogs();entrada.show(false);fx.show(false);custos.show(false);notas.show(false);visao.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
    area=contexto?.area==='compras'?'compras':'importacoes';root.hidden=false;body.replaceChildren();msg.textContent='';dirty=false;pending=null;current=null;tipo=area==='compras'?'pedidos':'visao';voltarFluxo=null;page=0;searchValue='';nav.hidden=area==='compras';intro.textContent=area==='compras'?'Pedidos de compra nacionais e internacionais.':'Condições de pagamento e embarques parciais ou consolidados.';renderNav();const g=epoch;
-   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else await visao.show(true,contexto?.pedidoId,contexto?.processoId);}}catch(e){if(check(g))msg.textContent=e.message;}
+   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.configTributos){const view=node('section');body.append(node('h2','Configuração de tributos de compra'),view);await mostrarPerfisCompra(view,api);}else if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else await visao.show(true,contexto?.pedidoId,contexto?.processoId);}}catch(e){if(check(g))msg.textContent=e.message;}
   },
   reset(){cadastros.reset();visao.reset();voltarFluxo=null;transporte.reset();pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };

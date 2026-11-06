@@ -1,4 +1,5 @@
-const impostos = ['ICMS', 'ICMS ST', 'ICMS destino', 'ICMS remetente', 'FCP', 'FCP ST', 'FCP destino', 'IPI', 'PIS', 'PIS ST', 'COFINS', 'COFINS ST', 'II', 'ISS', 'IBS estadual', 'IBS municipal', 'IBS monofásico', 'CBS', 'CBS monofásica', 'IS'];
+import {perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';
+const impostos = ['ICMS', 'ICMS ST', 'ICMS destino', 'ICMS remetente', 'FCP', 'FCP ST', 'FCP destino', 'IPI', 'PIS', 'PIS ST', 'COFINS', 'COFINS ST', 'II', 'ISS', 'IBS estadual', 'IBS municipal', 'IBS monofásico', 'CBS', 'CBS monofásica', 'IS', 'IRRF', 'INSS', 'CSLL', 'CIDE', 'IOF'];
 const naturezas = ['Previsto', 'Documentado', 'Recolhido'];
 const campos = [
   ['natureza', 'Natureza do valor'],
@@ -62,6 +63,8 @@ export function botaoTributos(api, origem, registro, moeda) {
       const dados = await api({acao: 'v2_tributos_ler', origem, registro: String(registro)});
       if (!dialog.isConnected) return;
       status.textContent = '';
+      const configurados = Array.isArray(dados.impostos_perfil) ? dados.impostos_perfil : impostos;
+      if (dados.perfil) dialog.append(elemento('p', 'Perfil tributário · ' + perfisCompra[dados.perfil]));
       const fiscais = elemento('section');
       dialog.append(fiscais);
       mostrarTributos(fiscais, dados.fiscais);
@@ -124,14 +127,14 @@ export function botaoTributos(api, origem, registro, moeda) {
           input.name = key;
           input.setAttribute('aria-label', titulo);
           if (key === 'natureza') for (const natureza of naturezas) input.append(new Option(natureza, natureza));
-          if (key === 'imposto') for (const imposto of impostos) input.append(new Option(imposto, imposto));
+          if (key === 'imposto') for (const imposto of new Set([...configurados, ...(linha.imposto ? [linha.imposto] : [])])) input.append(new Option(imposto, imposto));
           if (['base', 'aliquota', 'valor'].includes(key)) {
             input.type = 'number';
             input.min = '0';
             input.step = key === 'valor' ? '0.01' : 'any';
           }
           input.required = ['valor', 'referencia'].includes(key);
-          input.value = linha[key] ?? (key === 'imposto' ? impostos[0] : key === 'natureza' ? naturezas[0] : '');
+          input.value = linha[key] ?? (key === 'imposto' ? configurados[0] : key === 'natureza' ? naturezas[0] : '');
           input.disabled = !dados.editar;
           cell.append(input);
         }
@@ -146,6 +149,7 @@ export function botaoTributos(api, origem, registro, moeda) {
       if (dados.editar) {
         const novo = elemento('button', 'Adicionar tributo');
         novo.type = 'button';
+        novo.disabled = configurados.length === 0;
         novo.onclick = () => adicionar();
         const salvar = elemento('button', 'Salvar tributos');
         salvar.type = 'submit';
