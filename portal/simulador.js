@@ -1,4 +1,4 @@
-import {margensPorCusto,referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao1';
+import {custoEmMoeda,referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao2';
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const button=(text,fn)=>{const n=el('button',text);n.type='button';n.onclick=fn;return n;};
 const money=v=>v==null?'Pendente':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
@@ -59,21 +59,25 @@ export function mountSimulator(root,api,options,alive,seed=null,custoReposicao=n
  const history=el('section',undefined,'source-card');history.append(el('h3','Últimas 20 simulações'));const list=el('div');history.append(button('Atualizar histórico',()=>loadHistory()),list);wrap.append(history);
  function markDirty(){dirty=true;if(last)result.replaceChildren(el('p','Os dados foram alterados. Calcule novamente para atualizar o resultado.','status'));}
  form.addEventListener('input',markDirty);form.addEventListener('change',markDirty);
- function render(d,cenario=null){
+ function render(d){
+  const cenario=d.cenario_reposicao;
   last=d;dirty=false;result.replaceChildren();const card=el('article',undefined,'simulation-result');card.append(el('h3',d.estado==='CALCULADA'?'Simulação calculada':'Valores comerciais calculados · tributação pendente'),el('p','Simulação #'+d.id+' · '+new Date(d.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})));
   if(d.produto)card.append(el('p',d.produto.codigo_axe+' · '+d.produto.descricao+' · NCM '+(d.produto.ncm||'pendente')));
   const grid=el('div',undefined,'simulation-totals');for(const [label,value] of [['Produtos',money(d.comercial.produtos_bruto)],['Desconto',money(d.comercial.desconto)],['Subtotal comercial antes dos acréscimos tributários',money(d.comercial.subtotal_sem_acrescimos_tributarios)],['Acréscimos tributários',money(d.totais.acrescimos_tributarios)],['Total a cobrar',money(d.totais.total_cobrado)],['Receita após tributos',money(d.totais.receita_apos_tributos)],['Custos considerados',money(d.totais.custo_total)],['Margem de contribuição',money(d.totais.margem_contribuicao)],['Margem sobre total cobrado',pct(d.totais.margem_contribuicao_pct)]]){const c=el('div',undefined,'source-card');c.append(el('span',label),el('strong',value));grid.append(c);}card.append(grid);
   if(d.totais.custo_unitario==null)card.append(el('p','Informe o custo unitário para calcular a margem.','intro'));
   if(cenario){
    const secao=el('section',undefined,'source-card');secao.append(el('h4','Margem por base de custo'));
-   const m=margensPorCusto(d,cenario.quantidade,cenario.outros,cenario.estoque,cenario.reposicao);
-   if(!m)secao.append(el('p','A comparação exige a receita após tributos calculada.'));
-   else{
+   secao.append(el('p',referenciaCompra(cenario.compra)));
+   if(cenario.taxa!=null)secao.append(el('p','Câmbio usado: '+new Intl.NumberFormat('pt-BR',{maximumFractionDigits:10}).format(cenario.taxa)+' BRL por '+cenario.compra.moeda));
+   if(cenario.outros_custos_unitarios!=null)secao.append(el('p','Outros custos da reposição por unidade: '+money(cenario.outros_custos_unitarios)));
+   const m=cenario.margens;
+   if(d.estado!=='CALCULADA')secao.append(el('p','As margens dependem da conclusão do cálculo dos tributos.'));
+   {
     const tabela=el('table'),h=tabela.createTHead().insertRow();
-    for(const titulo of ['Base','Custo unitário','Margem do item','Margem sobre o total cobrado'])h.append(el('th',titulo));
+    for(const titulo of ['Base','Custo unitário','Custo total do item','Margem do item','Margem sobre o total cobrado'])h.append(el('th',titulo));
     const b=tabela.createTBody();
-    for(const [nome,r] of [['Estoque em reais',m.estoque],[cenario.soCompra?'Reposição · só mercadoria convertida':'Reposição estimada',m.reposicao]]){
-     const linha=b.insertRow();for(const v of [nome,money(r?.custo),money(r?.margem),pct(r?.percentual)])linha.append(el('td',v));
+    for(const [nome,r] of [['Estoque em reais',m.estoque],[cenario.outros_custos_unitarios==null?'Reposição · só mercadoria convertida':'Reposição estimada',m.reposicao]]){
+     const linha=b.insertRow();for(const v of [nome,r?.custo==null?'Pendente':custoEmMoeda(r.custo,'BRL'),money(r?.custo_total),money(r?.margem),pct(r?.percentual)])linha.append(el('td',v));
     }
     secao.append(tabela);
     if(!m.estoque)secao.append(el('p','Estoque sem saldo para calcular o custo médio.'));
@@ -89,12 +93,10 @@ export function mountSimulator(root,api,options,alive,seed=null,custoReposicao=n
   const notes=el('ul');for(const s of d.limites||[])notes.append(el('li',s));card.append(notes);
   const detail=el('details');detail.append(el('summary','Memória do cálculo e versões utilizadas'));const pre=el('pre',JSON.stringify(d,null,2));detail.append(pre);card.append(detail,button('Baixar memória da simulação',()=>{if(dirty)return;const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=el('a');a.href=URL.createObjectURL(blob);a.download='AXE-simulacao-'+d.id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0);}));result.append(card);
  }
- form.onsubmit=async ev=>{ev.preventDefault();if(!form.reportValidity())return;go.disabled=true;status.textContent='Calculando com as regras do servidor…';const old=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));try{const c={},v={};for(const [k,n] of Object.entries(inputs)){const val=n.value.trim();if(['quantidade','preco_unitario','desconto','frete','seguro','outras_despesas','custo_unitario','custos_adicionais'].includes(k))v[k]=val?val.replace(',','.'):null;else c[k]=['produto_id','natureza_id','cliente_id'].includes(k)?Number(val):['consumidor_final','sujeito_st'].includes(k)?val==='true':val||null;}const base=baseReposicao,fx=Number(taxa.value),complemento=Number(extras.value||0);
- const cenario=base?{quantidade:Number(v.quantidade),outros:Number(v.custos_adicionais||0),
-  estoque:base.saldo?.custo_medio==null?null:Number(base.saldo.custo_medio),
-  reposicao:base.compra&&fx>0?Number(base.compra.valor_unitario)*fx+complemento:null,
-  soCompra:extras.value===''}:null;
- const valoresCenario=[taxa.value,extras.value];const payload={contexto:c,valores:v};const fingerprint=JSON.stringify(payload);if(fingerprint!==signature){signature=fingerprint;request=crypto.randomUUID();}const d=await api({acao:'calcular',entrada:{...payload,requisicao_id:request}});if(!alive())return;const current=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));if(old!==current||valoresCenario[0]!==taxa.value||valoresCenario[1]!==extras.value){status.textContent='A simulação foi registrada, mas os dados mudaram. Consulte o histórico ou calcule novamente.';return;}render(d,cenario);status.textContent='Simulação registrada. Nenhum pedido ou movimento foi criado.';await loadHistory();}catch(err){if(alive())status.textContent=err.message;}finally{go.disabled=false;}};
+ form.onsubmit=async ev=>{ev.preventDefault();if(!form.reportValidity())return;go.disabled=true;status.textContent='Calculando com as regras do servidor…';const old=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));try{const c={},v={};for(const [k,n] of Object.entries(inputs)){const val=n.value.trim();if(['quantidade','preco_unitario','desconto','frete','seguro','outras_despesas','custo_unitario','custos_adicionais'].includes(k))v[k]=val?val.replace(',','.'):null;else c[k]=['produto_id','natureza_id','cliente_id'].includes(k)?Number(val):['consumidor_final','sujeito_st'].includes(k)?val==='true':val||null;}const valoresCenario=[taxa.value,extras.value];
+ const payload={contexto:c,valores:v};
+ if(baseReposicao)payload.reposicao={moeda:baseReposicao.compra?.moeda||null,taxa:taxa.value||null,outros_custos_unitarios:extras.value||null};
+ const fingerprint=JSON.stringify(payload);if(fingerprint!==signature){signature=fingerprint;request=crypto.randomUUID();}const d=await api({acao:'calcular',entrada:{...payload,requisicao_id:request}});if(!alive())return;const current=JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([k,n])=>[k,n.value])));if(old!==current||valoresCenario[0]!==taxa.value||valoresCenario[1]!==extras.value){status.textContent='A simulação foi registrada, mas os dados mudaram. Consulte o histórico ou calcule novamente.';return;}render(d);status.textContent='Simulação registrada. Nenhum pedido ou movimento foi criado.';await loadHistory();}catch(err){if(alive())status.textContent=err.message;}finally{go.disabled=false;}};
  async function loadHistory(){try{const d=await api({acao:'historico_simulacoes'});if(!alive())return;list.replaceChildren();for(const r of d.linhas){const b=button('#'+r.id+' · '+new Date(r.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+' · '+(r.estado==='CALCULADA'?'Calculada':'Fiscal pendente'),async()=>{try{const full=await api({acao:'simulacao',id:r.id});if(alive()){render(full);status.textContent='Resultado histórico: os valores abaixo pertencem à simulação #'+r.id+'.';}}catch(err){status.textContent=err.message;}});list.append(b);}if(!d.linhas.length)list.append(el('p','Ainda não há simulações registradas.'));}catch(err){if(alive())list.textContent=err.message;}}
  if(seed)(async()=>{try{const d=await api({acao:'produto',id:Number(seed.produto_id)});if(!alive())return;prod.append(new Option((d.produto.codigo_axe||'')+' · '+d.produto.descricao_referencia,seed.produto_id));prod.value=seed.produto_id;await chooseProduct();if(!alive())return;for(const key of ['cliente_id','uf_destino','data_operacao','consumidor_final','finalidade_destinatario','municipio_destino','quantidade','custo_unitario','custos_adicionais'])if(seed[key]!=null)inputs[key].value=seed[key];status.textContent='Contexto da proposta carregado. Complete o perfil e a operação; informe o preço antes dos acréscimos tributários. O preço final da proposta não foi usado como base.';}catch(e){if(alive())status.textContent=e.message;}})();
  loadHistory();

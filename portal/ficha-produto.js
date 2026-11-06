@@ -1,4 +1,4 @@
-import {referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao1';
+import {referenciaCompra} from './custo-reposicao.js?v=20261106-reposicao2';
 import {corrigirObtencaoProduto}from './produto-obtencao.js?v=20261104-cadastro2';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const qty=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:6});

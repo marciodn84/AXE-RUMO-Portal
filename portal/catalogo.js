@@ -1,5 +1,5 @@
 import {paises}from './paises.js?v=20261104-paises4';
-import {initFichaProduto} from './ficha-produto.js?v=20261106-reposicao1';
+import {initFichaProduto} from './ficha-produto.js?v=20261106-reposicao2';
 import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
 import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';

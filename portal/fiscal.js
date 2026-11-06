@@ -1,6 +1,6 @@
 import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
 import {indicadorSituacao} from './cadastro-controle.js?v=20261030-padrao32';
-import {mountSimulator} from './simulador.js?v=20261106-reposicao1';
+import {mountSimulator} from './simulador.js?v=20261106-reposicao2';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const btn=(text,fn)=>{const b=e('button',text);b.type='button';b.onclick=fn;return b;};
 const taxes=['II','IPI','ICMS','ICMS_ST','FCP','PIS','COFINS','IBS_UF','IBS_MUN','CBS','IS'];
