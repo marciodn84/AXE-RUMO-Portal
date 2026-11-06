@@ -164,3 +164,20 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 .fiscal-tabs [role=tab]{background:transparent;color:#516474;border:0;border-bottom:3px solid transparent;border-radius:0;box-shadow:none;white-space:nowrap}
 .fiscal-tabs [role=tab][aria-selected=true]{border-bottom-color:#087f80;color:#075e58;font-weight:700}
 .fiscal-tabs [role=tab]:hover,.fiscal-tabs [role=tab]:focus-visible{background:#eef5f7;color:#075e58}
+
+.painel-inicio{margin-bottom:24px}
+.painel-inicio-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.painel-inicio-topo h2{margin-right:auto}
+.painel-inicio-topo select,.painel-graficos select{width:auto;min-width:78px;margin:0}
+.painel-indicadores{margin:10px 0 18px}
+.painel-indicador{display:grid;align-content:start;gap:7px;text-align:left}
+.painel-indicador strong{font-size:clamp(1rem,2vw,1.5rem)}
+.painel-graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px;margin-bottom:16px}
+.painel-series{width:100%;margin:10px 0}
+.painel-series td{min-width:96px;font-variant-numeric:tabular-nums}
+.painel-trilho,.painel-barra{display:block;height:6px;border-radius:4px}
+.painel-trilho{margin-top:4px;background:#eaf1f4}
+.painel-barra.compras{background:#087f80}
+.painel-barra.vendas{background:#2468a1}
+.painel-barra.pagamentos{background:#8c5b24}
+.painel-agenda{scroll-margin-top:16px}

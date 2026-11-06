@@ -66,6 +66,6 @@ export function initGestao(service){
    const r=await api({acao:'salvar',dados:{id:x?.id,tipo,requisicao_id:crypto.randomUUID(),atualizado_em:x?.atualizado_em,propriedades:patch,responsavel:owner.value,conteudo:content.value,arquivado:archive.checked}});if(gen===epoch)await detail(r.id);
   }catch(err){if(gen===epoch)say(err.message);}finally{save.disabled=false;}};
  }
- return {show(key){epoch++;screen.hidden=!key;if(key){tipo=key;page=0;busca=situacao=area='';arquivados=false;view='lista';list().catch(err=>say(err.message));}},reset(){epoch++;options=null;pending.clear();body.replaceChildren();say('');screen.hidden=true;}};
+ return {show(key,registroId){const gen=++epoch;screen.hidden=!key;if(key){tipo=key;page=0;busca=situacao=area='';arquivados=false;view='lista';(registroId?(options?detail(registroId):api({acao:'opcoes'}).then(r=>{if(gen!==epoch)return;options=r;return detail(registroId);})):list()).catch(err=>say(err.message));}},reset(){epoch++;options=null;pending.clear();body.replaceChildren();say('');screen.hidden=true;}};
 }
 

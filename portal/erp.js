@@ -1,3 +1,4 @@
+import {initPainelInicio} from './painel-inicio.js?v=20261106-painel1';
 const groups = [
  ['Visão geral',[['inicio','Visão geral','home']]],
  ['Comercial',[['simulador','Simulador fiscal e comercial','fiscal'],['oportunidades','Oportunidades','comercial'],['propostas','Propostas comerciais','comercial'],['pedidos-comerciais','Pedidos comerciais internos','comercial'],['pedidos','Pedidos do portal RUMO','live'],['precos','Histórico de preços','live']]],
@@ -29,7 +30,7 @@ const plans = {
  'novo-portal':['Conector específico para cada portal de cliente','Vínculo com os CNPJs de faturamento e suas permissões','Mapeamento de pedidos, documentos e situações','Histórico de sincronização e tratamento de falhas']
 };
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
-export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais,financeiroNumerario,estoque,empresas){
+export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais,financeiroNumerario,estoque,empresas,apiPainel){
  const panel=document.getElementById('panel'), oldNav=panel.querySelector('.portal-nav'),originalExit=document.getElementById('logout');
  oldNav.remove();panel.querySelector('.portal-toolbar').remove();
  const sidebar=make('aside',undefined,'erp-sidebar');sidebar.id='erp-menu';sidebar.setAttribute('aria-label','Navegação principal');
@@ -68,6 +69,8 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
  const heading=make('div',undefined,'erp-heading'),eyebrow=make('p','VISÃO GERAL','eyebrow'),title=make('h1','Visão geral'),subtitle=make('p','');
  title.tabIndex=-1;heading.append(eyebrow,title,subtitle);
  const content=make('div',undefined,'erp-content'),home=make('section',undefined,'erp-home'),future=make('section',undefined,'erp-future');
+ const painelInicio=apiPainel?initPainelInicio(apiPainel,navigate):null;
+ if(painelInicio)home.append(painelInicio.root);
  const hero=make('div',undefined,'welcome-card');hero.append(make('p','AXE ENGENHARIA','eyebrow'),make('h2','Toda a operação, uma visão.'),make('p','Acompanhe os controles disponíveis e a evolução do seu sistema de gestão.'));
  const quick=make('button','Abrir central de pendências','primary');quick.onclick=()=>navigate('resolver');hero.append(quick);home.append(hero);
  const stats=make('div',undefined,'erp-stats');const values={};
@@ -106,11 +109,11 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   breadcrumb.textContent=[route.group,route.subgroup,route.title].filter(Boolean).join(' / ');eyebrow.textContent=(route.subgroup||route.group).toLocaleUpperCase('pt-BR');title.textContent=route.title;
   eyebrow.hidden=key==='clientes';subtitle.hidden=key==='clientes';
   subtitle.textContent=route.type==='planned'?'Estrutura prevista para a evolução do ERP.':'Controles da AXE Engenharia';
-  if(key==='inicio')home.hidden=false;
+  if(key==='inicio'){home.hidden=false;if(!panel.hidden)void painelInicio?.show();}
   else if(route.type==='empresas')empresas.show(true);
   else if(route.type==='estoque')estoque.show(true,produtoId);
   else if(route.type==='financeiro')financeiroNumerario.show(key);
-  else if(route.type==='gestao')gestao.show(key==='pedidos-gestao'?'pedidos':key);
+  else if(route.type==='gestao')gestao.show(key==='pedidos-gestao'?'pedidos':key,produtoId?.registroId);
   else if(route.type==='comercial')comercial.show(key);
   else if(key==='compras-tributos')importacoesInternacionais.show(true,{area:'compras',configTributos:true});
   else if(key==='pedidos-compra')importacoesInternacionais.show(true,{area:'compras',...produtoId});
@@ -134,7 +137,7 @@ export function initERP(cadastros,api,fiscal,catalogo,importacao,comercial,gesta
   }
   panel.classList.remove('menu-open');syncMenu();
  }
- const observer=new MutationObserver(()=>{if(!panel.hidden){let saved='inicio';try{const key=sessionStorage.getItem('axe:erp:ultima-tela');if(routes.has(key))saved=key;}catch{}for(const group of nav.querySelectorAll('details'))group.open=false;navigate(saved,undefined,false);refreshStats();}else{epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
+ const observer=new MutationObserver(()=>{if(!panel.hidden){let saved='inicio';try{const key=sessionStorage.getItem('axe:erp:ultima-tela');if(routes.has(key))saved=key;}catch{}for(const group of nav.querySelectorAll('details'))group.open=false;navigate(saved,undefined,false);refreshStats();}else{painelInicio?.reset();epoch++;Object.values(values).forEach(v=>v.textContent='—');refresh.disabled=false;status.textContent='Os indicadores serão consultados ao entrar.';filter.value='';filter.oninput();}});
  observer.observe(panel,{attributes:true,attributeFilter:['hidden']});
  importacoesInternacionais?.setNavigate?.(navigate);
  navigate('inicio',undefined,false);

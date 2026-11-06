@@ -10,7 +10,7 @@ import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=2
 import {padronizarImportacao} from './importacoes-layout.js?v=20261106-acoes1';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-acoes1';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-painel1';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
@@ -402,7 +402,7 @@ export function initEstruturaImportacao(api,legacy){
   async show(visible,contexto={}){
    epoch++;seq++;closeDialogs();entrada.show(false);fx.show(false);custos.show(false);notas.show(false);visao.show(false);if(!visible){root.hidden=true;legacy.show(false);return;}
    area=contexto?.area==='compras'?'compras':'importacoes';root.hidden=false;body.replaceChildren();msg.textContent='';dirty=false;pending=null;current=null;tipo=area==='compras'?'pedidos':'visao';voltarFluxo=null;page=0;searchValue='';nav.hidden=area==='compras';intro.textContent=area==='compras'?'Pedidos de compra nacionais e internacionais.':'Condições de pagamento e embarques parciais ou consolidados.';renderNav();const g=epoch;
-   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.configTributos){const view=node('section');body.append(node('h2','Configuração de tributos de compra'),view);await mostrarPerfisCompra(view,api);}else if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else await visao.show(true,contexto?.pedidoId,contexto?.processoId);}}catch(e){if(check(g))msg.textContent=e.message;}
+   try{opts=await api({acao:'v2_opcoes'});if(check(g)){if(area==='compras'){if(contexto.configTributos){const view=node('section');body.append(node('h2','Configuração de tributos de compra'),view);await mostrarPerfisCompra(view,api);}else if(contexto.novo)edit(null);else if(contexto.pedidoId){await open(contexto.pedidoId);if(contexto.editar&&check(g))edit(current,null,true);}else await list();}else {await visao.show(true,contexto?.pedidoId,contexto?.processoId);if(check(g)&&contexto?.faturaEmbarqueId)await visao.abrirFatura(contexto.faturaEmbarqueId);}}}catch(e){if(check(g))msg.textContent=e.message;}
   },
   reset(){cadastros.reset();visao.reset();voltarFluxo=null;transporte.reset();pagamento.reset();liberacao.reset();planos.reset();entrada.reset();ack.reset();notas.reset();custos.reset();fx.reset();epoch++;seq++;closeDialogs();root.hidden=true;body.replaceChildren();dirty=false;pending=null;current=null;opts={editar:false,fornecedores:[]};legacy.reset();}
  };
