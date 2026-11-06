@@ -1,3 +1,4 @@
+import {initComprasNFSe} from './compras-nfse.js?v=20261106-nfse1';
 import {mostrarPerfisCompra, perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';
 import {botaoTributos} from './tributos-registros.js?v=20261106-perfis17';
 import {criarProgramacaoNacional} from './compras-programacao.js?v=20261104-financeiro13';
@@ -34,7 +35,7 @@ export function initEstruturaImportacao(api,legacy){
  let tipo='visao',page=0,epoch=0,seq=0,dirty=false,pending=null,current=null,opts={editar:false,fornecedores:[]},busy=false;
  const dialogs=new Set(),nav=node('div',undefined,'catalog-tabs'),body=node('div'),msg=node('p','','status');
  msg.setAttribute('role','status');
- const guard=()=>!busy&&comprasNF.canLeave()&&cadastros.canLeave()&&visao.canLeave()&&transporte.canLeave()&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
+ const guard=()=>!busy&&comprasNFSe.canLeave()&&comprasNF.canLeave()&&cadastros.canLeave()&&visao.canLeave()&&transporte.canLeave()&&pagamento.canLeave()&&liberacao.canLeave()&&planos.canLeave()&&entrada.canLeave()&&ack.canLeave()&&fx.canLeave()&&custos.canLeave()&&notas.canLeave()&&(!dirty||confirm('Há alterações não salvas. Deseja descartá-las?'));
  const changed=()=>{dirty=true;pending=null;};
  const check=g=>g===epoch&&!root.hidden;
  function button(text,fn){const b=node('button',text);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){msg.textContent=e.message;msg.className='status error';}finally{if(b.isConnected)b.disabled=false;}};return b;}
@@ -54,6 +55,7 @@ export function initEstruturaImportacao(api,legacy){
  }}
  const intro=node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro');
  root.append(intro,nav,msg,body);
+ const comprasNFSe=initComprasNFSe(api,root,async id=>{await open(id);});
  const comprasNF=initComprasNFe(api,root,async id=>{await open(id);});
  const cadastros=initCadastrosImportacao(api,root);
  const entrada=initEntradaEmail(api,root);
@@ -96,7 +98,7 @@ export function initEstruturaImportacao(api,legacy){
  }
  const situacaoParcela=situacaoPagamentoParcela;
  async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(tipo==='parcelas'&&d.pedido_id&&!d.fornecedor_pais){const pedido=await api({acao:'v2_detalhe',tipo:'pedidos',id:d.pedido_id});d.fornecedor_pais=pedido.fornecedor_pais;}if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
- function closeDialogs(){comprasNF.reset();transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
+ function closeDialogs(){comprasNFSe.reset();comprasNF.reset();transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
   const dialog=node('dialog',undefined,'imp-picker'),heading=node('h2',title),status=node('p'),q=node('input');q.type='search';q.placeholder='Buscar';q.setAttribute('aria-label','Buscar no seletor');
   const rows=node('div',undefined,'scroll'),bar=node('div',undefined,'cadastro-toolbar');let pagina=0,request=0;const g=epoch;
@@ -119,7 +121,9 @@ export function initEstruturaImportacao(api,legacy){
   current=item;body.replaceChildren();msg.textContent='';const g=epoch,t=tipo;
   const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);return;}await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
+  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra==='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Entrada de NFS-e · XML',()=>comprasNFSe.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
+  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra==='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Entrada de NFS-e · XML',()=>comprasNFSe.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
   if(!editing&&item&&tipo==='pedidos')top.append(botaoTributos(api,'compra',item.id,item.moeda));
