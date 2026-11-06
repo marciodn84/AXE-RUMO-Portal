@@ -66,6 +66,6 @@ $$;
 revoke all on function public.axe_importar_rascunhos_rumo() from public, anon, authenticated, service_role;
 
 select cron.schedule(
-  'axe-importar-rascunhos-rumo', '*/5 * * * *',
+  'axe-importar-rascunhos-rumo', '0 * * * *',
   'select public.axe_importar_rascunhos_rumo()'
 );
