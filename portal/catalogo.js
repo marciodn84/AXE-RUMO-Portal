@@ -1,3 +1,4 @@
+import {acoesLista} from './acoes-lista.js?v=20261106-acoes3';
 import {paises}from './paises.js?v=20261104-paises4';
 import {initFichaProduto} from './ficha-produto.js?v=20261106-reposicao2';
 import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
@@ -71,12 +72,29 @@ export function initCatalogo(api,custoReposicao){
    }));if(gen!==epoch||run!==request)return;
    table.replaceChildren();const heads={fornecedor:['Fornecedor','Documento','País','Contato','Situação'],referencia_cliente:['Cliente','Código do cliente','Descrição do cliente','Unidade','Situação'],opcao_cliente:['Referência do cliente','Produto AXE','Vínculo','Situação','Unidades AXE / unidade cliente','Evidência'],produto_fornecedor:['Produto AXE','Fornecedor','Código do fornecedor','Descrição do fornecedor','Unidade / conversão','Situação'],similar:['Produto AXE','Similar técnico','Justificativa'],documento:['Produto','Tipo','Título','Referência','Revisão']};
    const h=node('tr');for(const title of [...heads[kind],'Ações'])h.append(node('th',title));const th=node('thead');th.append(h);table.append(th);const body=node('tbody');
-   for(const {r,cells} of rows){if(kind==='fornecedor')cells[cells.length-1]=indicadorCadastro(r);if(kind==='referencia_cliente')cells[cells.length-1]=indicadorSituacao(r.ativo?'ATIVO':'INATIVO');if(kind==='opcao_cliente')cells[3]=indicadorSituacao(r.situacao);if(kind==='produto_fornecedor'){const sit=node('span');sit.append(indicadorSituacao(r.situacao),document.createTextNode(r.preferencial?' · Preferencial':''));cells[5]=sit;}const tr=node('tr');for(const value of cells){const td=node('td');if(value instanceof Node)td.append(value);else td.textContent=value??'—';tr.append(td);}const actions=node('td');actions.append(btn('Editar',()=>edit(kind,r.id)));
+   for(const {r,cells} of rows){if(kind==='fornecedor')cells[cells.length-1]=indicadorCadastro(r);if(kind==='referencia_cliente')cells[cells.length-1]=indicadorSituacao(r.ativo?'ATIVO':'INATIVO');if(kind==='opcao_cliente')cells[3]=indicadorSituacao(r.situacao);if(kind==='produto_fornecedor'){const sit=node('span');sit.append(indicadorSituacao(r.situacao),document.createTextNode(r.preferencial?' · Preferencial':''));cells[5]=sit;}const tr=node('tr');for(const value of cells){const td=node('td');if(value instanceof Node)td.append(value);else td.textContent=value??'—';tr.append(td);}const actions=node('td');if(kind!=='fornecedor')actions.append(btn('Editar',()=>edit(kind,r.id)));
     if(kind==='referencia_cliente')actions.append(btn('Produtos aceitos',()=>{type='opcao_cliente';page=0;query='';search.value='';referenceFilter=r.id;return load();}),btn('Vincular produto AXE',()=>edit('opcao_cliente',null,{referencia_cliente_id:r.id})));
-    if(kind==='fornecedor')actions.append(btn('Vincular produto',()=>edit('produto_fornecedor',null,{fornecedor_id:r.id})),btn(r.bloqueado_comercial?'Desbloquear fornecedor':'Bloquear fornecedor',()=>controle.alterar('fornecedor',r,load)),btn('Histórico de bloqueios',()=>controle.historico('fornecedor',r)));
+    if(kind==='fornecedor')actions.append(acoesLista(r.razao_social,()=>consultarFornecedor(r.id),async()=>[
+     ['Editar fornecedor','editar',()=>edit(kind,r.id)],
+     ['Vincular produto','vincular',()=>edit('produto_fornecedor',null,{fornecedor_id:r.id})],
+     [r.bloqueado_comercial?'Desbloquear fornecedor':'Bloquear fornecedor',r.bloqueado_comercial?'desbloquear':'bloquear',()=>controle.alterar('fornecedor',r,load)],
+     ['Histórico de bloqueios','historico',()=>controle.historico('fornecedor',r)]
+    ],m=>{status.textContent=m;}));
     if(kind==='fornecedor')tr.firstElementChild.prepend(mesclagem.checkbox(r),document.createTextNode(' '));tr.append(actions);body.append(tr);
    }padronizarAcoes(body);table.append(body);count.textContent=result.total?`${page*50+1}–${page*50+rows.length} de ${result.total}`:'Nenhum registro';previous.disabled=page===0;next.disabled=(page+1)*50>=result.total;status.textContent=rows.length?'Consulta atualizada.':'Nenhum cadastro nesta consulta. Use “Novo cadastro” para começar.';
   }catch(e){if(gen===epoch&&run===request){status.textContent=e.message;status.className='status error';previous.disabled=page===0;}}
+ }
+ async function consultarFornecedor(id){
+  const gen=epoch;
+  const r=await api({acao:'detalhe',tipo:'fornecedor',id:Number(id)});
+  if(gen!==epoch)return;
+  dialog?.remove();const d=node('dialog',undefined,'imp-picker');dialog=d;
+  d.append(node('h2',r.razao_social),btn('Fechar',()=>d.close()));
+  for(const [titulo,valor] of [['Nome fantasia',r.nome_fantasia],['País',r.pais],['Documento fiscal',r.cnpj||r.documento_fiscal],
+   ['Inscrição estadual',r.inscricao_estadual],['Contato',r.contato],['E-mail',r.email],['Telefone',r.telefone],['Endereço',r.endereco]]){
+   const p=node('p');p.append(node('strong',titulo+' '),document.createTextNode(valor||'—'));d.append(p);
+  }
+  d.addEventListener('close',()=>{if(dialog===d)dialog=null;d.remove();},{once:true});screen.append(d);d.showModal();
  }
  async function edit(kind,id,defaults={},context={}){
   if(kind==='produto'&&!context.ficha)return ficha.abrir(id);

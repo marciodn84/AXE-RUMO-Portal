@@ -10,7 +10,8 @@ export function acoesLista(titulo, visualizar, carregar, erro) {
   aplicarIconeAcao(mais,'mais','Mais ações de '+titulo);
   mais.setAttribute('aria-haspopup','menu');
   mais.setAttribute('aria-expanded','false');
-  grupo.append(ver,mais);
+  grupo.append(ver);
+  if(carregar)grupo.append(mais);
   let menu;
   function fechar(focar=false) {
     menu?.remove();menu=null;

@@ -1,3 +1,4 @@
+import {acoesLista} from './acoes-lista.js?v=20261106-acoes3';
 function el(tag,text) {
   const n=document.createElement(tag);
   if(text!=null)n.textContent=text;
@@ -29,7 +30,7 @@ export function initCadastroEmpresas(api) {
       for(const e of r.linhas){
         const tr=body.insertRow();
         tr.append(el('td',e.razao_social),el('td',e.cnpj),el('td',e.logo_padrao?'Empresa padrão':e.ativa?'Ativa':'Inativa'));
-        tr.insertCell().append(btn(r.editar?'Editar':'Consultar',()=>editar(e,r.editar)));
+        tr.insertCell().append(acoesLista(e.razao_social,()=>editar(e,false),r.editar?async()=>[['Editar empresa','editar',()=>editar(e,true)]]:null,m=>{status.textContent=m;}));
       }
       scroll.append(tabela);root.append(bar,scroll);
     }catch(e){if(g===ciclo)status.textContent=e.message;}
