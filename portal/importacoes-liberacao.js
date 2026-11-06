@@ -13,14 +13,104 @@ export function initLiberacaoDocumental(api,root,onSaved){
  function btn(t,fn){const b=el('button',t);b.type='button';b.onclick=async()=>{if(busy)return;b.disabled=true;try{await fn();}catch(e){const s=dialog?.querySelector('[role=status]');if(s)s.textContent=e.message;}finally{if(b.isConnected)b.disabled=false;}};return b;}
  function field(p,label,type,v='',choices){const l=el('label',label),i=el(choices?'select':type==='textarea'?'textarea':'input');if(choices)for(const [v,t]of choices)i.append(new Option(t,v));else if(type!=='textarea')i.type=type;i.value=v??'';i.setAttribute('aria-label',label);if(type==='number'){i.step='any';i.min='0';}if(type==='checkbox'){i.checked=false;Object.assign(i.style,{width:'18px',height:'18px',minHeight:'0'});}l.append(i);p.append(l);return i;}
  async function locked(fn){busy=true;const cs=[...dialog.querySelectorAll('button,input,textarea,select')],ds=cs.map(c=>c.disabled);cs.forEach(c=>c.disabled=true);try{return await fn();}finally{busy=false;cs.forEach((c,i)=>{if(c.isConnected)c.disabled=ds[i];});}}
- async function show(pedido){if(!guard())return;close();dialog=el('dialog');dialog.className='imp-picker imp-ack';dialog.setAttribute('aria-label','Invoice e packing list do embarque');const local=dialog,status=el('p'),review=el('section');status.setAttribute('role','status');dialog.append(el('h2','Carga pronta — '+pedido.referencia),el('p','Carregue a invoice e o packing list deste embarque. O embarque em planejamento só será gravado após sua conferência. Estes documentos não registram outro pagamento.'),btn('Fechar',()=>{if(guard())close();}),status);
- const upload=el('fieldset');upload.append(el('legend','Documentos da mercadoria pronta'));const inputs=[['INVOICE','Invoice do embarque'],['PACKING','Packing list do embarque'],['PESOS','Pesos e dimensões (opcional)']].map(([categoria,label])=>{const f=field(upload,label,'file');f.accept='.pdf,application/pdf';f.required=categoria!=='PESOS';return{categoria,f};});let files=null,parsed=null,pending=null;
+ async function show(pedido){if(!guard())return;close();dialog=el('dialog');dialog.className='imp-picker imp-ack';dialog.setAttribute('aria-label','Invoice e packing list do embarque');const local=dialog,status=el('p'),review=el('section');status.setAttribute('role','status');dialog.append(el('h2','Carga pronta — '+pedido.referencia),el('p','Carregue as invoices e a packing list deste embarque. O embarque em planejamento só será gravado após sua conferência. Estes documentos não registram outro pagamento.'),btn('Fechar',()=>{if(guard())close();}),status);
+ const upload=el('fieldset');upload.append(el('legend','Documentos da mercadoria pronta'));const inputs=[['INVOICE','Invoices do embarque'],['PACKING','Packing list do embarque'],['PESOS','Pesos e dimensões (opcional)']].map(([categoria,label])=>{const f=field(upload,label,'file');f.accept='.pdf,application/pdf';f.required=categoria!=='PESOS';f.multiple=categoria==='INVOICE';return{categoria,f};});let files=null,parsed=null,pending=null;
  for(const x of inputs)x.f.onchange=()=>{files=null;parsed=null;pending=null;dirty=true;review.replaceChildren();};
  upload.append(btn('Ler invoice e packing list',async()=>{
-  if(!validarCampos(upload))return;if(!inputs[0].f.files[0]||!inputs[1].f.files[0])throw Error('Selecione a invoice e o packing list.');if(inputs.reduce((s,x)=>s+(x.f.files[0]?.size||0),0)>8388608)throw Error('Até 8 MB no total dos arquivos.');review.replaceChildren();
-  const r=await locked(async()=>{const out=[];for(const x of inputs){const f=x.f.files[0];if(!f)continue;const paginas=await lerPDFImportacao(f,t=>status.textContent=t),bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));out.push({categoria:x.categoria,nome:f.name,paginas,conteudo:btoa(binary)});}const r=await api({acao:'lib_ler',pedido_id:pedido.id,arquivos:out});files=out;return r;});
-  if(dialog!==local)return;parsed=r;dirty=true;pending=null;status.textContent='Confira os itens, os valores e as parcelas existentes.';renderReview(r);
+  if(!validarCampos(upload))return;if(!inputs[0].f.files[0]||!inputs[1].f.files[0])throw Error('Selecione a invoice e o packing list.');const selecionados=inputs.flatMap(x=>Array.from(x.f.files,f=>({categoria:x.categoria,f})));if(inputs[0].f.files.length>12)throw Error('Até 12 invoices por embarque.');if(selecionados.reduce((s,x)=>s+x.f.size,0)>8388608)throw Error('Até 8 MB no total dos arquivos.');review.replaceChildren();
+  const r=await locked(async()=>{const out=[];for(const x of selecionados){const f=x.f;const paginas=await lerPDFImportacao(f,t=>status.textContent=t),bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));out.push({categoria:x.categoria,nome:f.name,paginas,conteudo:btoa(binary)});}const r=await api({acao:inputs[0].f.files.length>1?'lib_lote_ler':'lib_ler',pedido_id:pedido.id,arquivos:out});files=out;return r;});
+  if(dialog!==local)return;parsed=r;dirty=true;pending=null;status.textContent='Confira os itens, os valores e as parcelas existentes.';if(r.extraido.invoices)renderLote(r);else renderReview(r);
  }));dialog.append(upload,review);dialog.addEventListener('cancel',e=>{e.preventDefault();if(guard())close();});root.append(dialog);dialog.showModal();
+ function renderLote(r){
+  review.replaceChildren(el('h3','Conferência das invoices e da packing list'));
+  for(const aviso of r.extraido.avisos)review.append(el('p',aviso));
+  const form=el('form');form.onsubmit=e=>e.preventDefault();review.append(form);
+  const ref=field(form,'Referência do embarque','text',r.pedido.referencia+' / '+(r.extraido.invoices[0].invoice.numero||'embarque'));
+  ref.required=true;
+  const gross=field(form,'Peso bruto total da packing list (kg)','number',r.extraido.packing.peso_bruto_kg);
+  const docs=r.extraido.invoices.map(raw=>{
+   const box=el('fieldset');box.append(el('legend',raw.arquivo));form.append(box);
+   const number=field(box,'Número da invoice','text',raw.invoice.numero);
+   const date=field(box,'Emissão da invoice','date',raw.invoice.data);
+   const currency=field(box,'Moeda da invoice','text',raw.invoice.moeda||r.pedido.moeda);
+   const total=field(box,'Valor FOB da invoice','number',raw.invoice.valor);
+   number.required=true;currency.required=true;total.required=true;total.min='0.01';total.step='0.01';
+   const lines=[];
+   function add(x={}){
+    const row=el('fieldset');box.insertBefore(row,adicionar);
+    row.append(el('legend','Linha '+(x.linha||'a conferir')+' · '+(x.codigo_fornecedor||x.part_number||'Item da invoice')));
+    const item=field(row,'Item do pedido','text',x.pedido_item_id,[['','Selecionar item'],...r.pedido.itens.map(i=>[i.id,'Linha '+i.linha+' · '+i.descricao+' · saldo '+(Number(i.quantidade)-Number(i.reservada||0))])]);
+    const quantity=field(row,'Quantidade nesta invoice','number',x.quantidade);
+    const price=field(row,'Preço unitário FOB','number',x.valor_unitario);
+    item.required=true;quantity.required=true;quantity.min='0.000001';quantity.step='0.000001';price.required=true;
+    const line={item,quantity,price};
+    lines.push(line);
+    row.append(btn('Remover linha da invoice',()=>{lines.splice(lines.indexOf(line),1);row.remove();pending=null;refresh();}));
+   }
+   const adicionar=btn('Adicionar linha à invoice',()=>{if(lines.length>=100)throw Error('Até 100 linhas por invoice.');add();pending=null;refresh();});
+   box.append(adicionar);
+   raw.itens.forEach(add);
+   return {number,date,currency,total,lines};
+  });
+  const credits=el('fieldset');credits.append(el('legend','Parcelas existentes'));form.append(credits);
+  const allocations=r.creditos.map(p=>{
+   const available=Number(p.valor)-Number(p.utilizado);
+   const amount=field(credits,p.referencia+' · saldo '+money(available,r.pedido.moeda),'number');
+   amount.max=String(Math.max(0,available));amount.step='0.01';amount.disabled=available<=0;
+   return {p,amount};
+  });
+  const creditCheck=r.creditos.length?field(credits,'Conferi as parcelas existentes','checkbox'):null;
+  if(creditCheck)creditCheck.required=true;
+  const summary=el('p');summary.setAttribute('role','status');form.append(summary);
+  const reason=field(form,'Justificativa para correções ou divergências','textarea');
+  const check=field(form,'Conferi as invoices, a packing list e as quantidades por item','checkbox');
+  check.required=true;
+  function collect(){
+   return {embarque_ref:ref.value.trim(),peso_bruto_total:gross.value||null,motivo:reason.value.trim(),
+    invoices:docs.map(d=>({invoice:d.number.value.trim(),data_invoice:d.date.value,moeda:d.currency.value.trim().toUpperCase(),valor:d.total.value,
+     itens:d.lines.map(x=>({pedido_item_id:x.item.value,quantidade:x.quantity.value,valor_unitario:x.price.value}))})),
+    creditos:allocations.filter(x=>Number(x.amount.value)>0).map(x=>({parcela_id:x.p.id,valor:x.amount.value}))};
+  }
+  function refresh(){
+   const draft=collect(),totals=new Map();
+   let exigeMotivo=r.extraido.avisos.length>0;
+   for(const [i,d] of draft.invoices.entries()){
+    const raw=r.extraido.invoices[i],f=docs[i];
+    exigeMotivo ||= d.invoice!==String(raw.invoice.numero||'')||d.data_invoice!==String(raw.invoice.data||'')||
+      d.moeda!==String(raw.invoice.moeda||'')||Number(d.valor)!==Number(raw.invoice.valor)||d.itens.length!==raw.itens.length;
+    const cents=d.itens.reduce((sum,x)=>sum+Math.round(Number(x.quantidade)*Number(x.valor_unitario)*100),0);
+    f.total.setCustomValidity(cents===Math.round(Number(d.valor)*100)?'':'O FOB desta invoice deve corresponder ao total de seus itens.');
+    f.number.setCustomValidity(d.invoice&&draft.invoices.filter(x=>x.invoice.toUpperCase()===d.invoice.toUpperCase()).length>1?'Número de invoice repetido.':'');
+    f.currency.setCustomValidity(d.moeda===r.pedido.moeda?'':'Use a moeda do pedido.');
+    d.itens.forEach((x,j)=>{
+     const original=raw.itens[j],line=f.lines[j],item=r.pedido.itens.find(p=>p.id===x.pedido_item_id);
+     exigeMotivo ||= !original||x.pedido_item_id!==original.pedido_item_id||Number(x.quantidade)!==Number(original.quantidade)||Number(x.valor_unitario)!==Number(original.valor_unitario);
+     line.item.setCustomValidity(x.pedido_item_id&&d.itens.filter(z=>z.pedido_item_id===x.pedido_item_id).length>1?'Este item se repete na mesma invoice. Some as quantidades nesta invoice.':'');
+     line.price.setCustomValidity(item&&Number(x.valor_unitario)!==Number(item.valor_unitario)?'Preço unitário diferente do pedido.':'');
+     if(item)totals.set(item.id,(totals.get(item.id)||0)+Math.round(Number(x.quantidade)*1e6));
+    });
+   }
+   const detalhes=[];
+   for(const item of r.pedido.itens){
+    if(!totals.has(item.id))continue;
+    const saldo=Math.round((Number(item.quantidade)-Number(item.reservada||0))*1e6),usado=totals.get(item.id);
+    detalhes.push('Linha '+item.linha+' · total nas invoices '+usado/1e6+' · saldo disponível '+saldo/1e6);
+    for(const d of docs)for(const x of d.lines)if(x.item.value===item.id)x.quantity.setCustomValidity(usado>saldo?'A soma das invoices ultrapassa o saldo desta linha.':'');
+   }
+   for(const d of docs)for(const x of d.lines)if(!totals.has(x.item.value))x.quantity.setCustomValidity('');
+   reason.required=exigeMotivo;reason.closest('label').hidden=!exigeMotivo;
+   summary.textContent=detalhes.join(' | ');
+  }
+  form.addEventListener('input',()=>{pending=null;refresh();});
+  refresh();
+  form.append(btn('Importar documentos e criar embarque',async()=>{
+   refresh();if(!validarCampos(form))return;
+   if(docs.some(d=>!d.lines.length))throw Error('Vincule pelo menos um item em cada invoice.');
+   if(!pending)pending={acao:'lib_lote_aprovar',pedido_id:r.pedido.id,versao:r.pedido.versao,requisicao_id:crypto.randomUUID(),
+    confirmado:check.checked,conferiu_parcelas:creditCheck?.checked||false,arquivos:files,dados:collect()};
+   await locked(()=>api(pending));if(dialog!==local)return;dirty=false;close();await onSaved(r.pedido.id);
+  }));
+ }
  function renderReview(r){
   review.replaceChildren(el('h3','Conferência do embarque'));for(const w of r.extraido.avisos)review.append(el('p',w));const form=el('form');form.onsubmit=e=>e.preventDefault();review.append(form);const g=el('div');g.className='import-mapping';form.append(g);const raw=r.extraido.invoice;
   const inv=field(g,'Número da invoice do embarque','text',raw.numero),date=field(g,'Emissão da invoice do embarque','date',raw.data),currency=field(g,'Moeda do embarque','text',raw.moeda),value=field(g,'Valor FOB do embarque','number',raw.valor),gross=field(g,'Peso bruto total do embarque (kg)','number',r.extraido.packing.peso_bruto_kg),days=field(g,'Dias para pagamento após a invoice','number',/\b(?:NET\s*30|30\s*DUE)\b/i.test(raw.condicao||'')?30:/Cash on Delivery|contra embarque|against shipment/i.test(raw.condicao||r.pedido.condicao_pagamento||'')?0:'');days.step='1';days.max='3650';
@@ -43,6 +133,6 @@ export function initLiberacaoDocumental(api,root,onSaved){
   form.append(btn('Importar documentos e criar embarque',async()=>{refresh();if(!validarCampos(form))return;if(!lines.length)throw Error('Selecione pelo menos um item.');if(latest<0)throw Error('As parcelas vinculadas ultrapassam a invoice.');if(!pending)pending={acao:'lib_aprovar',pedido_id:r.pedido.id,versao:r.pedido.versao,requisicao_id:crypto.randomUUID(),confirmado:check.checked,conferiu_parcelas:existing?.checked||false,arquivos:files,dados:collect()};await locked(()=>api(pending));if(dialog!==local)return;dirty=false;close();await onSaved(r.pedido.id);}));
  }
  }
- async function render(pedido,where,editar){where.append(el('h3','Embarques documentados / em planejamento'));if(editar){const b=btn('Carregar invoice e packing list do embarque',()=>show(pedido));where.append(b);}const status=el('p');where.append(status);try{const r=await api({acao:'lib_contexto',pedido_id:pedido.id});if(!where.isConnected)return;for(const l of r.liberacoes){const card=el('article');card.append(el('p','Embarque '+(l.dados.abrangencia||'— tipo não registrado')+' · invoice '+l.invoice+' · valor '+money(l.dados.valor,pedido.moeda)+' · embarque '+l.dados.embarque_ref));for(const f of l.arquivos)card.append(btn('Baixar '+f.nome,async()=>{const r=await api({acao:'lib_baixar',id:f.id});const a=el('a');a.href=r.url;a.rel='noopener noreferrer';a.target='_blank';a.click();}));where.append(card);}if(!r.liberacoes.length)status.textContent='Nenhum embarque documentado neste pedido.';}catch(e){if(where.isConnected)status.textContent=e.message;}}
+ async function render(pedido,where,editar){where.append(el('h3','Embarques documentados / em planejamento'));if(editar){const b=btn('Carregar invoice e packing list do embarque',()=>show(pedido));where.append(b);}const status=el('p');where.append(status);try{const r=await api({acao:'lib_contexto',pedido_id:pedido.id});if(!where.isConnected)return;for(const l of r.liberacoes){const card=el('article');card.append(el('p','Embarque '+(l.dados.abrangencia||'— tipo não registrado')+' · invoice '+(l.dados.invoices?.map(i=>i.invoice).join(' / ')||l.invoice)+' · valor '+money(l.dados.valor,pedido.moeda)+' · embarque '+l.dados.embarque_ref));for(const f of l.arquivos)card.append(btn('Baixar '+f.nome,async()=>{const r=await api({acao:'lib_baixar',id:f.id});const a=el('a');a.href=r.url;a.rel='noopener noreferrer';a.target='_blank';a.click();}));where.append(card);}if(!r.liberacoes.length)status.textContent='Nenhum embarque documentado neste pedido.';}catch(e){if(where.isConnected)status.textContent=e.message;}}
  return{canLeave:guard,reset:close,show,render};
 }

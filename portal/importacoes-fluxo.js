@@ -7,7 +7,7 @@ import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-for
 import {etapasEmbarque,resumirFluxo} from './importacoes-fluxo-etapas.js?v=20261031-carrier53';
 import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
-import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261031-fornecedor58';
+import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initCustosImportacao} from './importacoes-custos.js?v=20261031-carrier53';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
@@ -82,6 +82,15 @@ export function initVisaoImportacao(api,parent,editCadastro){
    function card(key){const n=el('article',null,'fluxo-parcial');n.dataset.parcial=e.id;n.append(el('h3',e.referencia));panels[key].append(n);return n;}
    const view=card('resumo');view.append(el('p',s.status,'fluxo-status'));const done=s.etapas.filter(t=>t.feito).length,progress=el('progress');progress.max=s.etapas.length;progress.value=done;progress.setAttribute('aria-label','Andamento de '+e.referencia);view.append(progress,el('p',done+' de '+s.etapas.length+' verificações concluídas'));table(view,['Etapa','Situação','Documento ou fato necessário','Ação'],s.etapas.map(t=>[t.nome,t.feito?'Concluída':'Pendente',t.documento,btn('Ver etapa',()=>select(definitions.find(d=>d[2].includes(t.key))?.[0]||'pedido'))]));
    for(const [key,title,keys] of definitions.filter(d=>d[2].length&&d[0]!=='pedido')){const n=card(key);table(n,['Etapa','Situação','Documento ou fato necessário','Ação'],s.etapas.filter(t=>keys.includes(t.key)).map(t=>[t.nome,t.feito?'Concluída':'Pendente',t.documento,r.editar?btn(t.feito?'Consultar':'Continuar',()=>action(t.acao,e)):'Consulta']));
+    if(key==='carga'){
+     for(const l of s.liberacoes||[]){
+      const invoices=l.dados?.invoices;
+      if(!invoices?.length)continue;
+      table(n,['Invoice','Emissão','Linha do pedido','Quantidade','FOB da invoice'],invoices.flatMap(i=>i.itens.map((x,j)=>[
+       i.invoice,date(i.data_invoice),p.itens.find(item=>item.id===x.pedido_item_id)?.linha||'—',x.quantidade,j===0?money(i.valor,p.moeda):'—'
+      ])));
+     }
+    }
     if(key==='transporte'){n.append(el('p','Situação: '+e.status+' · AWB/BL: '+(e.dados?.rastreio||'pendente')+' · Chegada prevista: '+date(e.dados?.previsao_chegada)));for(const role of ['transportador','despachante']){const bound=(e.participantes||[]).find(x=>x.papel===role);n.append(el('p',(role==='transportador'?'Transportador: ':'Despachante: ')+(bound?bound.nome:'Cadastro não vinculado')));if(r.editar)n.append(btn('Selecionar '+role,()=>cadastros.escolher('participante',{razao_social:e.dados?.[role]||''},async pr=>{await api({acao:'custo_cadastro_vincular',tipo:role,embarque_id:e.id,cadastro_id:pr.id});await refresh();})));}}
     if(key==='estoque')n.append(btn('Abrir estoque e movimentações',()=>document.dispatchEvent(new CustomEvent('axe-abrir-estoque',{detail:{embarque_id:e.id}}))));
     if(key==='aduana')for(const d of s.declaracoes)n.append(el('p',(d.dados?.especie||'DI/DUIMP')+' '+d.referencia+' · Registro '+date(d.dados?.data_registro)+' · Desembaraço '+date(d.dados?.data_desembaraco)));
