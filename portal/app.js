@@ -9,7 +9,7 @@ import {initERP} from './erp.js?v=20261106-painel2';
 import {initFiscal} from './fiscal.js?v=20261106-fiscal-abas1';
 import {initCadastros} from './cadastros.js?v=20261106-acoes3';
 import {initCatalogo} from './catalogo.js?v=20261106-acoes3';
-import {initComercial} from './comercial.js?v=20261106-acoes2';
+import {initComercial} from './comercial.js?v=20261106-servico1';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';
