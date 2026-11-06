@@ -10,7 +10,6 @@ const paises = {
   pt:'BR PT AO MZ CV GW ST TL', es:'ES AR BO CL CO CR CU DO EC GT HN MX NI PA PE PY SV UY VE',
   de:'DE AT LI', fr:'FR MC SN CI', it:'IT SM'
 };
-const enderecoAxe='Rua Esper Jorge Chueri · Cajuru · Curitiba – PR · 82930-220 · Brasil';
 
 export function idiomaDoPedido(pais) {
   const codigo=String(pais||'').trim().toUpperCase();
@@ -46,7 +45,7 @@ function lerPadrao(chave,padrao) {
 function montar(dados,idioma,termos) {
   const [locale,,titulo,fornecedor,entrega,comercial,pagamento,frete,notas,itens,cols,impostos,colsTax,
     subtotal,total,moeda,,semTributos,naturezas,endereco,previsao,cancelado,rascunho]=idiomas[idioma];
-  const p=dados.pedido,f=dados.fornecedor||{},t=dados.tributos;
+  const p=dados.pedido,f=dados.fornecedor||{},t=dados.tributos,e=dados.empresa;
   const formato=new Intl.NumberFormat(locale,{style:'currency',currency:p.moeda,currencyDisplay:'code'});
   const preco=new Intl.NumberFormat(locale,{style:'currency',currency:p.moeda,currencyDisplay:'code',maximumFractionDigits:8});
   const num=new Intl.NumberFormat(locale,{maximumFractionDigits:6});
@@ -55,9 +54,12 @@ function montar(dados,idioma,termos) {
   const dia=x=>x?date.format(new Date(x.slice(0,10)+'T00:00:00Z')):'—';
   const dinheiro=x=>x==null||x===''?'—':formato.format(Number(x));
   const doc=el('article');doc.className='po-documento';doc.lang=locale;
-  const head=el('header'),empresa=el('div'),ref=el('div'),logo=el('img');
-  logo.src='./axe-logo-pedido.jpg';logo.alt='AXE Engenharia e Sistemas';
-  empresa.append(logo,el('strong','AXE ENGENHARIA E SISTEMAS LTDA'),el('p','CNPJ 39.893.713/0001-67 · IE 9087109248'),el('p',enderecoAxe),el('p','marcio@axeengenharia.com.br'));
+  const head=el('header'),empresa=el('div'),ref=el('div');
+  if(e.logo){
+    const logo=el('img');logo.src=e.logo;logo.alt=e.nome_fantasia||e.razao_social;empresa.append(logo);
+  }
+  empresa.append(el('strong',e.razao_social),el('p',['CNPJ '+e.cnpj,e.inscricao_estadual&&'IE '+e.inscricao_estadual].filter(Boolean).join(' · ')),
+    el('p',e.endereco),el('p',[e.email,e.telefone].filter(Boolean).join(' · ')));
   ref.append(el('h1',titulo),el('strong',p.referencia),el('p',dia(p.data_pedido)),item(moeda,p.moeda));
   if(p.status==='Cancelado'||p.status==='Elaboração')ref.append(el('p',p.status==='Cancelado'?cancelado:rascunho));
   head.append(empresa,ref);doc.append(head);
@@ -99,7 +101,7 @@ export async function abrirPedidoPdf(api,id) {
   idioma.value=idiomaDoPedido(dados.fornecedor?.pais);
   const entrega=campo('Endereço de entrega','input'),pagamento=campo('Condição de pagamento para o fornecedor','textarea');
   const frete=campo('Frete / Incoterm','input'),notas=campo('Texto padrão e observações para o fornecedor','textarea');
-  entrega.value=enderecoAxe;pagamento.value=dados.pedido.condicao_pagamento||'';
+  entrega.value=dados.empresa.endereco_entrega||dados.empresa.endereco;pagamento.value=dados.pedido.condicao_pagamento||'';
   const chave=()=> 'axe.po.texto-padrao.'+idioma.value;
   function padrao(){notas.value=lerPadrao(chave(),idiomas[idioma.value][16]);}
   function gerar(){return montar(dados,idioma.value,{entrega:entrega.value,pagamento:pagamento.value,frete:frete.value,notas:notas.value});}
@@ -120,7 +122,7 @@ export async function abrirPedidoPdf(api,id) {
       document.title=original;exportar.disabled=false;
     };
     try{
-      await print.querySelector('img').decode();
+      await print.querySelector('img')?.decode();
       document.body.classList.add('axe-pedido-imprimindo');
       document.title=dados.pedido.referencia;
       window.print();

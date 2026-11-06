@@ -1,10 +1,11 @@
+import {initCadastroEmpresas} from './cadastro-empresas.js?v=20261106-empresas1';
 import {initEstoque}from './estoque.js?v=20261106-perfis17';
 import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261106-frete2';
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
-import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-pdf2';
+import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-empresas1';
 import {initGestao} from './gestao.js?v=20261106-email1';
-import {initERP} from './erp.js?v=20261106-perfis17';
+import {initERP} from './erp.js?v=20261106-empresas1';
 import {initFiscal} from './fiscal.js?v=20261030-email36';
 import {initCadastros} from './cadastros.js?v=20261103-codigos74';
 import {initCatalogo} from './catalogo.js?v=20261104-unidades5';
@@ -53,10 +54,11 @@ const gestao=initGestao(payload=>call(payload,'axe-gestao'));
 const importacoesInternacionais=initImportacoesInternacionais(payload=>call(payload,payload.acao==='email_ler_faturas_dhl'?'axe-email-faturas-dhl':payload.acao?.startsWith('lib_lote_')?'axe-importacoes-invoices':payload.acao?.startsWith('compra_nf_')?'axe-compras-nfe':(payload.acao?.startsWith('transp_')||payload.acao?.startsWith('lib_')||payload.acao?.startsWith('pagdoc_')||payload.acao?.startsWith('plano_')||payload.acao?.startsWith('fxdoc_')||payload.acao?.startsWith('ack_')||payload.acao?.startsWith('email_'))?'axe-documentos-entrada':(payload.acao?.startsWith('num_')||payload.acao?.startsWith('fech_')||payload.acao?.startsWith('pedido_pdf_'))?'axe-importacoes-fechamento':payload.acao?.startsWith('nf_')?'axe-importacoes-notas':'axe-importacoes-internacionais'));
 const financeiroNumerario=initFinanceiroNumerario(p=>call(p,'axe-importacoes-fechamento'),p=>call(p,'axe-importacoes-internacionais'));
 const estoque=initEstoque(p=>call(p,'axe-estoque'),tributosApi);
-const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais,financeiroNumerario,estoque);
+const empresas=initCadastroEmpresas(payload=>call(payload,'axe-importacoes-internacionais'));
+const erp=initERP(cadastros,payload=>call(payload,'axe-cadastros'),fiscal,catalogo,importacao,comercial,gestao,importacoesInternacionais,financeiroNumerario,estoque,empresas);
 document.addEventListener('axe-abrir-pedido-compra',event=>erp.navigate('pedidos-compra',event.detail));
 document.addEventListener('axe-tributacao-produto',event=>erp.navigate('tributacao-produtos',event.detail));
-new MutationObserver(()=>{if($('panel').hidden){estoque.reset();fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();gestao.reset();importacoesInternacionais.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
+new MutationObserver(()=>{if($('panel').hidden){empresas.show(false);estoque.reset();fiscal.reset();catalogo.reset();importacao.reset();comercial.reset();gestao.reset();importacoesInternacionais.reset();}}).observe($('panel'),{attributes:true,attributeFilter:['hidden']});
 document.addEventListener('axe-criar-venda-rumo',event=>{if(!event.detail?.pedido_rumo_id)return;erp.navigate('pedidos-comerciais');comercial.criarRumo(event.detail.pedido_rumo_id);});
 document.addEventListener('axe-produtos-empresa',event=>erp.navigate('equivalencias',event.detail));
 

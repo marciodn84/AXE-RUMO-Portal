@@ -1,4 +1,4 @@
-import {abrirPedidoPdf} from './compras-pedido-pdf.js?v=20261106-pdf2';
+import {abrirPedidoPdf} from './compras-pedido-pdf.js?v=20261106-empresas1';
 import {dataHoraPesquisa} from './data-hora-pesquisa.js?v=20261106-email1';
 import {initComprasNFSe} from './compras-nfse.js?v=20261106-nfse1';
 import {mostrarPerfisCompra, perfisCompra} from './compras-perfis-tributarios.js?v=20261106-perfis17';
@@ -140,9 +140,10 @@ export function initEstruturaImportacao(api,legacy){
   if(tipo==='pedidos'){
    form.dataset.layout='pedido-planilha';form.classList.add('purchase-order-form');
    const general=fields(grid(form,'Pedido e confirmação do fornecedor'),[
-    ['referencia','Número do pedido'],['natureza_compra','Natureza da compra','text',[['PRODUTO','Produto'],['SERVICO','Serviço']]],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
+    ['referencia','Número do pedido'],['empresa_id','Empresa emissora','text',(opts.empresas||[]).map(e=>[e.id,e.nome])],['natureza_compra','Natureza da compra','text',[['PRODUTO','Produto'],['SERVICO','Serviço']]],['fornecedor_id','Fornecedor','text',suppliers()],['moeda','Moeda','text',moedas],['status','Situação','text',etapasPedido],
     ['data_pedido','Data do pedido','date'],['previsao_entrega','Previsão de entrega','date'],['meio_pagamento_previsto','Meio de pagamento previsto','text',[['','Definir na conferência'],...(opts.meios_pagamento||[]).filter(x=>['PIX','CARTAO','BOLETO','TRANSFERENCIA_BANCARIA'].includes(x.codigo)).map(x=>[x.codigo,x.nome])]],['forma_pagamento','Forma de pagamento','text',[['','Selecionar forma de pagamento'],...(opts.formas_pagamento||[]).map(x=>[x.codigo,x.nome])]],['condicao_pagamento','Condição de pagamento do documento','textarea'],['ack_numero','Número do ACK (se houver)'],['ack_data','Data do aceite (se informada)','date'],['observacoes','Observações','textarea']
-   ],{status:'Elaboração',moeda:'USD',natureza_compra:'PRODUTO',...item});
+   ],{status:'Elaboração',moeda:'USD',natureza_compra:'PRODUTO',empresa_id:opts.empresas?.[0]?.id,...item});
+   general.empresa_id.disabled=!editing||Boolean(item&&item.status!=='Elaboração');
    general.natureza_compra.disabled=!editing||Boolean(item&&item.status!=='Elaboração');
    const perfil=node('p');
    const mostrarPerfil=()=>{const pais=opts.fornecedores.find(f=>String(f.id)===general.fornecedor_id.value)?.pais||item?.fornecedor_pais;perfil.textContent=pais?'Perfil tributário · '+perfisCompra[general.natureza_compra.value+(String(pais).trim().toUpperCase()==='BR'?'_NACIONAL':'_IMPORTADO')]:'Selecione o fornecedor para identificar o perfil tributário.';};
