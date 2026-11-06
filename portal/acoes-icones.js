@@ -24,7 +24,15 @@ const paths={
  expandir:['M6 9l6 6 6-6'],
  recolher:['M9 6l6 6-6 6'],
  custo:['M5 2h14v20H5ZM8 6h8M8 11h1M15 11h1M8 15h1M15 15h1M8 19h1M15 19h1'],
- pagamento:['M3 5h18v14H3Z','M3 10h18','M6 15h4']
+ pagamento:['M3 5h18v14H3Z','M3 10h18','M6 15h4'],
+ criar:['M12 5v14','M5 12h14'],
+ enviar:['M22 2L2 9l8 3 3 8Z','M10 12L22 2'],
+ revisar:['M4 4h16v13H9l-5 4Z','M8 8h8M8 12h5'],
+ recusar:['M4 4h16v13H9l-5 4Z','M9 8l6 5M15 8l-6 5'],
+ cancelar:['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20','M5 5l14 14'],
+ converter:['M3 7h17l-4-4M21 17H4l4 4'],
+ origem:['M13 5h6v6M19 5l-8 8','M10 5H5v14h14v-5'],
+ mensagem:['M3 5h18v14H3Z','M3 6l9 7 9-7']
 };
 // Os ícones representam ações. Ações sem correspondência preservam seu rótulo.
 const porTitulo={

@@ -4,12 +4,12 @@ import {initFinanceiroNumerario} from './financeiro-numerario.js?v=20261106-acoe
 import {observarSessao} from './sessao-portal.js?v=20261029-sessao21';
 import './validacao-campos.js?v=20261030-email36';
 import {initImportacoesInternacionais} from './importacoes-internacionais.js?v=20261106-acoes1';
-import {initGestao} from './gestao.js?v=20261106-email1';
+import {initGestao} from './gestao.js?v=20261106-acoes2';
 import {initERP} from './erp.js?v=20261106-empresas1';
 import {initFiscal} from './fiscal.js?v=20261106-acoes1';
 import {initCadastros} from './cadastros.js?v=20261106-acoes1';
 import {initCatalogo} from './catalogo.js?v=20261106-acoes1';
-import {initComercial} from './comercial.js?v=20261106-email1';
+import {initComercial} from './comercial.js?v=20261106-acoes2';
 import {initImportacao} from './importacao.js?v=20261029-excel23';
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.118.0';

@@ -1,3 +1,4 @@
+import {acoesLista} from './acoes-lista.js?v=20261106-acoes2';
 import {dataHoraPesquisa} from './data-hora-pesquisa.js?v=20261106-email1';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const safeLink=(label,url)=>{try{const u=new URL(url);if(u.protocol!=='https:'&&u.protocol!=='http:')return e('span',label);const a=e('a',label);a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';return a;}catch{return e('span',label);}};
@@ -17,7 +18,7 @@ export function initGestao(service){
   const archLabel=e('label','Incluir somente arquivados'),arch=e('input');arch.type='checkbox';arch.checked=arquivados;archLabel.append(arch);filters.append(archLabel,btn('Filtrar',()=>{busca=search.value;area=ar.value;situacao=st.value;arquivados=arch.checked;page=0;return list();}),btn('Novo registro',()=>edit()));filters.onsubmit=ev=>{ev.preventDefault();busca=search.value;area=ar.value;situacao=st.value;arquivados=arch.checked;page=0;list().catch(x=>say(x.message));};body.append(filters);
   const r=await api({acao:'listar',tipo,pagina:page,busca,status:situacao,area,arquivados});if(gen!==epoch)return;
   const wrap=e('div',undefined,view==='quadro'?'gestao-board':'gestao-results');body.append(wrap);
-  if(view==='lista'){const scroll=e('div',undefined,'scroll'),table=e('table'),h=e('tr');['Código / título','Situação','Prioridade','Responsável','Prazo','Área','Última atualização','Ações'].forEach(x=>h.append(e('th',x)));const hd=e('thead');hd.append(h);const tb=e('tbody');for(const x of r.linhas){const tr=e('tr');for(const s of [(x.codigo?x.codigo+' · ':'')+x.titulo,x.status,x.prioridade,x.responsavel,x.prazo,x.area,dataHoraPesquisa(x.atualizado_em)])tr.append(e('td',s||'—'));const actions=e('td');actions.append(btn('Abrir',()=>detail(x.id)));tr.append(actions);tb.append(tr);}table.append(hd,tb);scroll.append(table);wrap.append(scroll);}
+  if(view==='lista'){const scroll=e('div',undefined,'scroll'),table=e('table'),h=e('tr');['Código / título','Situação','Prioridade','Responsável','Prazo','Área','Última atualização','Ações'].forEach(x=>h.append(e('th',x)));const hd=e('thead');hd.append(h);const tb=e('tbody');for(const x of r.linhas){const tr=e('tr');for(const s of [(x.codigo?x.codigo+' · ':'')+x.titulo,x.status,x.prioridade,x.responsavel,x.prazo,x.area,dataHoraPesquisa(x.atualizado_em)])tr.append(e('td',s||'—'));const actions=e('td');actions.append(acoesLista(x.codigo||x.titulo,()=>detail(x.id),()=>acoesRegistro(x.id),say));tr.append(actions);tb.append(tr);}table.append(hd,tb);scroll.append(table);wrap.append(scroll);}
   else{const groups=new Map();for(const x of r.linhas){const key=view==='agenda'?(x.prazo||'Sem prazo'):(x.status||'A classificar');if(!groups.has(key))groups.set(key,[]);groups.get(key).push(x);}for(const [key,rows] of [...groups].sort((a,b)=>a[0].localeCompare(b[0]))){const col=e('section',undefined,'gestao-column');col.append(e('h3',key+' · '+rows.length));for(const x of rows){const card=e('article',undefined,'gestao-card');card.append(e('strong',x.titulo),e('p',[x.codigo,x.prioridade,x.responsavel,x.prazo].filter(Boolean).join(' · ')),btn('Abrir',()=>detail(x.id)));col.append(card);}wrap.append(col);}}
   const paging=e('div',undefined,'paging'),prev=btn('Anterior',()=>{page--;return list();}),next=btn('Próxima',()=>{page++;return list();});prev.disabled=page===0;next.disabled=(page+1)*50>=r.total;paging.append(prev,e('span',`${r.total} registro(s) · página ${page+1} · até 50 registros por página`),next);body.append(paging);if(view!=='lista')body.append(e('p','Esta visualização mostra os registros da página atual. Use os filtros e a paginação para consultar os demais.','intro'));
   if(options.admin&&tipo==='paginas'){const box=e('details');box.append(e('summary','Situação das rotinas de triagem'));for(const t of options.triagens||[])box.append(e('p',t.canal+' · '+t.situacao.replaceAll('_',' ')+' · '+(t.pendencias||[]).join(' · ')));body.append(box);}
@@ -25,11 +26,29 @@ export function initGestao(service){
  }
  async function detail(id){const gen=++epoch;say('Carregando…');const x=await api({acao:'detalhe',id});if(gen!==epoch)return;tipo=x.tipo;const m=model();body.replaceChildren(btn('Voltar à lista',list),e('h2',(x.codigo?x.codigo+' · ':'')+x.titulo));const badges=e('div',undefined,'gestao-badges');for(const s of [x.status,x.prioridade,x.area,x.classe,x.escopo])if(s)badges.append(e('span',s,'badge'));body.append(badges,e('p','Responsável: '+(x.responsavel||'A definir')+' · Prazo: '+(x.prazo||'Não informado')));
   if(x.descricao)body.append(e('p',x.descricao,'gestao-description'));if(x.propriedades['Próxima ação'])body.append(e('h3','Próxima ação'),e('p',x.propriedades['Próxima ação'],'gestao-description'));
-  const actions=e('div',undefined,'com-tools');if(x.pode_editar)actions.append(btn('Editar registro',()=>edit(x)));if(x.notion_url)actions.append(safeLink('Consultar origem no Notion',x.notion_url));if(x.propriedades['Link da origem'])actions.append(safeLink('Abrir mensagem de origem',x.propriedades['Link da origem']));body.append(actions);
+
   const props=e('details');props.append(e('summary','Todos os campos do registro'));const dl=e('dl',undefined,'gestao-properties');for(const [k,v] of Object.entries(x.propriedades)){if(v===null||v==='')continue;dl.append(e('dt',m.schema_origem[k]?.name||k),e('dd',typeof v==='object'?JSON.stringify(v):String(v)));}props.append(dl);body.append(props);
   if(x.conteudo){const box=e('section',undefined,'gestao-document');box.append(e('h3','Conteúdo'));for(const line of x.conteudo.split('\n')){if(/^#{1,4} /.test(line))box.append(e('h3',line.replace(/^#+ /,'')));else if(line.trim())box.append(e('p',line,'gestao-description'));}body.append(box);}
   const links=await api({acao:'vinculos',id});if(gen!==epoch)return;if(links.linhas.length){const box=e('section');box.append(e('h3','Registros relacionados'));for(const l of links.linhas)box.append(l.id?btn(l.campo+' · '+l.titulo,()=>detail(l.id)):e('p',l.campo+' · '+l.titulo));body.append(box);}
-  const history=e('details');history.append(e('summary','Histórico de alterações'));const load=btn('Consultar histórico',async()=>{const r=await api({acao:'historico',id});if(gen!==epoch)return;for(const h of r.linhas)history.append(e('p',new Date(h.criado_em).toLocaleString('pt-BR')+' · '+h.acao+' · '+h.usuario_id));load.remove();});history.append(load);body.append(history);say('');
+  say('');
+ }
+ async function acoesRegistro(id){
+  const x=await api({acao:'detalhe',id}),itens=[];
+  if(x.pode_editar)itens.push(['Editar registro','editar',()=>edit(x)]);
+  if(x.notion_url)itens.push(['Consultar origem no Notion','origem',()=>safeLink('Notion',x.notion_url).click()]);
+  const mensagem=x.propriedades?.['Link da origem'];
+  if(mensagem)itens.push(['Abrir mensagem de origem','mensagem',()=>safeLink('Mensagem',mensagem).click()]);
+  itens.push(['Histórico de alterações','historico',async()=>{
+   const d=e('dialog',undefined,'imp-picker');
+   d.append(e('h2','Histórico · '+x.titulo),btn('Fechar',()=>d.close()));
+   d.addEventListener('close',()=>d.remove(),{once:true});screen.append(d);d.showModal();
+   try{
+    const r=await api({acao:'historico',id});
+    if(d.isConnected)for(const h of r.linhas)d.append(e('p',dataHoraPesquisa(h.criado_em)+' · '+h.acao+' · '+h.usuario_id));
+    if(d.isConnected&&!r.linhas.length)d.append(e('p','Nenhuma alteração registrada.'));
+   }catch(err){if(d.isConnected)d.append(e('p',err.message));}
+  }]);
+  return itens;
  }
  async function edit(x=null){pending.clear();const gen=++epoch;const m=model(),f=e('form',undefined,'gestao-editor');body.replaceChildren(btn('Voltar',()=>x?detail(x.id):list()),e('h2',x?'Editar registro':'Novo registro'));say('');const props=x?.propriedades||{},nodes=new Map();const main=e('div',undefined,'com-form'),advanced=e('details');advanced.append(e('summary','Campos complementares'));const extra=e('div',undefined,'com-form');advanced.append(extra);
   const primary=[m.config.titulo,m.config.descricao,m.config.status,'Prioridade','Responsável original','Próxima ação',m.config.prazo,'Área','Classe de acesso','Escopo','Origem','Evidência de conclusão'];const ordered=[...new Set([...primary,...Object.keys(m.schema_origem)])].filter(k=>k&&m.schema_origem[k]);
