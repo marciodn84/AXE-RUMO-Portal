@@ -1,5 +1,5 @@
 import {botaoTributos} from './tributos-registros.js?v=20261106-perfis17';
-import {padronizarAcoes}from './acoes-icones.js?v=20261031-stock55';
+import {padronizarAcoes}from './acoes-icones.js?v=20261106-acoes1';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};
 const money=v=>v==null?'Pendente':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:6});
 const qty=v=>v==null?'Pendente':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:6});const date=v=>v?new Date(v.length===10?v+'T12:00:00-03:00':v).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—';

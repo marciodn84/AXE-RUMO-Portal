@@ -1,4 +1,4 @@
-import {padronizarAcoes} from './acoes-icones.js?v=20261104-pedido6';
+import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
 const el=(t,v)=>{const n=document.createElement(t);if(v!=null)n.textContent=v;return n;},brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),data=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'Não informada';
 export function initFinanceiroNumerario(api,comprasApi){
  const root=el('section');root.className='cadastro-screen imp-internacional';root.hidden=true;let epoch=0;document.getElementById('panel').append(root);

@@ -1,3 +1,4 @@
+import {aplicarIconeAcao,iconeAcao} from './acoes-icones.js?v=20261106-acoes1';
 import {abrirPedidoPdf} from './compras-pedido-pdf.js?v=20261106-empresas1';
 import {dataHoraPesquisa} from './data-hora-pesquisa.js?v=20261106-email1';
 import {initComprasNFSe} from './compras-nfse.js?v=20261106-nfse1';
@@ -6,10 +7,10 @@ import {botaoTributos} from './tributos-registros.js?v=20261106-perfis17';
 import {criarProgramacaoNacional} from './compras-programacao.js?v=20261104-financeiro13';
 import {initComprasNFe} from './compras-nfe.js?v=20261106-perfis17';
 import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=20261031-carrier53';
-import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
+import {padronizarImportacao} from './importacoes-layout.js?v=20261106-acoes1';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-email1';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-acoes1';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
@@ -57,15 +58,16 @@ export function initEstruturaImportacao(api,legacy){
  }}
  const intro=node('p','Pedidos, condições de pagamento e embarques parciais ou consolidados.','intro');
  root.append(intro,nav,msg,body);
- const comprasNFSe=initComprasNFSe(api,root,async id=>{await open(id);});
- const comprasNF=initComprasNFe(api,root,async id=>{await open(id);});
+ const atualizarPedido=async id=>{if(tipo==='pedidos'&&!current)await list();else await open(id);};
+ const comprasNFSe=initComprasNFSe(api,root,atualizarPedido);
+ const comprasNF=initComprasNFe(api,root,atualizarPedido);
  const cadastros=initCadastrosImportacao(api,root);
  const entrada=initEntradaEmail(api,root);
  const transporte=initTransporteDocumental(api,root,async id=>{await open(id);});
  const pagamento=initPagamentoDocumental(api,root,async r=>{await open(tipo==='parcelas'?r.id:r.pedido_id);});
  const liberacao=initLiberacaoDocumental(api,root,async id=>{await open(id);});
  const planos=initParcelasSugeridas(api,root,async id=>{await open(id);});
- const ack=initACKImportacao(api,root,async id=>{await open(id);msg.textContent='ACK anexado e recebimento confirmado. Histórico preservado.';});
+ const ack=initACKImportacao(api,root,async id=>{await atualizarPedido(id);msg.textContent='ACK anexado e recebimento confirmado. Histórico preservado.';});
  const fx=initConciliacaoCambio(api,root);
  const custos=initCustosImportacao(api,root);
  const notas=initNotasImportacao(api,root);
@@ -76,7 +78,7 @@ export function initEstruturaImportacao(api,legacy){
 
  let searchValue='';
  async function list(){
-  const g=epoch,s=++seq;body.replaceChildren();msg.textContent='Consultando…';
+  const g=epoch,s=++seq;current=null;fecharAcoesPedido();body.replaceChildren();msg.textContent='Consultando…';
   const tools=node('div',undefined,'cadastro-toolbar'),search=field(tools,'busca','Buscar por referência',searchValue,'search');
   tools.append(button('Buscar',async()=>{searchValue=search.value;page=0;await list();}));
   if(opts.editar)tools.append(button(tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque',async()=>{
@@ -94,15 +96,88 @@ export function initEstruturaImportacao(api,legacy){
    else if(tipo==='parcelas')vals=[x.referencia+' · '+x.pedido,dt(x.vencimento),money(x.valor,x.moeda),money(x.valor_pago,x.moeda)+' / '+money(Number(x.valor)-Number(x.valor_pago),x.moeda),situacaoParcela(x)];
    else vals=[x.referencia,x.fornecedor,x.status,money(x.total,x.moeda),dt(x.dados.previsao_coleta)];
    vals.push(dataHoraPesquisa(x.atualizado_em));
-   const tr=node('tr');vals.forEach(v=>tr.append(node('td',v)));const action=node('td');action.append(button('Abrir',()=>open(x.id)));tr.append(action);table.append(tr);
+   const tr=node('tr');vals.forEach(v=>tr.append(node('td',v)));const action=node('td');
+   if(tipo==='pedidos'){
+    const ver=button('Visualizar pedido',()=>open(x.id));
+    aplicarIconeAcao(ver,'visualizar','Visualizar pedido '+x.referencia);
+    const mais=button('Mais ações',()=>acoesPedido(mais,x));
+    aplicarIconeAcao(mais,'mais','Mais ações do pedido '+x.referencia);
+    mais.setAttribute('aria-haspopup','menu');mais.setAttribute('aria-expanded','false');
+    action.append(ver,mais);
+   }else action.append(button('Abrir',()=>open(x.id)));tr.append(action);table.append(tr);
   }
   rows.append(table);if(!r.total)rows.append(node('p','Nenhum registro encontrado.'));
   const prev=button('Anterior',async()=>{page--;await list();}),next=button('Próxima',async()=>{page++;await list();});prev.disabled=page===0;next.disabled=(page+1)*30>=r.total;
   pagination.append(prev,node('span','Página '+(page+1)+' · '+r.total+' registro(s)'),next);msg.textContent='';
  }
  const situacaoParcela=situacaoPagamentoParcela;
- async function open(id){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(tipo==='parcelas'&&d.pedido_id&&!d.fornecedor_pais){const pedido=await api({acao:'v2_detalhe',tipo:'pedidos',id:d.pedido_id});d.fornecedor_pais=pedido.fornecedor_pais;}if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,false);}
- function closeDialogs(){comprasNFSe.reset();comprasNF.reset();transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
+ async function open(id,editar=false){if(!guard())return;if(voltarFluxo){const pid=voltarFluxo==='novo'?id:voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid);return;}const g=epoch,s=++seq;const d=await api({acao:'v2_detalhe',tipo,id});if(tipo==='parcelas'&&d.pedido_id&&!d.fornecedor_pais){const pedido=await api({acao:'v2_detalhe',tipo:'pedidos',id:d.pedido_id});d.fornecedor_pais=pedido.fornecedor_pais;}if(!check(g)||s!==seq)return;current=d;dirty=false;pending=null;edit(d,null,editar&&opts.editar);}
+ let menuPedido=null;
+ function fecharAcoesPedido(){
+  if(!menuPedido)return;
+  const {menu,trigger}=menuPedido;menuPedido=null;
+  trigger.setAttribute('aria-expanded','false');
+  menu.remove();
+ }
+ async function historicoPedido(pedido){
+  const dialog=node('dialog',undefined,'imp-picker');
+  dialogs.add(dialog);
+  dialog.append(node('h2','Histórico · '+pedido.referencia),button('Fechar',()=>dialog.close()));
+  dialog.addEventListener('close',()=>{dialogs.delete(dialog);dialog.remove();},{once:true});
+  root.append(dialog);dialog.showModal();
+  const r=await api({acao:'v2_historico',tipo:'pedidos',id:pedido.id});
+  if(!dialog.isConnected)return;
+  if(!r.linhas.length)dialog.append(node('p','Nenhuma alteração registrada.'));
+  for(const e of r.linhas){
+   const entry=node('details');
+   entry.append(node('summary',dataHoraPesquisa(e.criado_em)+' · '+(e.anterior?'Alteração':'Criação')),node('pre',JSON.stringify(e,null,2)));
+   dialog.append(entry);
+  }
+ }
+ async function acoesPedido(trigger,row){
+  if(!guard())return;
+  if(menuPedido?.trigger===trigger){fecharAcoesPedido();return;}
+  fecharAcoesPedido();
+  const g=epoch;
+  const pedido=await api({acao:'v2_detalhe',tipo:'pedidos',id:row.id});
+  if(!check(g)||!trigger.isConnected)return;
+  fecharAcoesPedido();
+  const menu=node('div',undefined,'imp-grid-menu');
+  menu.setAttribute('popover','auto');menu.setAttribute('role','menu');
+  menu.setAttribute('aria-label','Ações do pedido '+pedido.referencia);
+  menu.append(node('div',pedido.referencia,'imp-grid-menu-title'));
+  const nacional=pedido.fornecedor_pais==='BR',servico=pedido.natureza_compra==='SERVICO';
+  const add=(rotulo,icone,acao)=>{
+   const b=button(rotulo,async()=>{fecharAcoesPedido();trigger.focus();await acao();});
+   b.className='imp-grid-menu-item';b.setAttribute('role','menuitem');
+   b.replaceChildren(iconeAcao(icone),node('span',rotulo));menu.append(b);
+  };
+  if(opts.editar)add('Editar pedido','editar',()=>open(pedido.id,true));
+  add('Exportar pedido em PDF','exportar',()=>abrirPedidoPdf(api,pedido.id));
+  add('Tributos','tributos',()=>botaoTributos(api,'compra',pedido.id,pedido.moeda).click());
+  add('ACK do fornecedor','aceite',()=>ack.show(pedido,opts.editar));
+  if(nacional&&servico)add('Entrada de NFS-e · XML','servico',()=>comprasNFSe.show(pedido,opts.editar));
+  if(nacional&&!servico)add('Notas fiscais de entrada · XML','importar',()=>comprasNF.show(pedido,opts.editar));
+  if(!nacional&&!servico&&pedido.fornecedor_pais&&navigateERP)add('Abrir processo de importação','transporte',()=>navigateERP('importacoes-internacionais',{pedidoId:pedido.id}));
+  add('Histórico de alterações','historico',()=>historicoPedido(pedido));
+  menuPedido={menu,trigger};root.append(menu);
+  trigger.setAttribute('aria-expanded','true');
+  menu.addEventListener('toggle',e=>{if(e.newState==='closed'&&menuPedido?.menu===menu)fecharAcoesPedido();});
+  menu.onkeydown=e=>{
+   const itens=[...menu.querySelectorAll('button')],indice=itens.indexOf(document.activeElement);
+   if(e.key==='Escape'){e.preventDefault();fecharAcoesPedido();trigger.focus();}
+   else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
+    e.preventDefault();
+    itens[e.key==='Home'?0:e.key==='End'?itens.length-1:(indice+(e.key==='ArrowDown'?1:itens.length-1)+itens.length)%itens.length]?.focus();
+   }
+  };
+  menu.showPopover();
+  const rect=trigger.getBoundingClientRect();
+  menu.style.left=Math.max(8,Math.min(rect.right-menu.offsetWidth,innerWidth-menu.offsetWidth-8))+'px';
+  menu.style.top=Math.max(8,Math.min(rect.bottom+5,innerHeight-menu.offsetHeight-8))+'px';
+  menu.querySelector('button')?.focus();
+ }
+ function closeDialogs(){fecharAcoesPedido();comprasNFSe.reset();comprasNF.reset();transporte.reset();pagamento.reset();liberacao.reset();ack.reset();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  async function picker(title,loader,columns,onPick){
   const dialog=node('dialog',undefined,'imp-picker'),heading=node('h2',title),status=node('p'),q=node('input');q.type='search';q.placeholder='Buscar';q.setAttribute('aria-label','Buscar no seletor');
   const rows=node('div',undefined,'scroll'),bar=node('div',undefined,'cadastro-toolbar');let pagina=0,request=0;const g=epoch;
@@ -125,13 +200,6 @@ export function initEstruturaImportacao(api,legacy){
   current=item;body.replaceChildren();msg.textContent='';const g=epoch,t=tipo;
   const top=node('div',undefined,'cadastro-toolbar');top.append(button('Voltar à lista',async()=>{if(!guard())return;dirty=false;pending=null;current=null;if(voltarFluxo){const pid=voltarFluxo;voltarFluxo=null;tipo='visao';body.replaceChildren();renderNav();await visao.show(true,pid==='novo'?undefined:pid);return;}await list();}));
   if(!editing&&opts.editar)top.append(button('Editar',()=>edit(item,order,true)));
-  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra==='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Entrada de NFS-e · XML',()=>comprasNFSe.show(item,opts.editar)));
-  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais&&item.fornecedor_pais!=='BR'&&navigateERP)top.append(button('Abrir processo de importação',()=>navigateERP('importacoes-internacionais',{pedidoId:item.id})));
-  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra==='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Entrada de NFS-e · XML',()=>comprasNFSe.show(item,opts.editar)));
-  if(!editing&&item&&tipo==='pedidos'&&item.natureza_compra!=='SERVICO'&&item.fornecedor_pais==='BR')top.append(button('Notas fiscais de entrada · XML',()=>comprasNF.show(item,opts.editar)));
-  if(!editing&&item&&tipo==='pedidos')top.append(button('ACK do fornecedor',()=>ack.show(item,opts.editar)));
-  if(!editing&&item&&tipo==='pedidos')top.append(button('Exportar pedido em PDF',()=>abrirPedidoPdf(api,item.id)));
-  if(!editing&&item&&tipo==='pedidos')top.append(botaoTributos(api,'compra',item.id,item.moeda));
   if(tipo==='pedidos')top.classList.add('purchase-order-actions');
   body.append(top,node('h2',(item?item.referencia:tipo==='pedidos'?'Novo pedido':tipo==='parcelas'?'Nova parcela':'Novo embarque')));
   const form=node('form');form.onsubmit=e=>e.preventDefault();form.addEventListener('input',changed);form.addEventListener('change',changed);body.append(form);
@@ -323,8 +391,8 @@ export function initEstruturaImportacao(api,legacy){
    }
 
    if(tipo==='embarques')body.append(button('Apurar custo deste embarque',async()=>{if(!guard())return;tipo='custos';renderNav();body.replaceChildren();msg.textContent='';await custos.show(true,item.id);}));
-   const history=node('details');history.append(node('summary','Histórico de alterações'));const out=node('div');
-   history.append(button('Consultar histórico',async()=>{const r=await api({acao:'v2_historico',tipo:t,id:item.id});if(!check(g)||current?.id!==item.id)return;out.replaceChildren();for(const e of r.linhas){const entry=node('details');entry.append(node('summary',new Date(e.criado_em).toLocaleString('pt-BR')+' · '+(e.anterior?'Alteração':'Criação')),node('pre',JSON.stringify(e,null,2)));out.append(entry);}}),out);body.append(history);
+   if(tipo!=='pedidos'){const history=node('details');history.append(node('summary','Histórico de alterações'));const out=node('div');
+   history.append(button('Consultar histórico',async()=>{const r=await api({acao:'v2_historico',tipo:t,id:item.id});if(!check(g)||current?.id!==item.id)return;out.replaceChildren();for(const e of r.linhas){const entry=node('details');entry.append(node('summary',new Date(e.criado_em).toLocaleString('pt-BR')+' · '+(e.anterior?'Alteração':'Criação')),node('pre',JSON.stringify(e,null,2)));out.append(entry);}}),out);body.append(history);}
   }
  }
  window.addEventListener('beforeunload',e=>{if((dirty||busy)&&!root.hidden){e.preventDefault();e.returnValue='';}});

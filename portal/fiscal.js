@@ -1,4 +1,4 @@
-import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
+import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
 import {indicadorSituacao} from './cadastro-controle.js?v=20261030-padrao32';
 import {mountSimulator} from './simulador.js?v=20261023-gestao1';
 const e=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};

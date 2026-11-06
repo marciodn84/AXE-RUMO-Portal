@@ -2,7 +2,7 @@ import {paises}from './paises.js?v=20261104-paises4';
 import {initFichaProduto} from './ficha-produto.js?v=20261104-cadastro2';
 import {selecaoMesclagem} from './cadastros-mesclar.js?v=20261031-stock55';
 import {indicadorCadastro,indicadorSituacao,controleCadastro} from './cadastro-controle.js?v=20261030-padrao32';
-import {padronizarAcoes} from './acoes-icones.js?v=20261030-padrao32';
+import {padronizarAcoes} from './acoes-icones.js?v=20261106-acoes1';
 import {montarConsultaCNPJ} from './consulta-cnpj.js?v=20261030-clienttabs27';
 import {botoesPlanilha} from './planilha-cadastros.js?v=20261031-stock55';
 const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
