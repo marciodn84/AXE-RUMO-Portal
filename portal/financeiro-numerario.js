@@ -13,16 +13,16 @@ export function initFinanceiroNumerario(api,comprasApi){
   if(!comprasApi||!['pagar','caixa'].includes(key))return;
   const section=el('section'),rows=el('div'),status=el('p'),prev=el('button','Anterior'),next=el('button','Próxima');
   let pagina=0;
-  section.append(el('h3','Faturas de frete pagas'),status,rows,prev,next);
+  section.append(el('h3',key==='pagar'?'Faturas de frete a pagar':'Faturas de frete'),status,rows,prev,next);
   root.append(section);
   async function carregar(){
    prev.disabled=next.disabled=true;
    try{
-    const r=await comprasApi({acao:'v2_frete_fatura_financeiro',pagina});
+    const r=await comprasApi({acao:'v2_frete_fatura_financeiro',somente_abertas:key==='pagar',pagina});
     if(seq!==epoch)return;
     rows.replaceChildren();
-    table(rows,['Pagamento','Transportadora','Embarque','Fatura','Meio','Valor pago','Situação'],
-     r.linhas.map(f=>[data(f.data_pagamento),f.transportadora,f.embarque,f.numero,f.meio_pagamento,brl(f.valor_brl),f.situacao]));
+    table(rows,['Vencimento','Pagamento','Transportadora','Embarque','Fatura','Meio','Valor','Situação'],
+     r.linhas.map(f=>[data(f.vencimento),data(f.data_pagamento),f.transportadora,f.embarque,f.numero,f.meio_pagamento,brl(f.valor_brl),f.situacao]));
     status.textContent=r.linhas.length?'':'Nenhuma fatura nesta página.';
     prev.disabled=pagina===0;next.disabled=r.linhas.length<30;
    }catch(e){if(seq===epoch)status.textContent=e.message;}

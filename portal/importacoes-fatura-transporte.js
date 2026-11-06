@@ -38,9 +38,9 @@ export function initFaturaTransporte(api, root) {
       catch (error) { status.textContent = error.message; }
       finally { ocupado = false; }
     }
-    function registro(fatura, fornecedor) {
+    function registro(fatura, fornecedor, editar) {
       area.replaceChildren(el('p',fornecedor+' · Fatura '+fatura.numero+' · '+brl(fatura.valor_brl)),
-        el('p','Pago por boleto em '+data(fatura.data_pagamento)));
+        el('p',fatura.data_pagamento?'Pago por boleto em '+data(fatura.data_pagamento):'A pagar por boleto · Vencimento '+data(fatura.vencimento)));
       const baixar = el('button','Baixar PDF da fatura');
       baixar.type = 'button';
       baixar.onclick = () => executar(async () => {
@@ -53,11 +53,29 @@ export function initFaturaTransporte(api, root) {
         setTimeout(()=>URL.revokeObjectURL(url),1000);
       });
       area.append(baixar);
+      form.onsubmit=e=>e.preventDefault();
+      if(fatura.situacao!=='A pagar'||!editar)return;
+      const label=el('label','Data efetiva do pagamento'), pagamento=el('input');
+      pagamento.type='date';pagamento.required=true;pagamento.min=fatura.emissao;
+      label.append(pagamento);
+      const confirmar=el('button','Confirmar pagamento do boleto');
+      confirmar.type='button';
+      area.append(label,confirmar);
+      confirmar.onclick=()=>{
+        if(ocupado||!pagamento.reportValidity())return;
+        const dia=pagamento.value;
+        if(!confirm('Confirmar a baixa de '+brl(fatura.valor_brl)+' em '+data(dia)+'?'))return;
+        void executar(async()=>{
+          const r=await call('v2_frete_fatura_baixar_pagamento',{requisicao_id:crypto.randomUUID(),data_pagamento:dia,confirmou_pagamento:true});
+          registro(r.fatura,fornecedor,editar);
+          return 'Pagamento registrado.';
+        });
+      };
     }
     form.onsubmit = e => e.preventDefault();
     await executar(async () => {
       const ctx = await call('v2_frete_fatura_ler');
-      if (ctx.fatura) { registro(ctx.fatura,ctx.transportadora || 'Transportadora'); return; }
+      if (ctx.fatura) { registro(ctx.fatura,ctx.transportadora || 'Transportadora',ctx.editar); return; }
       if (ctx.frete_no_numerario) return 'Frete registrado no numerário ou no fechamento do despachante.';
       if (ctx.custo_final) return 'Reabra o custo final antes de cadastrar a fatura.';
       if (!ctx.transportadora) return 'Vincule a transportadora ao embarque antes de cadastrar a fatura.';
@@ -76,10 +94,9 @@ export function initFaturaTransporte(api, root) {
       const valor=field('Valor pago em reais','number');
       valor.min='0.01';valor.step='0.01';
       const emissao=field('Data da emissão','date');
-      const pagamento=field('Data do pagamento do boleto','date');
+      const vencimento=field('Vencimento do boleto','date');
       const direta=field('O frete foi contratado diretamente e está fora do numerário do despachante','checkbox');
-      const aceite=field('Conferi o valor e confirmo que o boleto foi pago','checkbox');
-      const salvar=el('button','Registrar fatura e pagamento');
+      const salvar=el('button','Registrar fatura em Contas a pagar');
       salvar.type='submit';
       area.append(salvar);
       let req;
@@ -91,14 +108,14 @@ export function initFaturaTransporte(api, root) {
           const file=arquivo.files[0];
           if (!file || file.size>350000) throw new Error('Anexe um PDF de até 350 KB.');
           const dados={requisicao_id:req??=crypto.randomUUID(),numero:numero.value,valor:valor.value,
-            emissao:emissao.value,data_pagamento:pagamento.value,confirmou_pagamento:aceite.checked,contratacao_direta:direta.checked,nome:file.name};
+            emissao:emissao.value,vencimento:vencimento.value,contratacao_direta:direta.checked,nome:file.name};
           const bytes=new Uint8Array(await file.arrayBuffer());
           const pdf=btoa(Array.from(bytes,c=>String.fromCharCode(c)).join(''));
           const r=await call('v2_frete_fatura_salvar',{...dados,pdf});
           sujo=false;
-          registro(r.fatura,ctx.transportadora);
+          registro(r.fatura,ctx.transportadora,ctx.editar);
           return r.pendencias?.some(p=>p.startsWith('Frete:'))?
-            'Fatura registrada. Complete o peso bruto dos itens para concluir o rateio.':'Fatura e pagamento registrados.';
+            'Fatura registrada. Complete o peso bruto dos itens para concluir o rateio.':'Fatura registrada em Contas a pagar.';
         });
       };
     });

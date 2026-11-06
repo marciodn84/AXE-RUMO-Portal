@@ -1,4 +1,4 @@
-import {initFaturaTransporte} from './importacoes-fatura-transporte.js?v=20261106-frete1';
+import {initFaturaTransporte} from './importacoes-fatura-transporte.js?v=20261106-frete2';
 import {initParcelasSugeridas} from './importacoes-parcelas-sugeridas.js?v=20261031-carrier53';
 import {initGradeImportacoes} from './importacoes-grade.js?v=20261031-carrier53';
 import {initNumerario} from './importacoes-numerario.js?v=20261031-carrier53';
@@ -10,7 +10,7 @@ import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261106-frete1';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261106-frete2';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261106-perfis17';
 const el=(t,s,c)=>{const n=document.createElement(t);if(s!=null)n.textContent=s;if(c)n.className=c;return n;};

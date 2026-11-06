@@ -7,7 +7,7 @@ import {situacaoPagamentoParcela} from './importacoes-pagamento-processos.js?v=2
 import {padronizarImportacao} from './importacoes-layout.js?v=20261104-pedido6';
 import {initCadastrosImportacao} from './importacoes-cadastros.js?v=20261031-fornecedor58';
 import {aceiteDocumentoOficial,temConflitoDocumental} from './importacoes-documento-oficial.js?v=20261029-docauto17';
-import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-frete1';
+import {initVisaoImportacao} from './importacoes-fluxo.js?v=20261106-frete2';
 import {initTransporteDocumental} from './importacoes-transporte.js?v=20261031-fornecedor58';
 import {initPagamentoDocumental} from './importacoes-pagamento-documental.js?v=20261031-carrier53';
 import {initLiberacaoDocumental} from './importacoes-liberacao.js?v=20261106-lote1';
@@ -17,7 +17,7 @@ import {initEntradaEmail} from './importacoes-entrada-email.js?v=20261030-email3
 import {initACKImportacao} from './importacoes-ack.js?v=20261031-fornecedor58';
 import {lerPDFImportacao} from './importacoes-di-leitura.js?v=20261028-di1';
 import {initNotasImportacao} from './importacoes-notas.js?v=20261106-perfis17';
-import {initCustosImportacao} from './importacoes-custos.js?v=20261106-frete1';
+import {initCustosImportacao} from './importacoes-custos.js?v=20261106-frete2';
 import {initConciliacaoCambio} from './importacoes-cambio.js?v=20261031-fornecedor58';
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const moedas=['BRL','USD','EUR','GBP','CAD','CNY','JPY','CHF'];
