@@ -34,19 +34,51 @@ export function initPainelInicio(api,navigate){
     return b;
   }
   function serie(pai,dados,grupos,formato){
-    const limite=Math.max(1,...dados.flatMap(x=>grupos.map(g=>g.valor(x))));
-    const tabela=el('table',null,'painel-series'),h=tabela.createTHead().insertRow();
-    for(const nome of ['Mês',...grupos.map(g=>g.nome)]){const th=el('th',nome);th.scope='col';h.append(th);}
-    const body=tabela.createTBody();
-    for(const item of dados){
-      const row=body.insertRow();const th=el('th',mes(item.mes));th.scope='row';row.append(th);
-      for(const g of grupos){
-        const v=g.valor(item),td=row.insertCell(),bar=el('span',null,'painel-barra '+g.classe),track=el('span',null,'painel-trilho');
-        bar.style.width=(v/limite*100)+'%';track.setAttribute('aria-hidden','true');track.append(bar);
-        td.append(el('span',formato(v)),track);
-      }
+    const maximo=Math.max(1,...dados.flatMap(x=>grupos.map(g=>g.valor(x))));
+    const alvo=maximo/4;
+    const unidade=10**Math.floor(Math.log10(alvo));
+    const multiplo=[1,2,5,10].find(n=>n*unidade>=alvo);
+    const passo=Math.max(1,multiplo*unidade);
+    const limite=passo*4;
+    const grafico=el('div',null,'painel-colunas');
+    const legenda=el('div',null,'painel-legenda');
+    for(const g of grupos){
+      const item=el('span',g.nome);
+      item.prepend(el('i',null,g.classe));
+      legenda.append(item);
     }
-    pai.replaceChildren(tabela);
+    const scroll=el('div',null,'painel-colunas-scroll');
+    const eixos=el('div',null,'painel-eixos');
+    const escala=el('div',null,'painel-escala');
+    escala.setAttribute('aria-hidden','true');
+    for(let i=4;i>=0;i--)escala.append(el('span',formato(i*passo)));
+    const area=el('div',null,'painel-area');
+    const grades=el('div',null,'painel-grades');
+    grades.setAttribute('aria-hidden','true');
+    for(let i=0;i<5;i++)grades.append(el('span'));
+    const colunas=el('div',null,'painel-meses');
+    for(const item of dados){
+      const grupo=el('div',null,'painel-mes');
+      for(const g of grupos){
+        const valor=g.valor(item),texto=g.nome+' · '+mes(item.mes)+' · '+formato(valor);
+        const barra=el('div',null,'painel-coluna '+g.classe);
+        barra.style.height=(valor/limite*100)+'%';
+        barra.tabIndex=0;
+        barra.setAttribute('role','img');
+        barra.setAttribute('aria-label',texto);
+        const dica=el('span',formato(valor),'painel-dica');
+        dica.setAttribute('aria-hidden','true');
+        barra.append(dica);
+        grupo.append(barra);
+      }
+      grupo.append(el('span',mes(item.mes),'painel-mes-rotulo'));
+      colunas.append(grupo);
+    }
+    area.append(grades,colunas);
+    eixos.append(escala,area);
+    scroll.append(eixos);
+    grafico.append(legenda,scroll);
+    pai.replaceChildren(grafico);
   }
   function render(d){
     const cards=el('div',null,'erp-stats painel-indicadores');

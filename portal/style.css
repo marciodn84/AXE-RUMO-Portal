@@ -173,11 +173,26 @@ table td:has(>.action-icon){white-space:nowrap}table td button.action-icon{displ
 .painel-indicador{display:grid;align-content:start;gap:7px;text-align:left}
 .painel-indicador strong{font-size:clamp(1rem,2vw,1.5rem)}
 .painel-graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px;margin-bottom:16px}
-.painel-series{width:100%;margin:10px 0}
-.painel-series td{min-width:96px;font-variant-numeric:tabular-nums}
-.painel-trilho,.painel-barra{display:block;height:6px;border-radius:4px}
-.painel-trilho{margin-top:4px;background:#eaf1f4}
-.painel-barra.compras{background:#087f80}
-.painel-barra.vendas{background:#2468a1}
-.painel-barra.pagamentos{background:#8c5b24}
+.painel-colunas{margin:12px 0}
+.painel-colunas-scroll{overflow-x:auto;padding:26px 0 28px}
+.painel-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem}
+.painel-legenda span{display:inline-flex;align-items:center;gap:5px}
+.painel-legenda i{width:10px;height:10px;border-radius:2px}
+.painel-eixos{display:grid;grid-template-columns:auto minmax(240px,1fr);align-items:stretch;gap:8px;height:174px}
+.painel-escala,.painel-grades{display:flex;flex-direction:column;justify-content:space-between}
+.painel-escala{font-size:.72rem;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;margin:-8px 0}
+.painel-area{position:relative}
+.painel-grades,.painel-meses{position:absolute;inset:0}
+.painel-grades span{border-top:1px solid #dbe5eb}
+.painel-meses{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.painel-mes{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:3px}
+.painel-coluna{position:relative;flex:0 1 30%;max-width:30px;min-height:2px;border-radius:3px 3px 0 0}
+.painel-mes-rotulo{position:absolute;top:100%;margin-top:5px;font-size:.72rem;white-space:nowrap}
+.painel-dica{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);padding:3px 6px;background:#173342;color:white;border-radius:4px;white-space:nowrap;font-size:.75rem;z-index:1}
+.painel-mes:first-child .painel-dica{left:0;transform:none}
+.painel-mes:last-child .painel-dica{left:auto;right:0;transform:none}
+.painel-coluna:is(:hover,:focus-visible) .painel-dica{display:block}
+.painel-colunas .compras{background:#087f80}
+.painel-colunas .vendas{background:#2468a1}
+.painel-colunas .pagamentos{background:#8c5b24}
 .painel-agenda{scroll-margin-top:16px}

@@ -1,4 +1,4 @@
-import {initPainelInicio} from './painel-inicio.js?v=20261106-painel1';
+import {initPainelInicio} from './painel-inicio.js?v=20261106-painel2';
 const groups = [
  ['Visão geral',[['inicio','Visão geral','home']]],
  ['Comercial',[['simulador','Simulador fiscal e comercial','fiscal'],['oportunidades','Oportunidades','comercial'],['propostas','Propostas comerciais','comercial'],['pedidos-comerciais','Pedidos comerciais internos','comercial'],['pedidos','Pedidos do portal RUMO','live'],['precos','Histórico de preços','live']]],
